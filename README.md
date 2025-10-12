@@ -160,7 +160,7 @@ flask seed-db
 ### 8. Ejecutar la aplicación
 
 ```bash
-python run.py
+python -m flask run --host 127.0.0.1 --port 8000
 ```
 
 La aplicación estará disponible en `http://localhost:5000`
