@@ -105,7 +105,7 @@ cd BRISA_BACKEND
 ```
 
 ### 2. Prerrequisitos
-- Python 3.8+
+- Python 3.13+
 - MySQL 8.0+ 
 - Git
 
