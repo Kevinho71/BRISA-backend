@@ -1,4 +1,3 @@
-from flask import Blueprint
-from app.modules.health.routes import health_bp
+from app.modules.health.routes import health_router
 
-# Exportar blueprint
+# Exportar router para FastAPI

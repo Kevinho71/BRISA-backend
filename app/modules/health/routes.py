@@ -1,12 +1,12 @@
-from flask import Blueprint, jsonify
+from fastapi import APIRouter
 from datetime import datetime
 import os
 from app.core.utils import success_response
 
-# Crear blueprint para health
-health_bp = Blueprint('health', __name__)
+# Crear router para health
+health_router = APIRouter(tags=["Health"])
 
-@health_bp.route('/health', methods=['GET'])
+@health_router.get('/health')
 def health_check():
     """
     Endpoint para verificar el estado de la API
@@ -19,7 +19,7 @@ def health_check():
         'timestamp': datetime.utcnow().isoformat(),
         'version': '1.0.0',
         'service': 'BRISA Backend API',
-        'environment': os.environ.get('FLASK_ENV', 'development'),
+        'environment': os.environ.get('ENV', 'development'),
         'uptime': 'running'
     }
     
@@ -28,7 +28,7 @@ def health_check():
         message="API is running successfully"
     )
 
-@health_bp.route('/status', methods=['GET'])
+@health_router.get('/status')
 def detailed_status():
     """
     Endpoint con información detallada del estado
@@ -44,21 +44,22 @@ def detailed_status():
         },
         'database': {
             'status': 'connected',
-            'type': 'sqlite'
+            'type': 'mysql'
         },
         'modules': {
-            'equipo1': 'active',
-            'equipo2': 'active',
-            'equipo3': 'active'
+            'usuarios': 'pending',
+            'estudiantes': 'pending',
+            'profesores': 'pending',
+            'retiros_tempranos': 'pending',
+            'incidentes': 'pending',
+            'esquelas': 'pending',
+            'administracion': 'pending',
+            'reportes': 'pending'
         },
-        'system': {
-            'timestamp': datetime.utcnow().isoformat(),
-            'environment': os.environ.get('FLASK_ENV', 'development'),
-            'python_version': f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
-        }
+        'timestamp': datetime.utcnow().isoformat()
     }
     
     return success_response(
         data=status_data,
-        message="Detailed system status"
+        message="System status retrieved successfully"
     )

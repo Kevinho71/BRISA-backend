@@ -1,17 +1,16 @@
 from datetime import datetime
-import json
+from typing import Any, Dict, Optional, List
 
-def success_response(data=None, message="Success", status_code=200):
+def success_response(data: Any = None, message: str = "Success") -> Dict:
     """
-    Crear respuesta exitosa estándar
+    Crear respuesta exitosa estándar para FastAPI
     
     Args:
         data: Datos a incluir en la respuesta
         message: Mensaje descriptivo
-        status_code: Código de estado HTTP
     
     Returns:
-        tuple: (diccionario_respuesta, codigo_estado)
+        dict: Diccionario con la respuesta estructurada
     """
     response = {
         'success': True,
@@ -19,19 +18,18 @@ def success_response(data=None, message="Success", status_code=200):
         'data': data,
         'timestamp': datetime.utcnow().isoformat()
     }
-    return response, status_code
+    return response
 
-def error_response(message="Error", status_code=400, errors=None):
+def error_response(message: str = "Error", errors: Optional[List] = None) -> Dict:
     """
-    Crear respuesta de error estándar
+    Crear respuesta de error estándar para FastAPI
     
     Args:
         message: Mensaje de error
-        status_code: Código de estado HTTP
         errors: Lista de errores específicos
     
     Returns:
-        tuple: (diccionario_respuesta, codigo_estado)
+        dict: Diccionario con la respuesta de error estructurada
     """
     response = {
         'success': False,
@@ -39,66 +37,33 @@ def error_response(message="Error", status_code=400, errors=None):
         'errors': errors or [],
         'timestamp': datetime.utcnow().isoformat()
     }
-    return response, status_code
+    return response
 
-def validate_json(required_fields=None):
+def paginated_response(data: List, total: int, page: int, page_size: int, message: str = "Success") -> Dict:
     """
-    Decorador para validar campos requeridos en JSON
+    Crear respuesta paginada estándar
     
     Args:
-        required_fields: Lista de campos requeridos
+        data: Lista de datos
+        total: Total de registros
+        page: Página actual
+        page_size: Tamaño de página
+        message: Mensaje descriptivo
     
     Returns:
-        function: Decorador
+        dict: Diccionario con respuesta paginada
     """
-    def decorator(f):
-        def wrapper(*args, **kwargs):
-            from flask import request
-            
-            if not request.is_json:
-                return error_response("Request must be JSON", 400)
-            
-            data = request.get_json()
-            
-            if required_fields:
-                missing_fields = [field for field in required_fields if field not in data]
-                if missing_fields:
-                    return error_response(
-                        f"Missing required fields: {', '.join(missing_fields)}", 
-                        400
-                    )
-            
-            return f(*args, **kwargs)
-        
-        wrapper.__name__ = f.__name__
-        return wrapper
-    
-    return decorator
-
-def paginate_query(query, page=1, per_page=10):
-    """
-    Paginar resultados de query
-    
-    Args:
-        query: Query de SQLAlchemy
-        page: Número de página
-        per_page: Elementos por página
-    
-    Returns:
-        dict: Datos paginados con metadatos
-    """
-    pagination = query.paginate(
-        page=page, 
-        per_page=per_page, 
-        error_out=False
-    )
-    
-    return {
-        'items': pagination.items,
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page,
-        'per_page': per_page,
-        'has_next': pagination.has_next,
-        'has_prev': pagination.has_prev
+    total_pages = (total + page_size - 1) // page_size
+    response = {
+        'success': True,
+        'message': message,
+        'data': data,
+        'pagination': {
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': total_pages
+        },
+        'timestamp': datetime.utcnow().isoformat()
     }
+    return response
