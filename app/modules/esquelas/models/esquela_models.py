@@ -24,10 +24,11 @@ class Esquela(Base):
     __tablename__ = "esquelas"
 
     id_esquela = Column("id_esquela", Integer, primary_key=True, index=True)
-    # Foreign keys - las tablas deben estar en la misma base de datos
-    id_estudiante = Column(Integer, ForeignKey("estudiantes.id_estudiante"))
-    id_profesor = Column(Integer, ForeignKey("personas.id_persona"))
-    id_registrador = Column(Integer, ForeignKey("usuarios.id_usuario"))
+    # Campos opcionales para asignar la esquela después
+    # TODO: Agregar ForeignKey cuando los módulos estudiantes, personas y usuarios estén implementados
+    id_estudiante = Column(Integer, nullable=True)  # ForeignKey("estudiantes.id_estudiante")
+    id_profesor = Column(Integer, nullable=True)  # ForeignKey("personas.id_persona")
+    id_registrador = Column(Integer, nullable=True)  # ForeignKey("usuarios.id_usuario")
     fecha = Column(DateTime, nullable=False)
     observaciones = Column(Text)
 

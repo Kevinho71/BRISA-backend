@@ -60,8 +60,9 @@ def register_routes(app):
     app.include_router(health_router, prefix="/api")
     
     # Esquelas
-    from app.modules.esquelas import esquelas_router
+    from app.modules.esquelas import esquelas_router, codigos_esquelas_router
     app.include_router(esquelas_router, prefix="/api", tags=["Esquelas"])
+    app.include_router(codigos_esquelas_router, prefix="/api", tags=["Códigos de Esquela"])
     # Los módulos específicos serán implementados por cada equipo
     # Ejemplo de cómo registrar un módulo:
     # from app.modules.usuarios.controllers.usuario_controller import usuarios_router

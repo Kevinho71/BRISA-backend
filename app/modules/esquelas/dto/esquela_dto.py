@@ -12,9 +12,10 @@ class CodigoEsquelaDTO(BaseModel):
     descripcion: str
 
 class EsquelaBaseDTO(BaseModel):
-    id_estudiante: int
-    id_profesor: int
-    id_registrador: int
+    # Campos opcionales para asignar más tarde
+    id_estudiante: Optional[int] = None
+    id_profesor: Optional[int] = None
+    id_registrador: Optional[int] = None
     fecha: datetime
     observaciones: Optional[str] = None
     codigos: List[int]
