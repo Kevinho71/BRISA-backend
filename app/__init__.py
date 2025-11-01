@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.config import config
 from app.core.extensions import init_extensions
-
+from app.modules.esquelas import esquelas_router
 def create_app(config_name=None):
     """
     Factory para crear la aplicación FastAPI del sistema BRISA
@@ -17,7 +17,8 @@ def create_app(config_name=None):
     """
     # Obtener configuración del entorno
     if config_name is None:
-        config_name = os.environ.get('ENV', 'development')
+        # Soportar ambas variables de entorno: ENV y APP_ENV
+        config_name = os.environ.get('ENV')
     
     # Crear instancia de FastAPI
     app = FastAPI(
@@ -29,8 +30,10 @@ def create_app(config_name=None):
         openapi_url="/openapi.json"
     )
     
-    # Obtener config
-    app_config = config[config_name]
+    # Obtener config e inyectarla en la app para que las extensiones la lean
+    # config es un dict que mapea nombre -> clase de configuración
+    app_config_class = config[config_name]
+    app.config = app_config_class()
     
     # Configurar CORS
     app.add_middleware(
@@ -41,7 +44,7 @@ def create_app(config_name=None):
         allow_headers=["*"],
     )
     
-    # Inicializar extensiones (base de datos, etc)
+    # Inicializar extensiones (base de datos, etc) usando la configuración cargada
     init_extensions(app)
     
     # Registrar rutas
@@ -56,6 +59,21 @@ def register_routes(app):
     from app.modules.health.routes import health_router
     app.include_router(health_router, prefix="/api")
     
+    # Esquelas
+    from app.modules.esquelas import esquelas_router, codigos_esquelas_router
+    app.include_router(esquelas_router, prefix="/api", tags=["Esquelas"])
+    app.include_router(codigos_esquelas_router, prefix="/api", tags=["Códigos de Esquela"])
+    
+    # Administración (Personas)
+    from app.modules.administracion import (
+        estudiantes_router,
+        profesores_router,
+        registradores_router
+    )
+    app.include_router(estudiantes_router, prefix="/api", tags=["Estudiantes"])
+    app.include_router(profesores_router, prefix="/api", tags=["Profesores"])
+    app.include_router(registradores_router, prefix="/api", tags=["Registradores"])
+    
     # Los módulos específicos serán implementados por cada equipo
     # Ejemplo de cómo registrar un módulo:
     # from app.modules.usuarios.controllers.usuario_controller import usuarios_router
@@ -65,3 +83,9 @@ def register_routes(app):
 # Los equipos agregarán sus imports aquí cuando implementen sus módulos
 # Ejemplo:
 # from app.modules.usuarios.models.usuario_models import *
+
+# Modelos de Esquelas
+from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela, EsquelaCodigo
+
+# Modelos de Administración (Personas)
+from app.modules.administracion.models.persona_models import Estudiante, Persona
