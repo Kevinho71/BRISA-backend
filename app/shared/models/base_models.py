@@ -3,6 +3,11 @@ Modelos base compartidos por todos los módulos del sistema BRISA
 """
 from datetime import datetime
 from app.core.extensions import db
+from sqlalchemy import Column, Integer, DateTime, Boolean, ForeignKey
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.ext.declarative import declared_attr
+
+Base = declarative_base()
 
 class BaseModel(db.Model):
     """
@@ -54,25 +59,3 @@ class AuditMixin:
         """Crear registro de auditoría"""
         # TODO: Implementar sistema de auditoría
         pass
-
-class PersonaBase(BaseModel):
-    """
-    Modelo base para personas (estudiantes, profesores, administrativos)
-    """
-    __abstract__ = True
-    
-    nombres = db.Column(db.String(100), nullable=False)
-    apellidos = db.Column(db.String(100), nullable=False)
-    cedula = db.Column(db.String(20), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=True, index=True)
-    telefono = db.Column(db.String(15), nullable=True)
-    fecha_nacimiento = db.Column(db.Date, nullable=True)
-    direccion = db.Column(db.Text, nullable=True)
-    
-    @property
-    def nombre_completo(self):
-        """Retorna el nombre completo"""
-        return f"{self.nombres} {self.apellidos}"
-    
-    def __str__(self):
-        return self.nombre_completo

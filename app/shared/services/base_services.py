@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from app.core.extensions import db
 from app.shared.exceptions.custom_exceptions import NotFound, DatabaseException
+from sqlalchemy.orm import Session
+
 
 class BaseService:
     """Servicio base con operaciones CRUD comunes"""
