@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 
-from app.config import get_db
+from app.core.database import get_db
 from app.shared.response import ResponseModel
 from app.shared.security import verify_token
 from app.modules.bitacora.dto.bitacora_dto import BitacoraResponseDTO, FiltrosBitacoraDTO
@@ -207,9 +207,11 @@ async def obtener_estadisticas_bitacora(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+from fastapi import Path
+
 @router.get("/resumen/{tipo_periodo}", response_model=dict)
 async def obtener_resumen_bitacora(
-    tipo_periodo: str = Query(..., description="dia, semana o mes"),
+    tipo_periodo: str = Path(..., description="dia, semana o mes"),
     token_data: dict = Depends(verify_token),
     db: Session = Depends(get_db)
 ) -> dict:

@@ -4,6 +4,7 @@ DTOs del Módulo de Usuarios - Validación de datos de entrada/salida
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 from datetime import datetime, date
+from app.core.database import Base
 
 class PersonaCreateDTO(BaseModel):
     """DTO para crear persona (RF-01)"""
@@ -39,8 +40,7 @@ class PersonaResponseDTO(BaseModel):
     created_at: datetime
     is_active: bool
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class UsuarioCreateDTO(BaseModel):
     """DTO para crear usuario (RF-01)"""
@@ -64,18 +64,18 @@ class UsuarioUpdateDTO(BaseModel):
 
 class UsuarioResponseDTO(BaseModel):
     """DTO para respuesta de usuario"""
-    id: int
+    id_usuario: int
     id_persona: int
+    usuario: str
     correo: str
-    ultimo_acceso: Optional[datetime]
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-    roles: List['RolResponseDTO'] = []
-    
-    class Config:
-        from_attributes = True
+    password: str 
 
+    # Configuración para Pydantic v2
+    model_config = {
+        "from_attributes": True
+    }
+
+    
 class RolCreateDTO(BaseModel):
     """DTO para crear rol (RF-03)"""
     nombre: str = Field(..., min_length=2, max_length=50)
@@ -96,8 +96,7 @@ class RolResponseDTO(BaseModel):
     updated_at: datetime
     permisos: List['PermisoResponseDTO'] = []
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class PermisoCreateDTO(BaseModel):
     """DTO para crear permiso (RF-04)"""
@@ -114,8 +113,7 @@ class PermisoResponseDTO(BaseModel):
     is_active: bool
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class AsignarRolDTO(BaseModel):
     """DTO para asignar rol a usuario (RF-02)"""

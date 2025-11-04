@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.config import get_db
+from core.database import get_db
 from app.shared.response import ResponseModel
 from app.shared.security import verify_token
 from app.modules.usuarios.dto.usuario_dto import (
@@ -82,7 +82,6 @@ async def listar_usuarios(
     """Listar todos los usuarios (RF-01)"""
     try:
         usuarios = UsuarioService.listar_usuarios(db, skip, limit, estado)
-        
         return ResponseModel.success(
             message="Usuarios obtenidos",
             data=[u.dict() for u in usuarios],

@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
-from app.config import Base, get_db
+from app.core.database import Base, get_db
 from app.main import app
 
 # Base de datos SQLite para testing

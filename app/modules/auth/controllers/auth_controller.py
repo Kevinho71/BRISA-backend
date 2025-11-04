@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.config import get_db
+from app.modules.usuarios.models.usuario_models import Persona1
+from app.modules.auth.dto.auth_dto import LoginDTO
+from app.modules.auth.services.auth_service import AuthService
+
+from app.core.database import get_db
 from app.shared.response import ResponseModel
 from app.shared.security import verify_token
 from app.modules.usuarios.dto.usuario_dto import (
@@ -75,14 +79,12 @@ async def obtener_usuario(
 async def listar_usuarios(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    estado: Optional[str] = None,
     token_data: dict = Depends(verify_token),
     db: Session = Depends(get_db)
 ) -> dict:
-    """Listar todos los usuarios (RF-01)"""
+    """Listar todos los usuarios"""
     try:
-        usuarios = UsuarioService.listar_usuarios(db, skip, limit, estado)
-        
+        usuarios = UsuarioService.listar_usuarios(db, skip, limit)
         return ResponseModel.success(
             message="Usuarios obtenidos",
             data=[u.dict() for u in usuarios],
@@ -94,6 +96,7 @@ async def listar_usuarios(
             error_details=str(e),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
 
 @router.put("/{id_usuario}", response_model=dict)
 async def actualizar_usuario(
@@ -338,6 +341,56 @@ async def obtener_permiso(
     except Exception as e:
         return ResponseModel.error(
             message="Error al obtener permiso",
+            error_details=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@router.get("/me", response_model=dict)
+async def obtener_usuario_actual(
+    token_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Obtener información del usuario autenticado
+    """
+    try:
+        usuario_id = token_data.get("usuario_id")
+        from app.modules.auth.services.auth_service import AuthService
+        usuario = AuthService.obtener_usuario_actual(db, usuario_id)
+        
+        return ResponseModel.success(
+            message="Usuario autenticado obtenido",
+            data=usuario.dict(),
+            status_code=status.HTTP_200_OK
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return ResponseModel.error(
+            message="Error al obtener usuario autenticado",
+            error_details=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@router.post("/login", response_model=dict)
+async def login(login_dto: LoginDTO, db: Session = Depends(get_db)):
+    """
+    Autenticación de usuario y generación de token
+    """
+    try:
+        # Pasar la sesión de DB y el DTO completo a AuthService
+        token_dto = AuthService.login(db=db, login_dto=login_dto)
+
+        return ResponseModel.success(
+            message="Login exitoso",
+            data={"access_token": token_dto.access_token},
+            status_code=status.HTTP_200_OK
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return ResponseModel.error(
+            message="Error al iniciar sesión",
             error_details=str(e),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

@@ -1,7 +1,17 @@
 from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional
+from typing import Optional, List, Literal
 from datetime import datetime
+from app.core.database import Base
+# ==========================
+# DTO para Roles
+# ==========================
+class RolDTO(BaseModel):
+    id_rol: int
+    nombre: str
 
+# ==========================
+# DTO para Registro de Usuario
+# ==========================
 class RegistroDTO(BaseModel):
     """DTO para registro de nuevo usuario"""
     ci: str
@@ -13,8 +23,8 @@ class RegistroDTO(BaseModel):
     password: str
     telefono: Optional[str] = None
     direccion: Optional[str] = None
-    tipo_persona: str = "administrativo"  # profesor o administrativo
-    id_rol: Optional[int] = None  # ID del rol a asignar
+    tipo_persona: Literal["profesor", "administrativo"] = "administrativo"
+    id_rol: Optional[int] = None  # ID del rol a asignar al usuario
     
     @field_validator('password')
     @classmethod
@@ -30,8 +40,8 @@ class RegistroDTO(BaseModel):
             raise ValueError('Contraseña debe contener números')
         return v
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "ci": "1234567890",
                 "nombres": "Juan",
@@ -41,24 +51,33 @@ class RegistroDTO(BaseModel):
                 "correo": "jperez@example.com",
                 "password": "Password123!",
                 "telefono": "+34-555-123456",
+                "direccion": "Calle Falsa 123",
                 "tipo_persona": "profesor",
                 "id_rol": 1
             }
         }
+    }
 
+# ==========================
+# DTO para Login
+# ==========================
 class LoginDTO(BaseModel):
     """DTO para inicio de sesión"""
     usuario: str
     password: str
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "usuario": "jperez",
                 "password": "Password123!"
             }
         }
+    }
 
+# ==========================
+# DTO para Token JWT
+# ==========================
 class TokenDTO(BaseModel):
     """DTO para respuesta de token"""
     access_token: str
@@ -67,11 +86,11 @@ class TokenDTO(BaseModel):
     usuario: str
     nombres: str
     rol: str
-    permisos: list[str]
+    permisos: List[str]
     expires_in: int
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "token_type": "bearer",
@@ -83,22 +102,26 @@ class TokenDTO(BaseModel):
                 "expires_in": 1800
             }
         }
+    }
 
+# ==========================
+# DTO para Usuario Actual
+# ==========================
 class UsuarioActualDTO(BaseModel):
     """DTO para información del usuario actual"""
     id_usuario: int
     usuario: str
-    correo: str
+    correo: EmailStr
     nombres: str
     apellido_paterno: str
     apellido_materno: str
     ci: str
-    roles: list[dict]
-    permisos: list[str]
-    estado: str
+    roles: List[RolDTO]
+    permisos: List[str]
+    estado: Literal["activo", "inactivo"]
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "id_usuario": 1,
                 "usuario": "jperez",
@@ -112,3 +135,4 @@ class UsuarioActualDTO(BaseModel):
                 "estado": "activo"
             }
         }
+    }

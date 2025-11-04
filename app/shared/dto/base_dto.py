@@ -1,10 +1,9 @@
 """
 DTOs base compartidos por todos los módulos
 """
-from marshmallow import Schema, fields, validate, post_load
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from datetime import datetime
 from typing import Optional, List, Any, Dict
-
 
 class BaseSchema(BaseModel):
     """Schema base con campos comunes"""
@@ -13,8 +12,7 @@ class BaseSchema(BaseModel):
     updated_at: Optional[datetime] = None
     is_active: Optional[bool] = True
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class PersonaBaseSchema(BaseSchema):
     """Schema base para personas"""
@@ -30,7 +28,6 @@ class PersonaBaseSchema(BaseSchema):
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}"
-   
 
 class PaginationSchema(BaseModel):
     """Schema para paginación"""

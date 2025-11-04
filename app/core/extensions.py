@@ -1,8 +1,9 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from typing import dict
+from typing import Dict
 
-from app.config import get_db
+from core.database import get_db
 from app.shared.response import ResponseModel
 from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
 from app.modules.auth.services.auth_service import AuthService
@@ -61,7 +62,7 @@ async def login(
     
     - Validar usuario y contraseña
     - Generar token JWT con 30 minutos de expiración
-    - Registrar login en auditoría
+    - Registrar login en bitacora
     - Retornar token y datos de usuario
     
     **Parámetros requeridos:**
@@ -71,7 +72,6 @@ async def login(
     try:
         ip_address = request.client.host if request.client else None
         token_data = AuthService.login(db, login, ip_address)
-        
         return ResponseModel.success(
             message="Inicio de sesión exitoso",
             data=token_data.dict(),
@@ -98,7 +98,6 @@ async def obtener_usuario_actual(
     try:
         usuario_id = token_data.get("usuario_id")
         usuario_actual = AuthService.obtener_usuario_actual(db, usuario_id)
-        
         return ResponseModel.success(
             message="Datos del usuario obtenidos",
             data=usuario_actual.dict(),
@@ -123,3 +122,15 @@ async def validar_token(
         data={"usuario_id": token_data.get("usuario_id")},
         status_code=status.HTTP_200_OK
     )
+
+
+# Función para Alembic
+
+
+def init_extensions(app):
+    """
+    Inicializar extensiones de FastAPI.
+    Este stub evita errores de importación en Alembic.
+    Puedes agregar middlewares, CORS, routers adicionales aquí.
+    """
+    app.include_router(router)

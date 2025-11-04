@@ -1,37 +1,54 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status, Request
+from fastapi import HTTPException, status
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from jose import JWTError, jwt
 import logging
 from passlib.context import CryptContext
+import os
+
+from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
+
+from app.core.database import get_db
 
 from app.modules.usuarios.models.usuario_models import (
-    Usuario, Persona, Rol, Permiso, LoginLog
+    Usuario, Persona1, Rol, Permiso, LoginLog, Bitacora
 )
-from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
 from app.modules.usuarios.dto.usuario_dto import LoginDTO as UsuarioLoginDTO, TokenResponseDTO, UsuarioResponseDTO
 from app.shared.exceptions import Unauthorized, NotFound
 
+from app.config.config import config
+
 logger = logging.getLogger(__name__)
+
+# Seleccionar configuración según el entorno
+env = os.environ.get("ENV", "development")
+Settings = config.get(env, config['default'])
+
+# Variables necesarias para JWT
+SECRET_KEY = getattr(Settings, "SECRET_KEY", "dev-secret-key-change-in-production")
+ALGORITHM = "HS256"  # Cambia si usas otro algoritmo
+ACCESS_TOKEN_EXPIRE_MINUTES = getattr(Settings, "JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 60)
 
 # Contexto para hash de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 class AuthService:
     """Servicio de autenticación con JWT"""
-    
+
     @staticmethod
     def hash_password(password: str) -> str:
         """Hashear contraseña con bcrypt"""
         return pwd_context.hash(password)
-    
+
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verificar contraseña contra hash"""
         return pwd_context.verify(plain_password, hashed_password)
-    
+
     @staticmethod
     def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -> str:
         """Crear token JWT"""
@@ -40,11 +57,15 @@ class AuthService:
             expire = datetime.utcnow() + expires_delta
         else:
             expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+
+        # Aseguramos que el token tenga usuario_id
+        if "sub" in to_encode:
+            to_encode["usuario_id"] = to_encode["sub"]
+
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
-    
+
     @staticmethod
     def decode_token(token: str) -> Dict:
         """Decodificar y validar token JWT"""
@@ -56,16 +77,10 @@ class AuthService:
             return payload
         except JWTError:
             raise Unauthorized("Token expirado o inválido")
-    
+
     @staticmethod
     def registrar_usuario(db: Session, registro: RegistroDTO) -> dict:
-        """
-        Registrar nuevo usuario (RF-01)
-        - Validar duplicados
-        - Encriptar contraseña
-        - Crear persona y usuario
-        - Asignar rol predefinido
-        """
+        """Registrar nuevo usuario"""
         # Validar duplicados
         usuario_existente = db.query(Usuario).filter(
             (Usuario.usuario == registro.usuario) | (Usuario.correo == registro.correo)
@@ -75,17 +90,17 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Usuario o correo ya existe"
             )
-        
-        persona_existente = db.query(Persona).filter(Persona.ci == registro.ci).first()
+
+        persona_existente = db.query(Persona1).filter(Persona1.ci == registro.ci).first()
         if persona_existente:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="CI ya registrado"
             )
-        
+
         try:
             # Crear persona
-            persona = Persona(
+            persona = Persona1(
                 ci=registro.ci,
                 nombres=registro.nombres,
                 apellido_paterno=registro.apellido_paterno,
@@ -97,18 +112,18 @@ class AuthService:
             )
             db.add(persona)
             db.flush()
-            
+
             # Crear usuario
             usuario = Usuario(
                 id_persona=persona.id_persona,
                 usuario=registro.usuario,
                 correo=registro.correo,
-                password_hash=AuthService.hash_password(registro.password),
+                password=AuthService.hash_password(registro.password),
                 estado='activo'
             )
             db.add(usuario)
             db.flush()
-            
+
             # Asignar rol
             if registro.id_rol:
                 rol = db.query(Rol).filter(Rol.id_rol == registro.id_rol).first()
@@ -123,11 +138,11 @@ class AuthService:
                 rol_default = db.query(Rol).filter(Rol.nombre == "Administrativo").first()
                 if rol_default:
                     usuario.roles.append(rol_default)
-            
+
             db.commit()
-            
+
             logger.info(f"Usuario registrado: {usuario.usuario}")
-            
+
             return {
                 "id_usuario": usuario.id_usuario,
                 "usuario": usuario.usuario,
@@ -135,7 +150,7 @@ class AuthService:
                 "nombres": f"{persona.nombres} {persona.apellido_paterno}",
                 "mensaje": "Usuario registrado exitosamente"
             }
-        
+
         except Exception as e:
             db.rollback()
             logger.error(f"Error al registrar usuario: {str(e)}")
@@ -143,114 +158,94 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al registrar usuario"
             )
-    
     @staticmethod
     def login(db: Session, login_dto: LoginDTO, ip_address: str = None) -> TokenDTO:
-        """
-        Autenticar usuario y generar token JWT
-        RF-05: Autenticación con contraseña encriptada
-        """
-        usuario = db.query(Usuario).filter(Usuario.correo == login_dto.correo).first()
-        
-        if not usuario or not AuthService.verify_password(login_dto.password, usuario.password_hash):
-            # Registrar intento fallido
+        """Autenticar usuario y generar token JWT"""
+        usuario = db.query(Usuario).filter(Usuario.usuario == login_dto.usuario).first()
+
+        if not usuario or usuario.password != login_dto.password:
+            # Registrar intento fallido en bitacora
             if usuario:
-                login_log = LoginLog(
-                    id_usuario=usuario.id,
-                    ip_address=ip_address,
-                    estado='fallido'
+                bitacora = Bitacora(
+                    id_usuario_admin=usuario.id_usuario,
+                    accion="login_fallido",
+                    descripcion="Intento de login fallido",
+                    fecha_hora=datetime.utcnow(),
+                    tipo_objetivo="usuario",
+                    id_objetivo=usuario.id_usuario
                 )
-                db.add(login_log)
+                db.add(bitacora)
                 db.commit()
-                logger.warning(f"Intento de login fallido: {usuario.correo}")
-            
-            raise Unauthorized("Correo o contraseña incorrectos")
-        
-        if not usuario.is_active:
-            raise Unauthorized("Usuario inactivo")
-        
-        # Crear token
+            raise Unauthorized("Usuario o contraseña incorrectos")
+
+        # Registrar login exitoso en bitacora
+        bitacora = Bitacora(
+            id_usuario_admin=usuario.id_usuario,
+            accion="login_exitoso",
+            descripcion="Login exitoso",
+            fecha_hora=datetime.utcnow(),
+            tipo_objetivo="usuario",
+            id_objetivo=usuario.id_usuario
+        )
+        db.add(bitacora)
+        db.commit()
+
+        # Generar token
         access_token = AuthService.create_access_token(
-            data={"sub": usuario.id, "correo": usuario.correo},
+            data={"sub": usuario.id_usuario, "usuario": usuario.usuario},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-        
-        # Registrar login exitoso
-        usuario.ultimo_acceso = datetime.utcnow()
-        login_log = LoginLog(
-            id_usuario=usuario.id,
-            ip_address=ip_address,
-            estado='exitoso'
-        )
-        db.add(login_log)
-        db.commit()
-        
-        logger.info(f"Login exitoso: {usuario.correo}")
-        
-        # Obtener roles y permisos
-        roles = usuario.roles
-        permisos = []
-        for rol in roles:
-            if rol.is_active:
-                for permiso in rol.permisos:
-                    if permiso.is_active and permiso.nombre not in permisos:
-                        permisos.append(permiso.nombre)
-        
-        usuario_response = UsuarioResponseDTO(
-            id=usuario.id,
-            id_persona=usuario.id_persona,
-            correo=usuario.correo,
-            ultimo_acceso=usuario.ultimo_acceso,
-            is_active=usuario.is_active,
-            created_at=usuario.created_at,
-            updated_at=usuario.updated_at,
-            roles=[{"id": r.id, "nombre": r.nombre} for r in roles if r.is_active]
-        )
-        
+
+        # Construir TokenDTO simplificado acorde a tu tabla actual
         return TokenDTO(
             access_token=access_token,
             token_type="bearer",
-            usuario=usuario_response
+            usuario_id=usuario.id_usuario,
+            usuario=usuario.usuario,
+            nombres="",  # no hay info de persona
+            rol="",      # roles no definidos
+            permisos=[], # permisos no definidos
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
-    
+
+
     @staticmethod
     def get_current_user(db: Session, token: str) -> Usuario:
         """Obtener usuario actual desde token JWT"""
         try:
             payload = AuthService.decode_token(token)
             usuario_id: int = payload.get("sub")
-            
+
             usuario = db.query(Usuario).filter(Usuario.id == usuario_id, Usuario.is_active == True).first()
             if not usuario:
                 raise NotFound("Usuario", usuario_id)
-            
+
             return usuario
         except Exception as e:
             logger.error(f"Error al obtener usuario del token: {str(e)}")
             raise Unauthorized("No autorizado")
-    
+
     @staticmethod
     def obtener_usuario_actual(db: Session, usuario_id: int) -> UsuarioActualDTO:
         """Obtener datos del usuario autenticado"""
         usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
-        
+
         if not usuario:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuario no encontrado"
             )
-        
-        # Obtener roles y permisos
+
         roles = []
         permisos = []
-        
+
         for rol in usuario.roles:
             if rol.is_active:
                 roles.append({"id_rol": rol.id_rol, "nombre": rol.nombre})
                 for permiso in rol.permisos:
                     if permiso.is_active and permiso.nombre not in permisos:
                         permisos.append(permiso.nombre)
-        
+
         return UsuarioActualDTO(
             id_usuario=usuario.id_usuario,
             usuario=usuario.usuario,
@@ -262,4 +257,21 @@ class AuthService:
             roles=roles,
             permisos=permisos,
             estado=usuario.estado
+        )
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+def get_current_user_dependency(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    from app.modules.auth.services.auth_service import AuthService
+    try:
+        return AuthService.get_current_user(db, token)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No autorizado",
+            headers={"WWW-Authenticate": "Bearer"},
         )

@@ -1,25 +1,12 @@
 """
 Decoradores compartidos para el sistema BRISA Backend
-
-Estos decoradores proporcionan funcionalidad común de autenticación y autorización.
-Los equipos implementarán la lógica específica según sus necesidades.
-
-Nota: El equipo del Módulo 1 (Usuarios) implementará la lógica completa
-      de autenticación JWT y verificación de permisos/roles.
 """
-
 from functools import wraps
-from typing import Callable, List, Optional
+from typing import List, Optional
 from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 import jwt
 from datetime import datetime, timedelta
-from app.config import SECRET_KEY, ALGORITHM
-
-# ============================================================================
-# DECORADORES PARA FASTAPI (Dependencies)
-# ============================================================================
 
 async def get_token_from_request(request: Request) -> str:
     """Extrae el token JWT del header Authorization"""

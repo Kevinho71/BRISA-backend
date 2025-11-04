@@ -14,8 +14,10 @@ app = create_app(config_name)
 
 if __name__ == '__main__':
     # Configuración para desarrollo
-    port = int(os.environ.get('PORT', 8000))
-    reload = os.environ.get('ENV', 'development') == 'development'
+    # Obtener configuración del .env
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 8000))
+    reload = os.getenv("ENV", "development") == "development"
     
     print(f"🚀 Iniciando BRISA Backend API en puerto {port}")
     print(f"📝 Entorno: {config_name}")

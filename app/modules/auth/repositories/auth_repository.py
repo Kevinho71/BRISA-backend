@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.modules.usuarios.models.usuario_models import Usuario, Persona, LoginLog
+from app.modules.usuarios.models.usuario_models import Usuario, Persona1, LoginLog
 from typing import Optional
 
 class AuthRepository:
@@ -16,9 +16,9 @@ class AuthRepository:
         return db.query(Usuario).filter(Usuario.correo == correo).first()
     
     @staticmethod
-    def buscar_persona_por_ci(db: Session, ci: str) -> Optional[Persona]:
+    def buscar_persona_por_ci(db: Session, ci: str) -> Optional[Persona1]:
         """Buscar persona por CI"""
-        return db.query(Persona).filter(Persona.ci == ci).first()
+        return db.query(Persona1).filter(Persona1.ci == ci).first()
     
     @staticmethod
     def registrar_login(db: Session, id_usuario: int, ip_address: str = None, estado: str = 'exitoso'):
