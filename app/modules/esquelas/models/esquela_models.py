@@ -24,7 +24,6 @@ class Esquela(Base):
     __tablename__ = "esquelas"
 
     id_esquela = Column("id_esquela", Integer, primary_key=True, index=True)
-    # Foreign Keys - NOTA: id_curso NO existe en la BD actual
     id_estudiante = Column(Integer, ForeignKey("estudiantes.id_estudiante"), nullable=False, index=True)
     id_profesor = Column(Integer, ForeignKey("personas.id_persona"), nullable=False, index=True)
     id_registrador = Column(Integer, ForeignKey("personas.id_persona"), nullable=False)
