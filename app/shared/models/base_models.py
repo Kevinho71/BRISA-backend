@@ -3,7 +3,8 @@ from sqlalchemy import Column, Integer, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import Session
-from core.database import get_db
+from app.core.database import get_db
+
 
 Base = declarative_base()
 

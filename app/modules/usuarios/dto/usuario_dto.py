@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from app.core.database import Base
+from app.modules.auth.dto.auth_dto import LoginDTO, TokenResponseDTO
 
 class PersonaCreateDTO(BaseModel):
     """DTO para crear persona (RF-01)"""
@@ -125,11 +126,6 @@ class LoginDTO(BaseModel):
     correo: EmailStr
     password: str
 
-class TokenResponseDTO(BaseModel):
-    """DTO para respuesta de token"""
-    access_token: str
-    token_type: str = "bearer"
-    usuario: UsuarioResponseDTO
 
 class PaginatedResponseDTO(BaseModel):
     """DTO para respuestas paginadas"""

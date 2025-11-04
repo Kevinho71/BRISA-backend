@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import Dict
 
-from core.database import get_db
+from app.core.database import get_db
 from app.shared.response import ResponseModel
 from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
 from app.modules.auth.services.auth_service import AuthService

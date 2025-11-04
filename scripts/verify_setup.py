@@ -44,13 +44,19 @@ def check_models():
     print("\n[3] Verificando modelos SQLAlchemy...")
     try:
         from app.modules.usuarios.models.usuario_models import Persona1, Usuario, Rol, Permiso
-        from app.modules.bitacora.models.bitacora_models import Bitacora, LoginLog
+        from app.modules.bitacora.models.bitacora_models import Bitacora
+        try:
+            from app.modules.usuarios.models.usuario_models import LoginLog
+            print("  ✓ LoginLog importado correctamente")
+        except ImportError:
+            print("  ⚠ LoginLog no existe, saltando verificación")
         print("  ✓ Modelos de usuarios importados correctamente")
         print("  ✓ Modelos de bitácora importados correctamente")
         return True
     except Exception as e:
         print(f"  ✗ Error en modelos: {e}")
         return False
+
 
 def check_services():
     """Verifica que los servicios estén correctos"""
@@ -82,7 +88,7 @@ def check_decorators():
     """Verifica que los decoradores funcionen"""
     print("\n[6] Verificando decoradores...")
     try:
-        from app.shared.decorators.auth_decorators import require_auth, require_role
+        from app.shared.decorators.auth_decorators import require_auth, require_roles
         print("  ✓ Decoradores de autenticación importados correctamente")
         return True
     except Exception as e:

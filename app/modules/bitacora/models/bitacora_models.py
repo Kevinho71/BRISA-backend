@@ -9,7 +9,7 @@ from app.core.database import Base
 class Bitacora(Base):
     """Modelo de Bitácora - Bitacora de todas las acciones del sistema"""
     __tablename__ = "bitacora"
-    
+    __table_args__ = {"extend_existing": True}
     id_bitacora = Column(Integer, primary_key=True, autoincrement=True)
     id_usuario_admin = Column(Integer, ForeignKey('usuarios.id_usuario'), nullable=False, index=True)
     accion = Column(String(50), nullable=False, index=True)

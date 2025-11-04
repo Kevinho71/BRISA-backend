@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Literal
 from datetime import datetime
 from app.core.database import Base
+from typing import TYPE_CHECKING
+
 # ==========================
 # DTO para Roles
 # ==========================
@@ -136,3 +138,14 @@ class UsuarioActualDTO(BaseModel):
             }
         }
     }
+
+
+if TYPE_CHECKING:
+    from app.modules.usuarios.dto.usuario_dto import UsuarioResponseDTO
+
+
+class TokenResponseDTO(BaseModel):
+    """DTO para respuesta de token"""
+    access_token: str
+    token_type: str = "bearer"
+    usuario: "UsuarioResponseDTO"
