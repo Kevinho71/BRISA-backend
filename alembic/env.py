@@ -47,10 +47,9 @@ target_metadata = Base.metadata
 # ----------------------------
 # Configurar URL de la base de datos
 # ----------------------------
-sqlalchemy_url = os.getenv(
-    "DATABASE_URL",
-    "mysql+pymysql://root@127.0.0.1:3306/bienestar_estudiantil?charset=utf8mb4"
-)
+sqlalchemy_url = os.getenv("DATABASE_URL")
+if not sqlalchemy_url:
+    raise ValueError("❌ Falta la variable de entorno DATABASE_URL en el .env")
 
 config.set_main_option("sqlalchemy.url", sqlalchemy_url)
 

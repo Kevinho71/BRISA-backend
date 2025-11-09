@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
 from fastapi import Depends
+
+# ⭐ NUEVA LÍNEA 1: Importar el registro de handlers
+from app.shared.exceptions.custom_exceptions import register_exception_handlers
+
 # Importar routers
 from app.modules.usuarios.controllers import usuario_controller
 from app.modules.auth.controllers import auth_controller
@@ -12,6 +16,7 @@ from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+
 load_dotenv()
 
 # Crear aplicación FastAPI
@@ -35,6 +40,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ⭐ NUEVA LÍNEA 2: Registrar manejadores de excepciones personalizadas
+register_exception_handlers(app)
 
 # Incluir routers
 app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])

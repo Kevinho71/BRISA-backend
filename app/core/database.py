@@ -1,6 +1,10 @@
+"app/core/database.py"
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config.config import config
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
+from typing import Generator
 import os
 
 # Seleccionar configuración según ENV
@@ -18,7 +22,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     """Dependencia para inyectar sesión de DB en FastAPI"""
     db = SessionLocal()
     try:

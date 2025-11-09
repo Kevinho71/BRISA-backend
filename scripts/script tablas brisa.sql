@@ -13,22 +13,43 @@ CREATE TABLE IF NOT EXISTS personas (
     apellido_materno VARCHAR(50) NOT NULL,
     direccion VARCHAR(100),
     telefono VARCHAR(20),
-    correo VARCHAR(50),
-    tipo_persona ENUM('profesor','administrativo') NOT NULL
+    correo VARCHAR(50) UNIQUE,
+    tipo_persona ENUM('profesor','administrativo') NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- ================================
+-- TABLA roles
+-- ================================
 CREATE TABLE IF NOT EXISTS roles (
     id_rol INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
-    descripcion VARCHAR(255)
+    descripcion VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by INT NULL,
+    updated_by INT NULL
 );
 
+-- ================================
+-- TABLA permisos
+-- ================================
 CREATE TABLE IF NOT EXISTS permisos (
     id_permiso INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
-    descripcion VARCHAR(255)
+    descripcion VARCHAR(255),
+    modulo VARCHAR(50) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by INT NULL,
+    updated_by INT NULL
 );
 
+-- ================================
+-- TABLA rol_permisos (N:N)
+-- ================================
 CREATE TABLE IF NOT EXISTS rol_permisos (
     id_rol INT NOT NULL,
     id_permiso INT NOT NULL,
@@ -37,43 +58,75 @@ CREATE TABLE IF NOT EXISTS rol_permisos (
     FOREIGN KEY (id_permiso) REFERENCES permisos(id_permiso)
 );
 
+-- ================================
+-- TABLA usuarios
+-- ================================
 CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
     id_persona INT NOT NULL,
     usuario VARCHAR(50) NOT NULL UNIQUE,
     correo VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (id_persona) REFERENCES personas(id_persona)
 );
 
+-- ================================
+-- TABLA usuario_roles
+-- ================================
 CREATE TABLE IF NOT EXISTS usuario_roles (
     id_usuario INT NOT NULL,
     id_rol INT NOT NULL,
-    fecha_inicio DATE NOT NULL,
-    fecha_fin DATE,
+    fecha_inicio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin DATETIME NULL,
     estado ENUM('activo','inactivo') NOT NULL,
     PRIMARY KEY (id_usuario, id_rol, fecha_inicio),
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_rol) REFERENCES roles(id_rol)
 );
 
+-- ================================
+-- TABLA login_logs
+-- ================================
 CREATE TABLE IF NOT EXISTS login_logs (
     id_log INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     fecha_hora DATETIME NOT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    estado ENUM('exitoso','fallido') NOT NULL DEFAULT 'exitoso',
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
 );
 
+-- ================================
+-- TABLA rol_historial
+-- ================================
+CREATE TABLE IF NOT EXISTS rol_historial (
+    id_historial INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_rol INT NOT NULL,
+    accion ENUM('asignado','revocado') NOT NULL,
+    razon TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
+    FOREIGN KEY (id_rol) REFERENCES roles(id_rol)
+);
+
+-- ================================
+-- TABLA bitacora
+-- ================================
 CREATE TABLE IF NOT EXISTS bitacora (
     id_bitacora INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario_admin INT NOT NULL,
     accion VARCHAR(50) NOT NULL,
     descripcion TEXT,
-    fecha_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
     id_objetivo INT NULL,
     tipo_objetivo VARCHAR(50) NULL,
+    fecha_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_usuario_admin) REFERENCES usuarios(id_usuario)
 );
+
 
 -- ================================
 -- MÓDULO 2: ESTUDIANTES Y CURSOS

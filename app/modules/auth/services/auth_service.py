@@ -1,10 +1,18 @@
+"""auth_service.py - CORREGIDO"""
+
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from jose import JWTError, jwt
 import logging
-from passlib.context import CryptContext
+from app.shared.security import (
+    pwd_context,
+    hash_password,
+    verify_password,
+    create_access_token
+)
+
 import os
 
 from fastapi import Depends
@@ -16,7 +24,6 @@ from app.modules.usuarios.models.usuario_models import (
     Usuario, Persona1, Rol, Permiso, LoginLog, Bitacora
 )
 from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
-from app.modules.usuarios.dto.usuario_dto import LoginDTO as UsuarioLoginDTO, TokenResponseDTO, UsuarioResponseDTO
 from app.shared.exceptions import Unauthorized, NotFound
 
 from app.config.config import config
@@ -29,49 +36,35 @@ Settings = config.get(env, config['default'])
 
 # Variables necesarias para JWT
 SECRET_KEY = getattr(Settings, "SECRET_KEY", "dev-secret-key-change-in-production")
-ALGORITHM = "HS256"  # Cambia si usas otro algoritmo
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(Settings, "JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 60)
 
 # Contexto para hash de contraseñas
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 class AuthService:
     """Servicio de autenticación con JWT"""
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hashear contraseña con bcrypt"""
-        return pwd_context.hash(password)
+        """Hashear contraseña con bcrypt (usa módulo shared.security)"""
+        return hash_password(password)
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verificar contraseña contra hash"""
-        return pwd_context.verify(plain_password, hashed_password)
+        return verify_password(plain_password, hashed_password)
 
     @staticmethod
     def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -> str:
         """Crear token JWT"""
-        to_encode = data.copy()
-        if expires_delta:
-            expire = datetime.utcnow() + expires_delta
-        else:
-            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
-        # Aseguramos que el token tenga usuario_id
-        if "sub" in to_encode:
-            to_encode["usuario_id"] = to_encode["sub"]
-
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-        return encoded_jwt
+        return create_access_token(data, expires_delta)
 
     @staticmethod
     def decode_token(token: str) -> Dict:
         """Decodificar y validar token JWT"""
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            usuario_id: int = payload.get("sub")
+            usuario_id: int = payload.get("usuario_id")
             if usuario_id is None:
                 raise Unauthorized("Token inválido")
             return payload
@@ -119,7 +112,7 @@ class AuthService:
                 usuario=registro.usuario,
                 correo=registro.correo,
                 password=AuthService.hash_password(registro.password),
-                estado='activo'
+                is_active=True
             )
             db.add(usuario)
             db.flush()
@@ -140,6 +133,7 @@ class AuthService:
                     usuario.roles.append(rol_default)
 
             db.commit()
+            db.refresh(usuario)
 
             logger.info(f"Usuario registrado: {usuario.usuario}")
 
@@ -158,54 +152,46 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al registrar usuario"
             )
+    
     @staticmethod
-    def login(db: Session, login_dto: LoginDTO, ip_address: str = None) -> TokenDTO:
-        """Autenticar usuario y generar token JWT"""
-        usuario = db.query(Usuario).filter(Usuario.usuario == login_dto.usuario).first()
-
-        if not usuario or usuario.password != login_dto.password:
-            # Registrar intento fallido en bitacora
-            if usuario:
-                bitacora = Bitacora(
-                    id_usuario_admin=usuario.id_usuario,
-                    accion="login_fallido",
-                    descripcion="Intento de login fallido",
-                    fecha_hora=datetime.utcnow(),
-                    tipo_objetivo="usuario",
-                    id_objetivo=usuario.id_usuario
-                )
-                db.add(bitacora)
-                db.commit()
-            raise Unauthorized("Usuario o contraseña incorrectos")
-
-        # Registrar login exitoso en bitacora
-        bitacora = Bitacora(
-            id_usuario_admin=usuario.id_usuario,
-            accion="login_exitoso",
-            descripcion="Login exitoso",
-            fecha_hora=datetime.utcnow(),
-            tipo_objetivo="usuario",
-            id_objetivo=usuario.id_usuario
-        )
-        db.add(bitacora)
-        db.commit()
-
-        # Generar token
+    def login(db: Session, login_dto: LoginDTO) -> TokenDTO:
+        """
+        Autenticación de usuario
+        
+        SEGURIDAD: El mensaje de error debe ser genérico para no revelar
+        si el usuario existe o no (prevenir enumeración de usuarios)
+        """
+        MENSAJE_ERROR_GENERICO = "Usuario o contraseña incorrectos"
+        
+        # Buscar usuario activo
+        usuario = db.query(Usuario).filter(
+            Usuario.usuario == login_dto.usuario,
+            Usuario.is_active == True
+        ).first()
+        
+        # Usuario no encontrado -> mensaje genérico
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=MENSAJE_ERROR_GENERICO
+            )
+        
+        # Contraseña incorrecta -> mismo mensaje genérico
+        if not AuthService.verify_password(login_dto.password, usuario.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=MENSAJE_ERROR_GENERICO
+            )
+        
+        # ✅ Crear token con usuario_id (coincide con tu modelo y test_security)
         access_token = AuthService.create_access_token(
-            data={"sub": usuario.id_usuario, "usuario": usuario.usuario},
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            data={"usuario_id": usuario.id_usuario}
         )
-
-        # Construir TokenDTO simplificado acorde a tu tabla actual
+        
         return TokenDTO(
             access_token=access_token,
             token_type="bearer",
-            usuario_id=usuario.id_usuario,
-            usuario=usuario.usuario,
-            nombres="",  # no hay info de persona
-            rol="",      # roles no definidos
-            permisos=[], # permisos no definidos
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            usuario_id=usuario.id_usuario
         )
 
 
@@ -214,9 +200,9 @@ class AuthService:
         """Obtener usuario actual desde token JWT"""
         try:
             payload = AuthService.decode_token(token)
-            usuario_id: int = payload.get("sub")
+            usuario_id: int = payload.get("usuario_id")
 
-            usuario = db.query(Usuario).filter(Usuario.id == usuario_id, Usuario.is_active == True).first()
+            usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id, Usuario.is_active == True).first()
             if not usuario:
                 raise NotFound("Usuario", usuario_id)
 
@@ -246,6 +232,9 @@ class AuthService:
                     if permiso.is_active and permiso.nombre not in permisos:
                         permisos.append(permiso.nombre)
 
+        # CORRECCIÓN: Usar 'activo' si is_active es True, 'inactivo' si es False
+        estado = "activo" if usuario.is_active else "inactivo"
+
         return UsuarioActualDTO(
             id_usuario=usuario.id_usuario,
             usuario=usuario.usuario,
@@ -256,7 +245,7 @@ class AuthService:
             ci=usuario.persona.ci,
             roles=roles,
             permisos=permisos,
-            estado=usuario.estado
+            estado=estado
         )
 
 

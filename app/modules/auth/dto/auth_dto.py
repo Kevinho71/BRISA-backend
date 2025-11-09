@@ -1,3 +1,5 @@
+"app/module/auth/dto/auth_dto"
+
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Literal
 from datetime import datetime

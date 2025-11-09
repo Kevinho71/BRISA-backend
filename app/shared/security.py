@@ -1,3 +1,5 @@
+"app/shared/security"
+
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -12,7 +14,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 
 # Contexto para hash de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # ← CAMBIO AQUÍ
 
 def hash_password(password: str) -> str:
     """Encriptar contraseña con bcrypt"""
@@ -32,6 +34,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     
     # Agregar usuario_id si existe sub
     if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])  # JWT exige que sea string
         to_encode["usuario_id"] = to_encode["sub"]
 
     to_encode.update({"exp": expire})
@@ -41,20 +44,30 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
 
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     """Verificar y decodificar token JWT"""
+    # ← AGREGAR ESTO
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No autenticado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        usuario_id: int = payload.get("sub")
+        usuario_id: int = payload.get("sub") or payload.get("usuario_id")  # ← CAMBIAR AQUÍ
         if usuario_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido"
+                detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"}  # ← AGREGAR HEADER
             )
         return {"usuario_id": usuario_id, "payload": payload}
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expirado o inválido"
+            detail="Token expirado o inválido",
+            headers={"WWW-Authenticate": "Bearer"}  # ← AGREGAR HEADER
         )
 
 def validate_password_complexity(password: str) -> bool:

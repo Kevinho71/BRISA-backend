@@ -1,10 +1,16 @@
+"""
+usuario_controller.py - CORREGIDO CON DECORADORES DE SEGURIDAD
+Controlador de usuarios, roles y permisos
+"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.core.database import get_db
 from app.shared.response import ResponseModel
-from app.shared.security import verify_token
+from app.shared.permissions import requires_permission, check_permission
+from app.modules.auth.services.auth_service import get_current_user_dependency
+from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.usuarios.dto.usuario_dto import (
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
     RolCreateDTO, RolUpdateDTO, RolResponseDTO,
@@ -18,39 +24,41 @@ router = APIRouter()
 
 # ==================== ENDPOINTS DE USUARIOS ====================
 
-@router.post("", response_model=dict)
+@router.post("", status_code=status.HTTP_201_CREATED)
+@requires_permission("crear_usuario")
 async def crear_usuario(
     usuario_create: UsuarioCreateDTO,
-    token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
     Crear nuevo usuario (RF-01)
-    
-    Requiere permisos: crear_usuario
+    ⚠️ SEGURIDAD: Requiere permiso 'crear_usuario'
     """
     try:
-        usuario_id = token_data.get("usuario_id")
-        nuevo_usuario = UsuarioService.crear_usuario(db, usuario_create, usuario_id)
+        nuevo_usuario = UsuarioService.crear_usuario(
+            db, 
+            usuario_create, 
+            user_id=current_user.id_usuario
+        )
         
         return ResponseModel.success(
             message="Usuario creado exitosamente",
-            data=nuevo_usuario.dict(),
+            data=nuevo_usuario.dict() if hasattr(nuevo_usuario, 'dict') else nuevo_usuario,
             status_code=status.HTTP_201_CREATED
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al crear usuario",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear usuario: {str(e)}"
         )
-
-@router.get("/{id_usuario}", response_model=dict)
+    
+@router.get("/{id_usuario}")
 async def obtener_usuario(
     id_usuario: int,
-    token_data: dict = Depends(verify_token),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> dict:
     """Obtener detalles de usuario específico"""
@@ -59,24 +67,23 @@ async def obtener_usuario(
         
         return ResponseModel.success(
             message="Usuario obtenido",
-            data=usuario.dict(),
+            data=usuario.dict() if hasattr(usuario, 'dict') else usuario,
             status_code=status.HTTP_200_OK
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al obtener usuario",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Error al obtener usuario: {str(e)}"
         )
 
-@router.get("", response_model=dict)
+@router.get("")
 async def listar_usuarios(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     estado: Optional[str] = None,
-    token_data: dict = Depends(verify_token),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> dict:
     """Listar todos los usuarios (RF-01)"""
@@ -84,60 +91,85 @@ async def listar_usuarios(
         usuarios = UsuarioService.listar_usuarios(db, skip, limit, estado)
         return ResponseModel.success(
             message="Usuarios obtenidos",
-            data=[u.dict() for u in usuarios],
+            data=[u.dict() if hasattr(u, 'dict') else u for u in usuarios],
             status_code=status.HTTP_200_OK
         )
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al listar usuarios",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al listar usuarios: {str(e)}"
         )
 
-@router.put("/{id_usuario}", response_model=dict)
+@router.put("/{id_usuario}")
+@requires_permission("editar_usuario")
 async def actualizar_usuario(
     id_usuario: int,
     usuario_update: UsuarioUpdateDTO,
-    token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
     Actualizar usuario (RF-06)
+    ⚠️ SEGURIDAD: Requiere permiso 'editar_usuario'
     
     Audita todos los cambios realizados
     """
     try:
-        usuario_id = token_data.get("usuario_id")
-        usuario_actualizado = UsuarioService.actualizar_usuario(db, id_usuario, usuario_update, usuario_id)
+        # Validación adicional: usuarios solo pueden editar su propio perfil
+        # a menos que tengan el permiso específico
+        if id_usuario != current_user.id_usuario:
+            if not check_permission(current_user, "editar_usuario"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permiso para editar otros usuarios"
+                )
+        
+        usuario_actualizado = UsuarioService.actualizar_usuario(
+            db, 
+            id_usuario, 
+            usuario_update, 
+            user_id=current_user.id_usuario
+        )
         
         return ResponseModel.success(
             message="Usuario actualizado exitosamente",
-            data=usuario_actualizado.dict(),
+            data=usuario_actualizado.dict() if hasattr(usuario_actualizado, 'dict') else usuario_actualizado,
             status_code=status.HTTP_200_OK
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al actualizar usuario",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al actualizar usuario: {str(e)}"
         )
 
-@router.delete("/{id_usuario}", response_model=dict)
+@router.delete("/{id_usuario}")
+@requires_permission("eliminar_usuario")
 async def eliminar_usuario(
     id_usuario: int,
-    token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
     Eliminar usuario (borrado lógico) (RF-06)
+    ⚠️ SEGURIDAD: Requiere permiso 'eliminar_usuario'
     
     Marca el usuario como inactivo
     """
     try:
-        usuario_admin_id = token_data.get("usuario_id")
-        resultado = UsuarioService.eliminar_usuario(db, id_usuario, usuario_admin_id)
+        # Validación: no permitir auto-eliminación
+        if id_usuario == current_user.id_usuario:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No puedes eliminar tu propia cuenta"
+            )
+        
+        resultado = UsuarioService.eliminar_usuario(
+            db, 
+            id_usuario, 
+            user_id=current_user.id_usuario
+        )
         
         return ResponseModel.success(
             message="Usuario eliminado exitosamente",
@@ -147,48 +179,50 @@ async def eliminar_usuario(
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al eliminar usuario",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al eliminar usuario: {str(e)}"
         )
+
 
 # ==================== ENDPOINTS DE ROLES ====================
 
-@router.post("/roles", response_model=dict)
+@router.post("/roles")
+@requires_permission("crear_rol")
 async def crear_rol(
     rol_create: RolCreateDTO,
-    token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
     Crear nuevo rol (RF-03)
-    
-    Requiere permisos: crear_rol
+    ⚠️ SEGURIDAD: Requiere permiso 'crear_rol'
     """
     try:
-        usuario_id = token_data.get("usuario_id")
-        nuevo_rol = RolService.crear_rol(db, rol_create, usuario_id)
+        nuevo_rol = RolService.crear_rol(
+            db, 
+            rol_create, 
+            user_id=current_user.id_usuario
+        )
         
         return ResponseModel.success(
             message="Rol creado exitosamente",
-            data=nuevo_rol.dict(),
+            data=nuevo_rol.dict() if hasattr(nuevo_rol, 'dict') else nuevo_rol,
             status_code=status.HTTP_201_CREATED
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al crear rol",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear rol: {str(e)}"
         )
 
-@router.get("/roles", response_model=dict)
+@router.get("/roles")
 async def listar_roles(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    token_data: dict = Depends(verify_token),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> dict:
     """Listar todos los roles"""
@@ -197,20 +231,19 @@ async def listar_roles(
         
         return ResponseModel.success(
             message="Roles obtenidos",
-            data=[r.dict() for r in roles],
+            data=[r.dict() if hasattr(r, 'dict') else r for r in roles],
             status_code=status.HTTP_200_OK
         )
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al listar roles",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al listar roles: {str(e)}"
         )
 
-@router.get("/roles/{id_rol}", response_model=dict)
+@router.get("/roles/{id_rol}")
 async def obtener_rol(
     id_rol: int,
-    token_data: dict = Depends(verify_token),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> dict:
     """Obtener detalles de rol específico"""
@@ -219,33 +252,36 @@ async def obtener_rol(
         
         return ResponseModel.success(
             message="Rol obtenido",
-            data=rol.dict(),
+            data=rol.dict() if hasattr(rol, 'dict') else rol,
             status_code=status.HTTP_200_OK
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al obtener rol",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Error al obtener rol: {str(e)}"
         )
 
-@router.post("/{id_usuario}/roles/{id_rol}", response_model=dict)
+@router.post("/{id_usuario}/roles/{id_rol}")
+@requires_permission("asignar_permisos")
 async def asignar_rol_usuario(
     id_usuario: int,
     id_rol: int,
-    token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
     Asignar rol a usuario (RF-02)
-    
-    Requiere permisos: asignar_permisos
+    ⚠️ SEGURIDAD: Requiere permiso 'asignar_permisos'
     """
     try:
-        usuario_id = token_data.get("usuario_id")
-        resultado = RolService.asignar_rol_usuario(db, id_usuario, id_rol, usuario_id)
+        resultado = UsuarioService.asignar_rol(
+            db, 
+            id_usuario, 
+            id_rol, 
+            user_id=current_user.id_usuario
+        )
         
         return ResponseModel.success(
             message="Rol asignado exitosamente",
@@ -255,50 +291,86 @@ async def asignar_rol_usuario(
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al asignar rol",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al asignar rol: {str(e)}"
         )
 
-@router.post("/roles/{id_rol}/permisos", response_model=dict)
-async def asignar_permisos_rol(
+@router.delete("/{id_usuario}/roles/{id_rol}")
+@requires_permission("asignar_permisos")
+async def revocar_rol_usuario(
+    id_usuario: int,
     id_rol: int,
-    permisos_ids: list[int],
-    token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
-    Asignar permisos a rol (RF-04)
-    
-    Requiere permisos: asignar_permisos
+    Revocar rol de usuario (RF-02)
+    ⚠️ SEGURIDAD: Requiere permiso 'asignar_permisos'
     """
     try:
-        usuario_id = token_data.get("usuario_id")
-        rol_actualizado = RolService.asignar_permisos_rol(db, id_rol, permisos_ids, usuario_id)
+        resultado = UsuarioService.revocar_rol(
+            db,
+            id_usuario,
+            id_rol,
+            user_id=current_user.id_usuario
+        )
         
         return ResponseModel.success(
-            message="Permisos asignados al rol",
-            data=rol_actualizado.dict(),
+            message="Rol revocado exitosamente",
+            data=resultado,
             status_code=status.HTTP_200_OK
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al asignar permisos",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al revocar rol: {str(e)}"
         )
+
+@router.post("/roles/{id_rol}/permisos")
+@requires_permission("asignar_permisos")
+async def asignar_permisos_rol(
+    id_rol: int,
+    permisos_ids: list[int],
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """
+    Asignar permisos a rol (RF-04)
+    ⚠️ SEGURIDAD: Requiere permiso 'asignar_permisos'
+    """
+    try:
+        rol_actualizado = RolService.asignar_permisos_rol(
+            db, 
+            id_rol, 
+            permisos_ids, 
+            user_id=current_user.id_usuario
+        )
+        
+        return ResponseModel.success(
+            message="Permisos asignados al rol",
+            data=rol_actualizado.dict() if hasattr(rol_actualizado, 'dict') else rol_actualizado,
+            status_code=status.HTTP_200_OK
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al asignar permisos: {str(e)}"
+        )
+    
 
 # ==================== ENDPOINTS DE PERMISOS ====================
 
-@router.get("/permisos", response_model=dict)
+@router.get("/permisos")
 async def listar_permisos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
     modulo: Optional[str] = None,
-    token_data: dict = Depends(verify_token),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> dict:
     """Listar todos los permisos disponibles"""
@@ -307,20 +379,19 @@ async def listar_permisos(
         
         return ResponseModel.success(
             message="Permisos obtenidos",
-            data=[p.dict() for p in permisos],
+            data=[p.dict() if hasattr(p, 'dict') else p for p in permisos],
             status_code=status.HTTP_200_OK
         )
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al listar permisos",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al listar permisos: {str(e)}"
         )
 
-@router.get("/permisos/{id_permiso}", response_model=dict)
+@router.get("/permisos/{id_permiso}")
 async def obtener_permiso(
     id_permiso: int,
-    token_data: dict = Depends(verify_token),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ) -> dict:
     """Obtener detalles de permiso específico"""
@@ -329,14 +400,13 @@ async def obtener_permiso(
         
         return ResponseModel.success(
             message="Permiso obtenido",
-            data=permiso.dict(),
+            data=permiso.dict() if hasattr(permiso, 'dict') else permiso,
             status_code=status.HTTP_200_OK
         )
     except HTTPException as e:
         raise e
     except Exception as e:
-        return ResponseModel.error(
-            message="Error al obtener permiso",
-            error_details=str(e),
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Error al obtener permiso: {str(e)}"
         )
