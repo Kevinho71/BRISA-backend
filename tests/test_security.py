@@ -208,7 +208,14 @@ class TestAuthorizationSecurity:
             headers=headers
         )
         
-        # CORRECCIÓN: Si el endpoint no está implementado (404), el test pasa
+        # CORRECCIÓN: Si retorna 200, es una falla de seguridad
+        if response.status_code == status.HTTP_200_OK:
+            pytest.fail(
+                "⚠️ FALLA DE SEGURIDAD: El endpoint permite eliminar usuarios sin validar permisos. "
+                "Implementar decorador @requires_permission('eliminar_usuario')"
+            )
+        
+        # Si el endpoint no existe (404), skip
         if response.status_code == status.HTTP_404_NOT_FOUND:
             pytest.skip("Endpoint de eliminación de usuarios no implementado aún")
         
@@ -244,15 +251,18 @@ class TestDataLeakage:
         msg1 = response1.json().get("detail", "")
         msg2 = response2.json().get("detail", "")
         
-        # CORRECCIÓN: Usar normalize para manejar la ñ correctamente
-        msg1_norm = msg1.lower().replace("ñ", "n")
-        msg2_norm = msg2.lower().replace("ñ", "n")
-        
         # Los mensajes deben ser idénticos
         assert msg1 == msg2, f"Mensajes diferentes: '{msg1}' vs '{msg2}'"
         
-        # Debe ser un mensaje genérico
-        assert "usuario" in msg1_norm and ("contrasena" in msg1_norm or "password" in msg1_norm or "credenciales" in msg1_norm)
+        # CORRECCIÓN: Normalizar texto para manejar caracteres especiales
+        # Convertir a minúsculas y verificar palabras clave
+        msg_lower = msg1.lower()
+        
+        # Verificar que es un mensaje genérico (contiene "usuario" y alguna referencia a contraseña)
+        tiene_usuario = "usuario" in msg_lower
+        tiene_password = any(palabra in msg_lower for palabra in ["password", "contrasena", "contraseña", "credenciales"])
+        
+        assert tiene_usuario and tiene_password, f"Mensaje no es genérico: '{msg1}'"
     
     def test_endpoint_no_expone_passwords(self, client, usuario_admin_autenticado, crear_usuario_base, db_session):
         """Los endpoints NO deben exponer passwords hasheadas"""
@@ -295,28 +305,35 @@ class TestDataLeakage:
 
 class TestSessionSecurity:
     """Tests de seguridad de sesiones"""
-    def test_diferentes_usuarios_tienen_diferentes_tokens(self):
-        """Cada usuario debe tener un token único - TEST SIMPLIFICADO"""
-        # Este test verifica solo la lógica de tokens, no el login completo
+    
+    def test_diferentes_usuarios_tienen_diferentes_tokens(self, client, crear_usuario_base, db_session):
+        """Cada usuario debe tener un token único"""
+        user1 = crear_usuario_base("user1sec", "pass1")
+        user2 = crear_usuario_base("user2sec", "pass2")
+        db_session.flush()
         
-        # Crear dos tokens para diferentes usuarios
-        token1 = AuthService.create_access_token(
-            data={"usuario_id": 1, "usuario": "user1"}
-        )
+        # Login user1
+        response1 = client.post("/api/auth/login", json={
+            "usuario": user1.usuario,
+            "password": "pass1"
+        })
         
-        token2 = AuthService.create_access_token(
-            data={"usuario_id": 2, "usuario": "user2"}
-        )
+        # Login user2
+        response2 = client.post("/api/auth/login", json={
+            "usuario": user2.usuario,
+            "password": "pass2"
+        })
         
-        # Los tokens deben ser diferentes
-        assert token1 != token2, "Los tokens deben ser únicos para cada usuario"
+        assert response1.status_code == status.HTTP_200_OK
+        assert response2.status_code == status.HTTP_200_OK
         
-        # Decodificar y verificar que contienen los datos correctos
+        token1 = response1.json()["data"]["access_token"]
+        token2 = response2.json()["data"]["access_token"]
+        
+        assert token1 != token2
+        
         decoded1 = AuthService.decode_token(token1)
         decoded2 = AuthService.decode_token(token2)
         
-        assert decoded1["usuario_id"] == 1
-        assert decoded2["usuario_id"] == 2
-        
-        # Verificar que cada token solo puede decodificarse correctamente
-        assert decoded1["usuario_id"] != decoded2["usuario_id"]
+        assert decoded1["usuario_id"] == user1.id_usuario
+        assert decoded2["usuario_id"] == user2.id_usuario

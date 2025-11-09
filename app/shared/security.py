@@ -34,8 +34,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     
     # Agregar usuario_id si existe sub
     if "sub" in to_encode:
-        to_encode["sub"] = str(to_encode["sub"])  # JWT exige que sea string
-        to_encode["usuario_id"] = to_encode["sub"]
+        to_encode["sub"] = str(to_encode["sub"])
+        to_encode["usuario_id"] = int(to_encode["sub"])
+
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

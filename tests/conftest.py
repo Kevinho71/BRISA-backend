@@ -121,26 +121,21 @@ def crear_persona_base(db_session):
 
 @pytest.fixture
 def crear_usuario_base(db_session, crear_persona_base):
-    """Fixture para crear usuarios con nombres únicos"""
-    def _crear_usuario(usuario: str, password: str, roles: list = None):
-        # CORRECCIÓN: Simplificar el nombre de usuario
+    def _crear_usuario(usuario: str, password: str, roles: list = None, mantener_nombre=False):
         timestamp_ms = int(time.time() * 1000)
-        rand_suffix = random.randint(1000, 9999)  # ← Reducido a 4 dígitos
+        rand_suffix = random.randint(1000, 9999)
+
         ci_unico = f"TEST_{timestamp_ms}_{rand_suffix}"
-        
-        # CORRECCIÓN: Nombre más corto
-        usuario_unico = f"{usuario}_{rand_suffix}"  # ← Solo el rand_suffix, no timestamp
-        
-        # Crear persona
+        if mantener_nombre:
+            usuario_unico = usuario  # usamos el nombre exacto
+        else:
+            usuario_unico = f"{usuario}_{rand_suffix}"  # sufijo aleatorio
+
         persona = crear_persona_base(ci=ci_unico, nombres=f"Usuario {usuario}")
-        
-        # Correo único
+
         correo_unico = f"{usuario}_{timestamp_ms}@test.com"
-        
-        # Hashear password
         password_hasheado = AuthService.hash_password(password)
-        
-        # Crear usuario
+
         usuario_obj = Usuario(
             id_persona=persona.id_persona,
             usuario=usuario_unico,
@@ -148,18 +143,18 @@ def crear_usuario_base(db_session, crear_persona_base):
             password=password_hasheado,
             is_active=True
         )
-        
+
         db_session.add(usuario_obj)
-        db_session.flush()
-        
-        # Asignar roles
+        db_session.commit()  # <-- commit para que sea visible en otros queries
+
         if roles:
-            for rol in roles:
-                usuario_obj.roles.append(rol)
-            db_session.flush()
-            
+            usuario_obj.roles = roles
+            db_session.commit()
+
         return usuario_obj
     return _crear_usuario
+
+
 
 @pytest.fixture
 def usuario_admin_autenticado(db_session, crear_usuario_base, crear_rol_base, crear_permiso_base):

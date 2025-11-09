@@ -153,6 +153,8 @@ class AuthService:
                 detail="Error al registrar usuario"
             )
     
+
+
     @staticmethod
     def login(db: Session, login_dto: LoginDTO) -> TokenDTO:
         """
@@ -165,33 +167,36 @@ class AuthService:
         
         # Buscar usuario activo
         usuario = db.query(Usuario).filter(
-            Usuario.usuario == login_dto.usuario,
-            Usuario.is_active == True
+        Usuario.usuario == login_dto.usuario
         ).first()
+
         
         # Usuario no encontrado -> mensaje genérico
         if not usuario:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=MENSAJE_ERROR_GENERICO
-            )
+            raise Unauthorized(MENSAJE_ERROR_GENERICO)  # ← CAMBIO: Usar Unauthorized
         
         # Contraseña incorrecta -> mismo mensaje genérico
         if not AuthService.verify_password(login_dto.password, usuario.password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=MENSAJE_ERROR_GENERICO
-            )
+            raise Unauthorized(MENSAJE_ERROR_GENERICO)  # ← CAMBIO: Usar Unauthorized
         
-        # ✅ Crear token con usuario_id (coincide con tu modelo y test_security)
+        if usuario.is_active is False:
+            raise Unauthorized("Cuenta desactivada")
+
+        # ✅ Crear token con usuario_id
         access_token = AuthService.create_access_token(
-            data={"usuario_id": usuario.id_usuario}
+            data={"usuario_id": usuario.id_usuario, "usuario": usuario.usuario}
         )
         
+        # ✅ Retornar TokenDTO completo (según tu DTO)
         return TokenDTO(
             access_token=access_token,
             token_type="bearer",
-            usuario_id=usuario.id_usuario
+            usuario_id=usuario.id_usuario,
+            usuario=usuario.usuario,
+            nombres=f"{usuario.persona.nombres} {usuario.persona.apellido_paterno}",
+            rol=usuario.roles[0].nombre if usuario.roles else "",
+            permisos=[p.nombre for r in usuario.roles for p in r.permisos if r.is_active and p.is_active],
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
 
 
