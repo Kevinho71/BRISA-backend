@@ -11,7 +11,7 @@ from app.core.database import SessionLocal
 from app.modules.usuarios.models.usuario_models import (
     Usuario, Persona1, Rol, Permiso, LoginLog, RolHistorial, usuario_roles_table
 )
-
+from app.modules.auth.services.auth_service import AuthService
 from app.modules.usuarios.dto.usuario_dto import (
     PersonaCreateDTO, PersonaUpdateDTO, PersonaResponseDTO,
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
@@ -22,6 +22,8 @@ from app.modules.usuarios.dto.usuario_dto import (
 from app.shared.services.base_services import BaseService
 from app.shared.exceptions.custom_exceptions import NotFound, Conflict, ValidationException, DatabaseException
 from app.shared.security import hash_password, verify_password
+from app.shared.permission_mapper import puede_modificar_usuario
+
 from app.shared.decorators.auth_decorators import (
     verificar_permiso, 
     validar_puede_modificar_usuario
@@ -157,37 +159,41 @@ class UsuarioService(BaseService):
         return [UsuarioResponseDTO.model_validate(u) for u in usuarios]
 
     @classmethod
-    def actualizar_usuario(cls, db: Session, usuario_id: int, usuario_dto: UsuarioUpdateDTO, user_id: Optional[int] = None) -> UsuarioResponseDTO:
-        """Actualizar usuario con validación de permisos"""
-        from app.shared.permission_mapper import puede_modificar_usuario
+    def actualizar_usuario(
+        cls, 
+        db: Session, 
+        usuario_id: int, 
+        usuario_dto: UsuarioUpdateDTO, 
+        current_user: Usuario
+    ) -> UsuarioResponseDTO:
+        """
+        Actualizar usuario con validación de permisos
         
-        # CORRECCIÓN: usar id_usuario en lugar de id
+        ✅ CORRECCIÓN: Usa puede_modificar_usuario del permission_mapper
+        que considera tanto si es el mismo usuario como si tiene rol admin
+        """
+        # ✅ VALIDACIÓN DE PERMISOS usando permission_mapper
+        if not puede_modificar_usuario(current_user, usuario_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para modificar este usuario"
+            )
+        
+        # Buscar usuario
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
         ).first()
+        
         if not usuario:
             raise NotFound("Usuario", usuario_id)
-        
-        # ⚠️ VALIDACIÓN DE PERMISOS
-        if user_id:
-            usuario_actual = db.query(Usuario).filter(
-                Usuario.id_usuario == user_id
-            ).first()
-            
-            if usuario_actual:
-                if not puede_modificar_usuario(usuario_actual, usuario_id):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="No tienes permiso para modificar este usuario"
-                    )
         
         try:
             data = usuario_dto.dict(exclude_unset=True)
             
             # Si hay nueva contraseña, hashearla
             if 'password' in data:
-                data['password'] = hash_password(data.pop('password'))
+                data['password'] = AuthService.hash_password(data['password'])
             
             if 'correo' in data:
                 # Validar que correo no esté duplicado
@@ -198,55 +204,86 @@ class UsuarioService(BaseService):
                 if otro_usuario:
                     raise Conflict(f"Correo {data['correo']} ya registrado")
             
+            # Actualizar campos
             for key, value in data.items():
                 if value is not None:
                     setattr(usuario, key, value)
             
+            # Auditoría
+            usuario.updated_by = current_user.id_usuario
+            
             db.commit()
             db.refresh(usuario)
-            logger.info(f"Usuario actualizado: {usuario.correo}")
-            return UsuarioResponseDTO.from_orm(usuario)
+            
+            logger.info(f"Usuario actualizado: {usuario.correo} por usuario {current_user.id_usuario}")
+            
+            # Retornar sin password
+            usuario_dict = {
+                'id_usuario': usuario.id_usuario,
+                'id_persona': usuario.id_persona,
+                'usuario': usuario.usuario,
+                'correo': usuario.correo,
+                'is_active': usuario.is_active
+            }
+            return UsuarioResponseDTO(**usuario_dict)
+            
+        except Conflict:
+            raise
+        except NotFound:
+            raise
         except Exception as e:
             db.rollback()
             logger.error(f"Error al actualizar usuario: {str(e)}")
             raise DatabaseException(f"Error al actualizar usuario: {str(e)}")
 
     @classmethod
-    def eliminar_usuario(cls, db: Session, usuario_id: int, user_id: Optional[int] = None) -> dict:
+    def eliminar_usuario(
+        cls, 
+        db: Session, 
+        usuario_id: int, 
+        current_user: Usuario  # ← CAMBIO: recibe Usuario completo
+    ) -> dict:
         """Eliminar usuario (borrado lógico) con validación de permisos"""
-        from app.shared.permission_mapper import puede_eliminar_usuario
+        from app.shared.decorators.auth_decorators import verificar_permiso
         
-        # CORRECCIÓN: usar id_usuario en lugar de id
+        # ✅ VALIDACIÓN DE PERMISOS
+        verificar_permiso(current_user, 'eliminar_usuario')
+        
+        # ✅ No puede eliminarse a sí mismo
+        if current_user.id_usuario == usuario_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No puede eliminar su propio usuario"
+            )
+        
+        # Buscar usuario
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
         ).first()
+        
         if not usuario:
             raise NotFound("Usuario", usuario_id)
         
-        # ⚠️ VALIDACIÓN DE PERMISOS
-        if user_id:
-            usuario_actual = db.query(Usuario).filter(
-                Usuario.id_usuario == user_id
-            ).first()
-            
-            if usuario_actual:
-                if not puede_eliminar_usuario(usuario_actual, usuario_id):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="No tienes permiso para eliminar este usuario"
-                    )
-        
         try:
             usuario.is_active = False
+            usuario.updated_by = current_user.id_usuario
+            
             db.commit()
-            logger.info(f"Usuario eliminado: ID {usuario_id}")
-            return {"mensaje": "Usuario eliminado exitosamente"}
+            
+            logger.info(f"Usuario eliminado: ID {usuario_id} por usuario {current_user.id_usuario}")
+            
+            return {
+                "mensaje": "Usuario eliminado exitosamente",
+                "id_usuario": usuario_id,
+                "usuario": usuario.usuario
+            }
+            
         except Exception as e:
             db.rollback()
             logger.error(f"Error al eliminar usuario: {str(e)}")
-            raise DatabaseException(f"Error al eliminar usuario: {str(e)}")
-            
+            raise DatabaseException(f"Error al eliminar usuario: {str(e)}")            
+    
     @classmethod
     def asignar_rol(cls, db: Session, usuario_id: int, rol_id: int, razon: Optional[str] = None, user_id: Optional[int] = None) -> dict:
         """Asignar rol a usuario (RF-02) con historial"""

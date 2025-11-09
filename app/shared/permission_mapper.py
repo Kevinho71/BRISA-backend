@@ -1,18 +1,21 @@
 """
-app/shared/permission_mapper.py
+app/shared/permission_mapper.py - VERSIÓN CORREGIDA
 Mapeo de permisos genéricos a acciones específicas
 
-Como la BD usa permisos genéricos (Lectura, Agregar, Modificar, Eliminar),
-este módulo traduce esos permisos a acciones específicas del sistema.
+CAMBIO CLAVE: Los permisos en BD son genéricos (Lectura, Agregar, Modificar, Eliminar)
+Este mapper traduce acciones específicas a esos permisos genéricos
 """
 from typing import Dict, List, Set
 from app.modules.usuarios.models.usuario_models import Usuario
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ========================================
 # MAPEO DE ACCIONES A PERMISOS GENÉRICOS
 # ========================================
 PERMISSION_MAP: Dict[str, List[str]] = {
-    # Usuarios
+    # Usuarios - mapean a permisos GENÉRICOS en BD
     "crear_usuario": ["Agregar"],
     "ver_usuario": ["Lectura"],
     "editar_usuario": ["Modificar"],
@@ -43,7 +46,7 @@ PERMISSION_MAP: Dict[str, List[str]] = {
 # ========================================
 # ROLES CON ACCESO TOTAL
 # ========================================
-ADMIN_ROLES = ["Director", "Administrativo"]
+ADMIN_ROLES = ["Director", "Administrativo", "Admin"]  # ← Agregado "Admin"
 
 
 def tiene_permiso(usuario: Usuario, accion: str) -> bool:
@@ -58,25 +61,31 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
         bool: True si tiene permiso, False si no
     
     Lógica:
-        1. Si el usuario tiene rol "Director" -> acceso total
+        1. Si el usuario tiene rol "Director" o "Admin" -> acceso total
         2. Si la acción requiere permisos genéricos, verificar si el usuario los tiene
         3. Si no encuentra mapeo, denegar por defecto
     """
     if not usuario or not hasattr(usuario, 'roles'):
+        logger.warning(f"Usuario sin roles intentando acción: {accion}")
         return False
+    
+    # ✅ DEBUG: Log para ver qué roles tiene el usuario
+    roles_usuario = [r.nombre for r in usuario.roles if r.is_active]
+    logger.debug(f"Usuario {usuario.usuario} tiene roles: {roles_usuario}")
     
     # Verificar si tiene un rol de administrador
     for rol in usuario.roles:
         if not rol.is_active:
             continue
         if rol.nombre in ADMIN_ROLES:
+            logger.debug(f"Usuario {usuario.usuario} tiene rol admin: {rol.nombre}")
             return True
     
     # Obtener permisos genéricos requeridos para esta acción
     permisos_requeridos = PERMISSION_MAP.get(accion, [])
     
     if not permisos_requeridos:
-        # Si no hay mapeo definido, denegar por defecto
+        logger.warning(f"Acción no mapeada: {accion}")
         return False
     
     # Obtener todos los permisos del usuario
@@ -88,11 +97,17 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
             if permiso.is_active:
                 permisos_usuario.add(permiso.nombre)
     
+    # ✅ DEBUG: Log para ver qué permisos tiene
+    logger.debug(f"Usuario {usuario.usuario} tiene permisos: {permisos_usuario}")
+    logger.debug(f"Acción '{accion}' requiere: {permisos_requeridos}")
+    
     # Verificar si el usuario tiene AL MENOS UNO de los permisos requeridos
     for permiso_req in permisos_requeridos:
         if permiso_req in permisos_usuario:
+            logger.debug(f"✅ Permiso concedido: {permiso_req}")
             return True
     
+    logger.warning(f"❌ Usuario {usuario.usuario} NO tiene permisos para: {accion}")
     return False
 
 

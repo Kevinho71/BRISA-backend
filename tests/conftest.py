@@ -1,6 +1,6 @@
 """
-tests/conftest.py - USANDO BASE DE DATOS MYSQL REAL
-Configuración global de pytest
+tests/conftest.py - CORREGIDO
+Configuración global de pytest con soporte completo para permisos
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -25,14 +25,12 @@ from app.main import app
 @pytest.fixture(scope="function")
 def db_session():
     """Sesión de base de datos REAL con rollback automático"""
-    # Crear una sesión de prueba
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSessionLocal()
     
     try:
         yield session
     finally:
-        # ROLLBACK automático - los cambios NO se guardan en la BD
         session.rollback()
         session.close()
 
@@ -60,7 +58,16 @@ def client(db_session):
 @pytest.fixture
 def crear_permiso_base(db_session):
     """Fixture para crear permisos básicos"""
-    def _crear_permiso(nombre: str, modulo: str, descripcion: str = ""):
+    def _crear_permiso(nombre: str, modulo: str = "usuarios", descripcion: str = ""):
+        # Verificar si ya existe
+        permiso_existente = db_session.query(Permiso).filter(
+            Permiso.nombre == nombre,
+            Permiso.modulo == modulo
+        ).first()
+        
+        if permiso_existente:
+            return permiso_existente
+        
         permiso = Permiso(
             nombre=nombre,
             modulo=modulo,
@@ -92,7 +99,6 @@ def crear_rol_base(db_session):
 def crear_persona_base(db_session):
     """Fixture para crear personas con identificadores únicos"""
     def _crear_persona(ci: str = None, nombres: str = None, tipo_persona: str = "administrativo"):
-        # Usar timestamp en milisegundos + random para garantizar unicidad
         timestamp_ms = int(time.time() * 1000)
         rand_suffix = random.randint(10000, 99999)
         
@@ -101,7 +107,6 @@ def crear_persona_base(db_session):
         if nombres is None:
             nombres = f"TestPersona_{timestamp_ms}"
         
-        # Correo único usando timestamp + random
         correo_unico = f"test_{timestamp_ms}_{rand_suffix}@test.com"
             
         persona = Persona1(
@@ -121,19 +126,23 @@ def crear_persona_base(db_session):
 
 @pytest.fixture
 def crear_usuario_base(db_session, crear_persona_base):
-    def _crear_usuario(usuario: str, password: str, roles: list = None, mantener_nombre=False):
+    """Fixture para crear usuarios - CORREGIDO: hashea correctamente"""
+    def _crear_usuario(usuario: str, password: str, roles: list = None, mantener_nombre: bool = False):
         timestamp_ms = int(time.time() * 1000)
         rand_suffix = random.randint(1000, 9999)
 
         ci_unico = f"TEST_{timestamp_ms}_{rand_suffix}"
+        
         if mantener_nombre:
-            usuario_unico = usuario  # usamos el nombre exacto
+            usuario_unico = usuario
         else:
-            usuario_unico = f"{usuario}_{rand_suffix}"  # sufijo aleatorio
+            usuario_unico = f"{usuario}_{rand_suffix}"
 
         persona = crear_persona_base(ci=ci_unico, nombres=f"Usuario {usuario}")
 
         correo_unico = f"{usuario}_{timestamp_ms}@test.com"
+        
+        # ✅ CORRECCIÓN: Usar AuthService.hash_password para consistencia
         password_hasheado = AuthService.hash_password(password)
 
         usuario_obj = Usuario(
@@ -145,7 +154,7 @@ def crear_usuario_base(db_session, crear_persona_base):
         )
 
         db_session.add(usuario_obj)
-        db_session.commit()  # <-- commit para que sea visible en otros queries
+        db_session.commit()
 
         if roles:
             usuario_obj.roles = roles
@@ -155,28 +164,24 @@ def crear_usuario_base(db_session, crear_persona_base):
     return _crear_usuario
 
 
-
 @pytest.fixture
 def usuario_admin_autenticado(db_session, crear_usuario_base, crear_rol_base, crear_permiso_base):
-    """Fixture para usuario administrador autenticado con token"""
-    # Usar timestamp para garantizar nombres únicos
+    """Fixture para usuario administrador con TODOS los permisos necesarios"""
     timestamp_ms = int(time.time() * 1000)
     
-    # Crear permisos únicos
+    # ✅ Crear permisos GENÉRICOS que usa el sistema
     permisos = [
-        crear_permiso_base(f"crear_usuario_{timestamp_ms}_{random.randint(1,999)}", "usuarios"),
-        crear_permiso_base(f"ver_usuario_{timestamp_ms}_{random.randint(1,999)}", "usuarios"),
-        crear_permiso_base(f"editar_usuario_{timestamp_ms}_{random.randint(1,999)}", "usuarios"),
-        crear_permiso_base(f"eliminar_usuario_{timestamp_ms}_{random.randint(1,999)}", "usuarios"),
-        crear_permiso_base(f"crear_rol_{timestamp_ms}_{random.randint(1,999)}", "usuarios"),
-        crear_permiso_base(f"asignar_permisos_{timestamp_ms}_{random.randint(1,999)}", "usuarios"),
+        crear_permiso_base("Lectura", "usuarios", "Puede ver usuarios"),
+        crear_permiso_base("Agregar", "usuarios", "Puede crear usuarios"),
+        crear_permiso_base("Modificar", "usuarios", "Puede modificar usuarios"),
+        crear_permiso_base("Eliminar", "usuarios", "Puede eliminar usuarios"),
     ]
     
-    # Crear rol con permisos
-    rol_admin = crear_rol_base(f"Admin_{timestamp_ms}", "Rol administrativo", permisos)
+    # ✅ CORRECCIÓN: Usar nombre "Admin" (sin timestamp) para que coincida con ADMIN_ROLES
+    rol_admin = crear_rol_base("Admin", "Rol administrativo", permisos)
     db_session.flush()
     
-    # Crear usuario con rol
+    # Crear usuario con rol - SIN mantener_nombre para evitar conflictos
     usuario = crear_usuario_base(f"admin_test_{timestamp_ms}", "admin123", [rol_admin])
     db_session.flush()
     

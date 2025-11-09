@@ -64,7 +64,8 @@ class AuthService:
         """Decodificar y validar token JWT"""
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            usuario_id: int = payload.get("usuario_id")
+            # ✅ CORRECCIÓN: Buscar tanto 'usuario_id' como 'sub' para compatibilidad
+            usuario_id: int = payload.get("usuario_id") or payload.get("sub")
             if usuario_id is None:
                 raise Unauthorized("Token inválido")
             return payload
@@ -152,8 +153,6 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al registrar usuario"
             )
-    
-
 
     @staticmethod
     def login(db: Session, login_dto: LoginDTO) -> TokenDTO:
@@ -167,27 +166,30 @@ class AuthService:
         
         # Buscar usuario activo
         usuario = db.query(Usuario).filter(
-        Usuario.usuario == login_dto.usuario
+            Usuario.usuario == login_dto.usuario
         ).first()
-
         
         # Usuario no encontrado -> mensaje genérico
         if not usuario:
-            raise Unauthorized(MENSAJE_ERROR_GENERICO)  # ← CAMBIO: Usar Unauthorized
+            raise Unauthorized(MENSAJE_ERROR_GENERICO)
         
         # Contraseña incorrecta -> mismo mensaje genérico
         if not AuthService.verify_password(login_dto.password, usuario.password):
-            raise Unauthorized(MENSAJE_ERROR_GENERICO)  # ← CAMBIO: Usar Unauthorized
+            raise Unauthorized(MENSAJE_ERROR_GENERICO)
         
         if usuario.is_active is False:
             raise Unauthorized("Cuenta desactivada")
 
-        # ✅ Crear token con usuario_id
+        # ✅ CORRECCIÓN: Crear token con AMBOS campos para compatibilidad
         access_token = AuthService.create_access_token(
-            data={"usuario_id": usuario.id_usuario, "usuario": usuario.usuario}
+            data={
+                "sub": usuario.id_usuario,  # ← Para conftest.py
+                "usuario_id": usuario.id_usuario,  # ← Para tu sistema
+                "usuario": usuario.usuario
+            }
         )
         
-        # ✅ Retornar TokenDTO completo (según tu DTO)
+        # Retornar TokenDTO completo
         return TokenDTO(
             access_token=access_token,
             token_type="bearer",
@@ -205,9 +207,14 @@ class AuthService:
         """Obtener usuario actual desde token JWT"""
         try:
             payload = AuthService.decode_token(token)
-            usuario_id: int = payload.get("usuario_id")
+            # ✅ CORRECCIÓN: Buscar tanto 'usuario_id' como 'sub'
+            usuario_id: int = payload.get("usuario_id") or payload.get("sub")
 
-            usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id, Usuario.is_active == True).first()
+            usuario = db.query(Usuario).filter(
+                Usuario.id_usuario == usuario_id, 
+                Usuario.is_active == True
+            ).first()
+            
             if not usuario:
                 raise NotFound("Usuario", usuario_id)
 
@@ -237,7 +244,6 @@ class AuthService:
                     if permiso.is_active and permiso.nombre not in permisos:
                         permisos.append(permiso.nombre)
 
-        # CORRECCIÓN: Usar 'activo' si is_active es True, 'inactivo' si es False
         estado = "activo" if usuario.is_active else "inactivo"
 
         return UsuarioActualDTO(
@@ -260,10 +266,18 @@ def get_current_user_dependency(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+    """✅ CORRECCIÓN: Dependency mejorado con manejo de errores"""
     from app.modules.auth.services.auth_service import AuthService
     try:
         return AuthService.get_current_user(db, token)
-    except Exception:
+    except Unauthorized:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No autorizado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logger.error(f"Error en get_current_user_dependency: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No autorizado",

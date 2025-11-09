@@ -1,10 +1,22 @@
 """
-app/shared/decorators/auth_decorato
-Decoradores compartidos para el sistema BRISA Backend
+app/shared/decorators/auth_decorators.py
+Decoradores de autenticación y autorización - INTEGRADO CON SISTEMA REAL
 """
 from functools import wraps
 from fastapi import Depends, HTTPException, status, Request
-from typing import List, Optional
+from typing import Callable,List, Optional
+from sqlalchemy.orm import Session
+import logging
+from app.modules.usuarios.models.usuario_models import Usuario
+from app.core.database import get_db
+from app.modules.auth.services.auth_service import get_current_user_dependency
+# IMPORTAR el sistema de mapeo de permisos
+from app.shared.permission_mapper import tiene_permiso, puede_modificar_usuario, puede_eliminar_usuario
+
+
+
+logger = logging.getLogger(__name__)
+
 
 # Extraer token del header
 async def get_token_from_request(request: Request) -> str:
@@ -82,41 +94,15 @@ def require_roles(*allowed_roles: str):
     return decorator
 
 
-# Decorador: require_permissions
-def require_permissions(*allowed_permissions: str):
-    """Decorador para requerir permisos específicos"""
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, current_user=Depends(get_current_user), **kwargs):
-            if not current_user:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
-            
-            user_permissions = current_user.get("permisos", [])
-            if not all(p in user_permissions for p in allowed_permissions):
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene los permisos necesarios")
-            
-            return await func(*args, current_user=current_user, **kwargs)
-        return wrapper
-    return decorator
-
-
-"""
-app/shared/decorators/auth_decorators.py
-Decoradores de autenticación y autorización - INTEGRADO CON SISTEMA REAL
-"""
-from functools import wraps
-from fastapi import Depends, HTTPException, status
-from typing import Callable
-from sqlalchemy.orm import Session
-
-from app.modules.usuarios.models.usuario_models import Usuario
-from app.core.database import get_db
-from app.modules.auth.services.auth_service import get_current_user_dependency
+# Decorador: require_permission
 
 
 def require_permissions(*required_permissions: str):
     """
     Decorador para validar que el usuario tenga los permisos requeridos.
+    
+    ✅ CAMBIO CRÍTICO: Ahora usa permission_mapper para traducir
+    acciones específicas (ej: "editar_usuario") a permisos genéricos (ej: "Modificar")
     
     Uso en endpoints:
         @router.put("/usuarios/{id_usuario}")
@@ -125,46 +111,43 @@ def require_permissions(*required_permissions: str):
             ...
     
     Args:
-        *required_permissions: Lista de NOMBRES de permisos requeridos (al menos uno)
+        *required_permissions: Acciones requeridas (ej: 'editar_usuario', 'crear_rol')
     """
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # El current_user debe venir de los kwargs (inyectado por Depends)
             current_user: Usuario = kwargs.get('current_user')
             
             if not current_user:
+                logger.warning("Intento de acceso sin usuario autenticado")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Usuario no autenticado"
                 )
             
-            # Obtener todos los permisos del usuario desde sus roles
-            permisos_usuario = set()
-            if current_user.roles:
-                for rol in current_user.roles:
-                    if rol.permisos:
-                        for permiso in rol.permisos:
-                            # ✅ USAR NOMBRE (no código, porque no existe en DB)
-                            permisos_usuario.add(permiso.nombre.lower())
+            # ✅ Verificar si tiene al menos uno de los permisos requeridos
+            # Usando el sistema de mapeo
+            tiene_permiso_requerido = False
+            for permiso in required_permissions:
+                if tiene_permiso(current_user, permiso):
+                    tiene_permiso_requerido = True
+                    logger.debug(f"✅ Usuario {current_user.usuario} tiene permiso: {permiso}")
+                    break
             
-            # Verificar si tiene al menos uno de los permisos requeridos
-            tiene_permiso = any(
-                permiso.lower() in permisos_usuario 
-                for permiso in required_permissions
-            )
-            
-            if not tiene_permiso:
+            if not tiene_permiso_requerido:
+                logger.warning(
+                    f"❌ Usuario {current_user.usuario} sin permiso para: {', '.join(required_permissions)}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"No tiene permisos para realizar esta acción. Se requiere: {', '.join(required_permissions)}"
                 )
             
-            # Si pasa la validación, ejecutar la función
             return await func(*args, **kwargs)
         
         return wrapper
     return decorator
+
 
 
 def require_all_permissions(*required_permissions: str):
@@ -184,20 +167,19 @@ def require_all_permissions(*required_permissions: str):
                     detail="Usuario no autenticado"
                 )
             
-            permisos_usuario = set()
-            if current_user.roles:
-                for rol in current_user.roles:
-                    if rol.permisos:
-                        for permiso in rol.permisos:
-                            permisos_usuario.add(permiso.codigo)
-            
             # Verificar que tenga TODOS los permisos
-            faltantes = [p for p in required_permissions if p not in permisos_usuario]
+            permisos_faltantes = []
+            for permiso in required_permissions:
+                if not tiene_permiso(current_user, permiso):
+                    permisos_faltantes.append(permiso)
             
-            if faltantes:
+            if permisos_faltantes:
+                logger.warning(
+                    f"Usuario {current_user.usuario} sin permisos: {', '.join(permisos_faltantes)}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Permisos faltantes: {', '.join(faltantes)}"
+                    detail=f"Permisos faltantes: {', '.join(permisos_faltantes)}"
                 )
             
             return await func(*args, **kwargs)
@@ -230,7 +212,8 @@ def require_roles(*required_roles: str):
             roles_usuario = set()
             if current_user.roles:
                 for rol in current_user.roles:
-                    roles_usuario.add(rol.nombre.lower())
+                    if rol.is_active:
+                        roles_usuario.add(rol.nombre.lower())
             
             # Verificar si tiene al menos uno de los roles requeridos
             tiene_rol = any(
@@ -239,6 +222,9 @@ def require_roles(*required_roles: str):
             )
             
             if not tiene_rol:
+                logger.warning(
+                    f"Usuario {current_user.usuario} sin rol requerido: {', '.join(required_roles)}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Se requiere uno de estos roles: {', '.join(required_roles)}"
@@ -275,17 +261,14 @@ def allow_self_or_permission(permission: str):
             
             # Si es el mismo usuario, permitir
             if current_user.id_usuario == target_user_id:
+                logger.debug(f"Usuario {current_user.usuario} modificando su propio perfil")
                 return await func(*args, **kwargs)
             
-            # Si no es el mismo, verificar permiso
-            permisos_usuario = set()
-            if current_user.roles:
-                for rol in current_user.roles:
-                    if rol.permisos:
-                        for permiso in rol.permisos:
-                            permisos_usuario.add(permiso.codigo)
-            
-            if permission not in permisos_usuario:
+            # Si no es el mismo, verificar permiso usando permission_mapper
+            if not tiene_permiso(current_user, permission):
+                logger.warning(
+                    f"Usuario {current_user.usuario} sin permiso para modificar usuario {target_user_id}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tiene permisos para modificar este usuario"
@@ -302,15 +285,13 @@ def verificar_permiso(current_user: Usuario, permiso_requerido: str):
     """
     Helper para verificar permisos manualmente en servicios.
     Lanza HTTPException si no tiene el permiso.
-    """
-    permisos_usuario = set()
-    if current_user.roles:
-        for rol in current_user.roles:
-            if rol.permisos:
-                for permiso in rol.permisos:
-                    permisos_usuario.add(permiso.codigo)
     
-    if permiso_requerido not in permisos_usuario:
+    ✅ USA permission_mapper para la validación
+    """
+    if not tiene_permiso(current_user, permiso_requerido):
+        logger.warning(
+            f"Usuario {current_user.usuario} sin permiso: {permiso_requerido}"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"No tiene el permiso requerido: {permiso_requerido}"
@@ -332,7 +313,7 @@ def puede_modificar_usuario(current_user: Usuario, target_user_id: int) -> bool:
         for rol in current_user.roles:
             if rol.permisos:
                 for permiso in rol.permisos:
-                    permisos_usuario.add(permiso.codigo)
+                    permisos_usuario.add(permiso.nombre)
     
     return 'editar_usuario' in permisos_usuario or 'admin_usuarios' in permisos_usuario
 
@@ -340,10 +321,30 @@ def puede_modificar_usuario(current_user: Usuario, target_user_id: int) -> bool:
 def validar_puede_modificar_usuario(current_user: Usuario, target_user_id: int):
     """
     Valida si puede modificar usuario, lanza HTTPException si no puede.
+    
+    ✅ USA permission_mapper.puede_modificar_usuario
     """
     if not puede_modificar_usuario(current_user, target_user_id):
+        logger.warning(
+            f"Usuario {current_user.usuario} sin permiso para modificar usuario {target_user_id}"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para modificar este usuario"
         )
+
+
+def validar_puede_eliminar_usuario(current_user: Usuario, target_user_id: int):
+    """
+    Valida si puede eliminar usuario, lanza HTTPException si no puede.
     
+    ✅ USA permission_mapper.puede_eliminar_usuario
+    """
+    if not puede_eliminar_usuario(current_user, target_user_id):
+        logger.warning(
+            f"Usuario {current_user.usuario} sin permiso para eliminar usuario {target_user_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para eliminar este usuario"
+        )
