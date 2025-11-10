@@ -1,6 +1,6 @@
 """
-app/modules/usuarios/usuario_service.py - CORREGIDO
-Servicios del Módulo de Usuarios - RF-01, RF-02, RF-03, RF-04, RF-06, RF-08
+app/modules/usuarios/services/usuario_service.py - CORREGIDO
+Servicios del Módulo de Usuarios - FINAL
 """
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -29,24 +29,8 @@ from app.shared.decorators.auth_decorators import (
     validar_puede_modificar_usuario
 )
 
-def check_permission(usuario: Usuario, permission_name: str) -> bool:
-    """
-    Verificar si un usuario tiene un permiso específico
-    ACTUALIZADO: Usa el sistema de mapeo de permisos
-    
-    Args:
-        usuario: Instancia del usuario
-        permission_name: Nombre del permiso a verificar
-    
-    Returns:
-        bool: True si tiene el permiso, False si no
-    """
-    from app.shared.permission_mapper import tiene_permiso
-    return tiene_permiso(usuario, permission_name)
-
-
-
 logger = logging.getLogger(__name__)
+
 
 class PersonaService(BaseService):
     """Servicio de gestión de personas (RF-01)"""
@@ -75,7 +59,6 @@ class PersonaService(BaseService):
     @classmethod
     def obtener_persona(cls, db: Session, persona_id: int) -> PersonaResponseDTO:
         """Obtener persona por ID"""
-        # CORRECCIÓN: usar id_persona en lugar de id
         persona = db.query(Persona1).filter(
             Persona1.id_persona == persona_id, 
             Persona1.is_active == True
@@ -92,7 +75,6 @@ class UsuarioService(BaseService):
     @classmethod
     def crear_usuario(cls, db: Session, usuario_dto: UsuarioCreateDTO, user_id: Optional[int] = None) -> UsuarioResponseDTO:
         """Crear nuevo usuario vinculado a persona"""
-        # CORRECCIÓN: usar id_persona en lugar de id
         persona = db.query(Persona1).filter(
             Persona1.id_persona == usuario_dto.id_persona, 
             Persona1.is_active == True
@@ -100,7 +82,6 @@ class UsuarioService(BaseService):
         if not persona:
             raise NotFound("Persona", usuario_dto.id_persona)
         
-        # Validar correo duplicado
         usuario_existente = db.query(Usuario).filter(Usuario.correo == usuario_dto.correo).first()
         if usuario_existente:
             raise Conflict(f"Correo {usuario_dto.correo} ya registrado")
@@ -123,7 +104,6 @@ class UsuarioService(BaseService):
     @classmethod
     def obtener_usuario(cls, db: Session, usuario_id: int) -> UsuarioResponseDTO:
         """Obtener usuario por ID"""
-        # CORRECCIÓN: usar id_usuario en lugar de id
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -131,7 +111,6 @@ class UsuarioService(BaseService):
         if not usuario:
             raise NotFound("Usuario", usuario_id)
         
-        # CORRECCIÓN: Convertir a dict y ELIMINAR password antes de crear DTO
         usuario_dict = {
             'id_usuario': usuario.id_usuario,
             'id_persona': usuario.id_persona,
@@ -166,20 +145,13 @@ class UsuarioService(BaseService):
         usuario_dto: UsuarioUpdateDTO, 
         current_user: Usuario
     ) -> UsuarioResponseDTO:
-        """
-        Actualizar usuario con validación de permisos
-        
-        ✅ CORRECCIÓN: Usa puede_modificar_usuario del permission_mapper
-        que considera tanto si es el mismo usuario como si tiene rol admin
-        """
-        # ✅ VALIDACIÓN DE PERMISOS usando permission_mapper
+        """Actualizar usuario con validación de permisos"""
         if not puede_modificar_usuario(current_user, usuario_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tiene permisos para modificar este usuario"
             )
         
-        # Buscar usuario
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -191,12 +163,10 @@ class UsuarioService(BaseService):
         try:
             data = usuario_dto.dict(exclude_unset=True)
             
-            # Si hay nueva contraseña, hashearla
             if 'password' in data:
                 data['password'] = AuthService.hash_password(data['password'])
             
             if 'correo' in data:
-                # Validar que correo no esté duplicado
                 otro_usuario = db.query(Usuario).filter(
                     Usuario.correo == data['correo'],
                     Usuario.id_usuario != usuario_id
@@ -204,12 +174,10 @@ class UsuarioService(BaseService):
                 if otro_usuario:
                     raise Conflict(f"Correo {data['correo']} ya registrado")
             
-            # Actualizar campos
             for key, value in data.items():
                 if value is not None:
                     setattr(usuario, key, value)
             
-            # Auditoría
             usuario.updated_by = current_user.id_usuario
             
             db.commit()
@@ -217,7 +185,6 @@ class UsuarioService(BaseService):
             
             logger.info(f"Usuario actualizado: {usuario.correo} por usuario {current_user.id_usuario}")
             
-            # Retornar sin password
             usuario_dict = {
                 'id_usuario': usuario.id_usuario,
                 'id_persona': usuario.id_persona,
@@ -241,22 +208,19 @@ class UsuarioService(BaseService):
         cls, 
         db: Session, 
         usuario_id: int, 
-        current_user: Usuario  # ← CAMBIO: recibe Usuario completo
+        current_user: Usuario
     ) -> dict:
         """Eliminar usuario (borrado lógico) con validación de permisos"""
         from app.shared.decorators.auth_decorators import verificar_permiso
         
-        # ✅ VALIDACIÓN DE PERMISOS
         verificar_permiso(current_user, 'eliminar_usuario')
         
-        # ✅ No puede eliminarse a sí mismo
         if current_user.id_usuario == usuario_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No puede eliminar su propio usuario"
             )
         
-        # Buscar usuario
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -287,7 +251,6 @@ class UsuarioService(BaseService):
     @classmethod
     def asignar_rol(cls, db: Session, usuario_id: int, rol_id: int, razon: Optional[str] = None, user_id: Optional[int] = None) -> dict:
         """Asignar rol a usuario (RF-02) con historial"""
-        # CORRECCIÓN: usar id_usuario e id_rol
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -302,48 +265,6 @@ class UsuarioService(BaseService):
         if not rol:
             raise NotFound("Rol", rol_id)
         
-        # Verificar si ya tiene el rol
-        if rol in usuario.roles:
-            raise Conflict("Usuario ya tiene este rol")
-        
-        try:
-            usuario.roles.append(rol)
-            
-            historial = RolHistorial(
-                id_usuario=usuario_id,
-                id_rol=rol_id,
-                accion='asignado',
-                razon=razon
-            )
-            db.add(historial)
-            db.commit()
-            
-            logger.info(f"Rol {rol.nombre} asignado a usuario {usuario_id}")
-            return {"mensaje": f"Rol {rol.nombre} asignado exitosamente"}
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Error al asignar rol: {str(e)}")
-            raise DatabaseException(f"Error al asignar rol: {str(e)}")
-        
-    @classmethod
-    def asignar_rol(cls, db: Session, usuario_id: int, rol_id: int, razon: Optional[str] = None, user_id: Optional[int] = None) -> dict:
-        """Asignar rol a usuario (RF-02) con historial"""
-        # CORRECCIÓN: usar id_usuario e id_rol
-        usuario = db.query(Usuario).filter(
-            Usuario.id_usuario == usuario_id, 
-            Usuario.is_active == True
-        ).first()
-        if not usuario:
-            raise NotFound("Usuario", usuario_id)
-        
-        rol = db.query(Rol).filter(
-            Rol.id_rol == rol_id, 
-            Rol.is_active == True
-        ).first()
-        if not rol:
-            raise NotFound("Rol", rol_id)
-        
-        # Verificar si ya tiene el rol
         if rol in usuario.roles:
             raise Conflict("Usuario ya tiene este rol")
         
@@ -369,7 +290,6 @@ class UsuarioService(BaseService):
     @classmethod
     def revocar_rol(cls, db: Session, usuario_id: int, rol_id: int, razon: Optional[str] = None, user_id: Optional[int] = None) -> dict:
         """Revocar rol de usuario (RF-02)"""
-        # CORRECCIÓN: usar id_usuario e id_rol
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -400,24 +320,37 @@ class UsuarioService(BaseService):
             db.rollback()
             logger.error(f"Error al revocar rol: {str(e)}")
             raise DatabaseException(f"Error al revocar rol: {str(e)}")
-        
 
 
 class RolService:
-    """Servicio de gestión de roles (RF-02, RF-03, RF-04)"""
+    """Servicio de gestión de roles (RF-02, RF-03, RF-04) - CORREGIDO"""
     
     model_class = Rol
     
     @classmethod
-    def crear_rol(cls, db: Session, rol_dto: RolCreateDTO, user_id: Optional[int] = None) -> RolResponseDTO:
-        """Crear nuevo rol (RF-03)"""
+    def crear_rol(cls, db: Session, rol_dto: RolCreateDTO, current_user: Usuario = None) -> RolResponseDTO:
+        """✅ CORREGIDO: Crear nuevo rol con validación de permisos"""
+        if current_user:
+            from app.shared.permissions import check_permission
+            if not check_permission(current_user, 'crear_rol'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para crear roles"
+                )
+        
+        # ✅ Verificar duplicado ANTES del try
         rol_existente = db.query(Rol).filter(Rol.nombre == rol_dto.nombre).first()
         if rol_existente:
+            logger.warning(f"Intento de crear rol duplicado: {rol_dto.nombre}")
             raise Conflict(f"Rol con nombre {rol_dto.nombre} ya existe")
         
         try:
             data = rol_dto.dict(exclude_unset=True)
             rol = Rol(**data)
+            
+            if current_user:
+                rol.created_by = current_user.id_usuario
+            
             db.add(rol)
             db.commit()
             db.refresh(rol)
@@ -431,7 +364,6 @@ class RolService:
     @classmethod
     def obtener_rol(cls, db: Session, rol_id: int) -> RolResponseDTO:
         """Obtener rol por ID"""
-        # CORRECCIÓN: usar id_rol
         rol = db.query(Rol).filter(
             Rol.id_rol == rol_id, 
             Rol.is_active == True
@@ -447,9 +379,16 @@ class RolService:
         return [RolResponseDTO.from_orm(r) for r in roles]
     
     @classmethod
-    def actualizar_rol(cls, db: Session, rol_id: int, rol_dto: RolUpdateDTO, user_id: Optional[int] = None) -> RolResponseDTO:
-        """Actualizar rol"""
-        # CORRECCIÓN: usar id_rol
+    def actualizar_rol(cls, db: Session, rol_id: int, rol_dto: RolUpdateDTO, current_user: Usuario = None) -> RolResponseDTO:
+        """✅ CORREGIDO: Actualizar rol"""
+        if current_user:
+            from app.shared.permissions import check_permission
+            if not check_permission(current_user, 'editar_rol'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para editar roles"
+                )
+        
         rol = db.query(Rol).filter(
             Rol.id_rol == rol_id, 
             Rol.is_active == True
@@ -462,6 +401,10 @@ class RolService:
             for key, value in data.items():
                 if value is not None:
                     setattr(rol, key, value)
+            
+            if current_user:
+                rol.updated_by = current_user.id_usuario
+            
             db.commit()
             db.refresh(rol)
             logger.info(f"Rol actualizado: {rol.nombre}")
@@ -472,9 +415,16 @@ class RolService:
             raise DatabaseException(f"Error al actualizar rol: {str(e)}")
     
     @classmethod
-    def eliminar_rol(cls, db: Session, rol_id: int, user_id: Optional[int] = None) -> dict:
-        """Eliminar rol (borrado lógico)"""
-        # CORRECCIÓN: usar id_rol
+    def eliminar_rol(cls, db: Session, rol_id: int, current_user: Usuario = None) -> dict:
+        """✅ CORREGIDO: Eliminar rol (borrado lógico)"""
+        if current_user:
+            from app.shared.permissions import check_permission
+            if not check_permission(current_user, 'eliminar_rol'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para eliminar roles"
+                )
+        
         rol = db.query(Rol).filter(
             Rol.id_rol == rol_id, 
             Rol.is_active == True
@@ -484,6 +434,9 @@ class RolService:
         
         try:
             rol.is_active = False
+            if current_user:
+                rol.updated_by = current_user.id_usuario
+            
             db.commit()
             logger.info(f"Rol eliminado: ID {rol_id}")
             return {"mensaje": "Rol eliminado exitosamente"}
@@ -493,9 +446,22 @@ class RolService:
             raise DatabaseException(f"Error al eliminar rol: {str(e)}")
     
     @classmethod
-    def asignar_permisos_rol(cls, db: Session, rol_id: int, permisos_ids: List[int], user_id: Optional[int] = None) -> RolResponseDTO:
-        """Asignar permisos a rol (RF-04)"""
-        # CORRECCIÓN: usar id_rol e id_permiso
+    def asignar_permisos_rol(
+        cls, 
+        db: Session, 
+        rol_id: int, 
+        permisos_ids: List[int], 
+        current_user: Usuario = None
+    ) -> RolResponseDTO:
+        """✅ CORREGIDO: Asignar permisos a rol (RF-04)"""
+        if current_user:
+            from app.shared.permissions import check_permission
+            if not check_permission(current_user, 'asignar_permisos'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para asignar permisos"
+                )
+        
         rol = db.query(Rol).filter(
             Rol.id_rol == rol_id, 
             Rol.is_active == True
@@ -508,35 +474,70 @@ class RolService:
                 Permiso.id_permiso.in_(permisos_ids), 
                 Permiso.is_active == True
             ).all()
+            
+            if len(permisos) != len(permisos_ids):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Algunos permisos no existen o están inactivos"
+                )
+            
             rol.permisos = permisos
+            
+            if current_user:
+                rol.updated_by = current_user.id_usuario
+            
             db.commit()
             db.refresh(rol)
             
             logger.info(f"Permisos asignados al rol {rol_id}")
             return RolResponseDTO.from_orm(rol)
+        except HTTPException:
+            raise
         except Exception as e:
             db.rollback()
             logger.error(f"Error al asignar permisos: {str(e)}")
             raise DatabaseException(f"Error al asignar permisos: {str(e)}")
     
     @classmethod
-    def asignar_rol_usuario(cls, db: Session, usuario_id: int, rol_id: int, user_id: Optional[int] = None) -> dict:
-        """Asignar rol a usuario - delegado a UsuarioService"""
-        return UsuarioService.asignar_rol(db, usuario_id, rol_id, user_id=user_id)    
+    def asignar_rol_usuario(
+        cls, 
+        db: Session, 
+        id_usuario: int, 
+        id_rol: int, 
+        current_user: Usuario = None
+    ) -> dict:
+        """✅ CORREGIDO: Asignar rol a usuario"""
+        if current_user:
+            from app.shared.permissions import check_permission
+            if not check_permission(current_user, 'asignar_permisos'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para asignar roles"
+                )
+        
+        return UsuarioService.asignar_rol(
+            db, 
+            id_usuario, 
+            id_rol, 
+            user_id=current_user.id_usuario if current_user else None
+        )
+    
     @classmethod
     def remover_rol_usuario(
         cls,
         db: Session,
         usuario_id: int,
         rol_id: int,
-        current_user: Usuario
+        current_user: Usuario = None
     ) -> dict:
-        """
-        Remover rol de un usuario
-        Requiere permiso: 'asignar_permisos'
-        """
-        # ✅ VALIDACIÓN DE PERMISOS
-        verificar_permiso(current_user, 'asignar_permisos')
+        """✅ CORREGIDO: Remover rol de un usuario"""
+        if current_user:
+            from app.shared.permissions import check_permission
+            if not check_permission(current_user, 'asignar_permisos'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para remover roles"
+                )
         
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id,
@@ -562,11 +563,12 @@ class RolService:
                 )
             
             usuario.roles.remove(rol)
-            usuario.updated_by = current_user.id_usuario
+            if current_user:
+                usuario.updated_by = current_user.id_usuario
             
             db.commit()
             
-            logger.info(f"Rol {rol_id} removido de usuario {usuario_id} por usuario {current_user.id_usuario}")
+            logger.info(f"Rol {rol_id} removido de usuario {usuario_id}")
             
             return {
                 "mensaje": "Rol removido exitosamente",
@@ -580,7 +582,8 @@ class RolService:
             db.rollback()
             logger.error(f"Error al remover rol: {str(e)}")
             raise DatabaseException(f"Error al remover rol: {str(e)}")
-        
+
+
 class PermisoService(BaseService):
     """Servicio de gestión de permisos (RF-04)"""
     model_class = Permiso
@@ -608,7 +611,6 @@ class PermisoService(BaseService):
     @classmethod
     def obtener_permiso(cls, db: Session, permiso_id: int) -> PermisoResponseDTO:
         """Obtener permiso por ID"""
-        # CORRECCIÓN: usar id_permiso
         permiso = db.query(Permiso).filter(
             Permiso.id_permiso == permiso_id, 
             Permiso.is_active == True

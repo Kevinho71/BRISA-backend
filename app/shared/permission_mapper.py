@@ -167,12 +167,20 @@ def es_administrador(usuario: Usuario) -> bool:
         bool: True si es administrador
     """
     if not usuario or not hasattr(usuario, 'roles'):
+        logger.warning("es_administrador: usuario sin roles")
         return False
     
+    roles_usuario = []
     for rol in usuario.roles:
-        if rol.is_active and rol.nombre in ADMIN_ROLES:
-            return True
+        if rol.is_active:
+            roles_usuario.append(rol.nombre)
+            # ✅ DEBUG: Log detallado
+            logger.debug(f"Verificando rol: {rol.nombre}, ¿está en ADMIN_ROLES? {rol.nombre in ADMIN_ROLES}")
+            if rol.nombre in ADMIN_ROLES:
+                logger.debug(f"✅ Usuario {usuario.usuario} ES administrador con rol: {rol.nombre}")
+                return True
     
+    logger.debug(f"❌ Usuario {usuario.usuario} NO es admin. Roles: {roles_usuario}, ADMIN_ROLES: {ADMIN_ROLES}")
     return False
 
 
@@ -193,18 +201,28 @@ def puede_modificar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) -
         bool: True si puede modificar
     """
     if not usuario_actual:
+        logger.warning("puede_modificar_usuario: usuario_actual es None")
         return False
     
     # Puede modificar su propio perfil
     if usuario_actual.id_usuario == usuario_objetivo_id:
+        logger.debug(f"Usuario {usuario_actual.usuario} modificando su propio perfil")
         return True
     
+    # ✅ DEBUG: Log de verificación de admin
+    es_admin = es_administrador(usuario_actual)
+    logger.debug(f"¿Usuario {usuario_actual.usuario} es admin? {es_admin}")
+    
     # Administradores pueden modificar a cualquiera
-    if es_administrador(usuario_actual):
+    if es_admin:
+        logger.debug(f"✅ Admin {usuario_actual.usuario} puede modificar usuario {usuario_objetivo_id}")
         return True
     
     # Verificar si tiene permiso específico
-    return tiene_permiso(usuario_actual, "editar_usuario")
+    tiene_perm = tiene_permiso(usuario_actual, "editar_usuario")
+    logger.debug(f"¿Usuario {usuario_actual.usuario} tiene permiso editar_usuario? {tiene_perm}")
+    
+    return tiene_perm
 
 
 def puede_eliminar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) -> bool:
