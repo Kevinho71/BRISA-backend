@@ -10,7 +10,6 @@ import logging
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.core.database import get_db
 from app.modules.auth.services.auth_service import get_current_user_dependency
-# IMPORTAR el sistema de mapeo de permisos
 from app.shared.permission_mapper import tiene_permiso, puede_modificar_usuario, puede_eliminar_usuario
 
 
@@ -125,7 +124,7 @@ def require_permissions(*required_permissions: str):
                     detail="Usuario no autenticado"
                 )
             
-            # ✅ Verificar si tiene al menos uno de los permisos requeridos
+            # Verificar si tiene al menos uno de los permisos requeridos
             # Usando el sistema de mapeo
             tiene_permiso_requerido = False
             for permiso in required_permissions:

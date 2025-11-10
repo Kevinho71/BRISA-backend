@@ -1,5 +1,5 @@
 """
-app/modules/usuarios/services/usuario_service.py - CORREGIDO
+app/modules/usuarios/services/usuario_service
 Servicios del Módulo de Usuarios - FINAL
 """
 from sqlalchemy.orm import Session
@@ -323,13 +323,13 @@ class UsuarioService(BaseService):
 
 
 class RolService:
-    """Servicio de gestión de roles (RF-02, RF-03, RF-04) - CORREGIDO"""
+    """Servicio de gestión de roles (RF-02, RF-03, RF-04)"""
     
     model_class = Rol
     
     @classmethod
     def crear_rol(cls, db: Session, rol_dto: RolCreateDTO, current_user: Usuario = None) -> RolResponseDTO:
-        """✅ CORREGIDO: Crear nuevo rol con validación de permisos"""
+        """Crear nuevo rol con validación de permisos"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'crear_rol'):
@@ -338,7 +338,7 @@ class RolService:
                     detail="No tiene permisos para crear roles"
                 )
         
-        # ✅ Verificar duplicado ANTES del try
+        # Verificar duplicado ANTES del try
         rol_existente = db.query(Rol).filter(Rol.nombre == rol_dto.nombre).first()
         if rol_existente:
             logger.warning(f"Intento de crear rol duplicado: {rol_dto.nombre}")
@@ -380,7 +380,7 @@ class RolService:
     
     @classmethod
     def actualizar_rol(cls, db: Session, rol_id: int, rol_dto: RolUpdateDTO, current_user: Usuario = None) -> RolResponseDTO:
-        """✅ CORREGIDO: Actualizar rol"""
+        """Actualizar rol"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'editar_rol'):
@@ -416,7 +416,7 @@ class RolService:
     
     @classmethod
     def eliminar_rol(cls, db: Session, rol_id: int, current_user: Usuario = None) -> dict:
-        """✅ CORREGIDO: Eliminar rol (borrado lógico)"""
+        """ Eliminar rol (borrado lógico)"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'eliminar_rol'):
@@ -453,7 +453,7 @@ class RolService:
         permisos_ids: List[int], 
         current_user: Usuario = None
     ) -> RolResponseDTO:
-        """✅ CORREGIDO: Asignar permisos a rol (RF-04)"""
+        """ Asignar permisos a rol (RF-04)"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):
@@ -506,7 +506,7 @@ class RolService:
         id_rol: int, 
         current_user: Usuario = None
     ) -> dict:
-        """✅ CORREGIDO: Asignar rol a usuario"""
+        """ Asignar rol a usuario"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):
@@ -530,7 +530,7 @@ class RolService:
         rol_id: int,
         current_user: Usuario = None
     ) -> dict:
-        """✅ CORREGIDO: Remover rol de un usuario"""
+        """ Remover rol de un usuario"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):

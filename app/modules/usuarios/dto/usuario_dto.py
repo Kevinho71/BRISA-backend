@@ -1,5 +1,5 @@
 """
-app/modules/usuarios/dto/usuario_dto.py - COMPLETO Y CORREGIDO
+app/modules/usuarios/dto/usuario_dto.py
 DTOs del Módulo de Usuarios - Validación de datos de entrada/salida
 """
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict

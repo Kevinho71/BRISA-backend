@@ -1,5 +1,5 @@
 """
-tests/test_auth_endpoints.py - COMPLETAMENTE CORREGIDO
+tests/test_auth_endpoints.py -
 Pruebas de integración para endpoints de autenticación
 ✅ Adaptado para usar ResponseModel con "success": True
 ✅ Todos los fixtures necesarios
@@ -149,7 +149,7 @@ class TestCrearUsuarioEndpoint:
             "apellido_materno": "Last",
             "usuario": "test",
             "correo": "test@test.com",
-            "password": "password123!",  # Sin mayúscula
+            "password": "password123!", 
             "tipo_persona": "administrativo"
         }
         
@@ -234,7 +234,7 @@ class TestActualizarUsuarioEndpoint:
         
         # Datos de actualización con correo ÚNICO
         datos_actualizacion = {
-            "correo": f"actualizado_{timestamp}@test.com",  # ← Correo único
+            "correo": f"actualizado_{timestamp}@test.com",  # Correo único
             "usuario": f"actualizado_{timestamp}"
         }
         

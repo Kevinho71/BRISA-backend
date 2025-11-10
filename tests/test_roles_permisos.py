@@ -1,7 +1,7 @@
 """
-tests/test_roles_permisos.py - CORREGIDO PARA TU ResponseModel
+tests/test_roles_permisos.py 
 Pruebas de integración para roles y permisos
-✅ Adaptado para usar ResponseModel con "success": True
+- Adaptado para usar ResponseModel con "success": True
 """
 import pytest
 from fastapi import status
@@ -19,14 +19,14 @@ class TestCrearRolEndpoint:
         response = client.post("/api/auth/roles", json=datos_rol, headers=headers)
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
-        # ✅ CORREGIDO: Tu ResponseModel usa "success": True
+        # ResponseModel usa "success": True
         assert data["success"] == True
         assert "data" in data
     
     def test_crear_rol_sin_autenticacion(self, client):
         datos_rol = {"nombre": "Test", "descripcion": "Test"}
         response = client.post("/api/auth/roles", json=datos_rol)
-        # ✅ CORRECCIÓN: Sin autenticación debe ser 401
+        # Sin autenticación debe ser 401
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_crear_rol_nombre_duplicado(self, client, usuario_admin_autenticado, crear_rol_base, db_session):
@@ -50,14 +50,14 @@ class TestListarRolesEndpoint:
         response = client.get("/api/auth/roles", headers=headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        # ✅ CORREGIDO: Tu ResponseModel usa "success": True
+        # ResponseModel usa "success": True
         assert data["success"] == True
         assert "data" in data
         assert isinstance(data["data"], list)
     
     def test_listar_roles_sin_autenticacion(self, client):
         response = client.get("/api/auth/roles")
-        # ✅ CORRECCIÓN: Sin autenticación debe ser 401
+        # Sin autenticación debe ser 401
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -72,7 +72,7 @@ class TestObtenerRolEndpoint:
         response = client.get(f"/api/auth/roles/{rol.id_rol}", headers=headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        # ✅ CORREGIDO: Tu ResponseModel usa "success": True
+        # ResponseModel usa "success": True
         assert data["success"] == True
         assert "data" in data
     
@@ -94,7 +94,7 @@ class TestAsignarRolUsuarioEndpoint:
         response = client.post(f"/api/auth/usuarios/{usuario.id_usuario}/roles/{rol.id_rol}", headers=headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        # ✅ CORREGIDO
+        
         assert data["success"] == True
     
     def test_asignar_rol_usuario_no_existe(self, client, usuario_admin_autenticado, crear_rol_base, db_session):
@@ -126,7 +126,7 @@ class TestListarPermisosEndpoint:
         response = client.get("/api/auth/permisos", headers=headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        # ✅ CORREGIDO
+
         assert data["success"] == True
         assert isinstance(data["data"], list)
     
@@ -151,7 +151,7 @@ class TestObtenerPermisoEndpoint:
         response = client.get(f"/api/auth/permisos/{permiso.id_permiso}", headers=headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        # ✅ CORREGIDO
+
         assert data["success"] == True
     
     def test_obtener_permiso_no_existe(self, client, usuario_admin_autenticado):
@@ -173,7 +173,7 @@ class TestAsignarPermisosRolEndpoint:
         response = client.post(f"/api/auth/roles/{rol.id_rol}/permisos", json=[perm1.id_permiso, perm2.id_permiso], headers=headers)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        # ✅ CORREGIDO
+
         assert data["success"] == True
     
     def test_asignar_permisos_rol_no_existe(self, client, usuario_admin_autenticado, crear_permiso_base, db_session):

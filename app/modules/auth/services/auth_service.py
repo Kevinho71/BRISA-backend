@@ -1,4 +1,4 @@
-"""auth_service.py - CORREGIDO"""
+"""auth_service.py """
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -64,7 +64,7 @@ class AuthService:
         """Decodificar y validar token JWT"""
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            # ✅ CORRECCIÓN: Buscar tanto 'usuario_id' como 'sub' para compatibilidad
+            # Buscar tanto 'usuario_id' como 'sub' para compatibilidad
             usuario_id: int = payload.get("usuario_id") or payload.get("sub")
             if usuario_id is None:
                 raise Unauthorized("Token inválido")
@@ -180,11 +180,11 @@ class AuthService:
         if usuario.is_active is False:
             raise Unauthorized("Cuenta desactivada")
 
-        # ✅ CORRECCIÓN: Crear token con AMBOS campos para compatibilidad
+        # Crear token con AMBOS campos para compatibilidad
         access_token = AuthService.create_access_token(
             data={
-                "sub": usuario.id_usuario,  # ← Para conftest.py
-                "usuario_id": usuario.id_usuario,  # ← Para tu sistema
+                "sub": usuario.id_usuario, 
+                "usuario_id": usuario.id_usuario,  
                 "usuario": usuario.usuario
             }
         )
@@ -207,7 +207,7 @@ class AuthService:
         """Obtener usuario actual desde token JWT"""
         try:
             payload = AuthService.decode_token(token)
-            # ✅ CORRECCIÓN: Buscar tanto 'usuario_id' como 'sub'
+            # Buscar tanto 'usuario_id' como 'sub'
             usuario_id: int = payload.get("usuario_id") or payload.get("sub")
 
             usuario = db.query(Usuario).filter(
@@ -266,7 +266,7 @@ def get_current_user_dependency(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    """✅ CORRECCIÓN: Dependency mejorado con manejo de errores"""
+    """ Dependency mejorado con manejo de errores"""
     from app.modules.auth.services.auth_service import AuthService
     try:
         return AuthService.get_current_user(db, token)

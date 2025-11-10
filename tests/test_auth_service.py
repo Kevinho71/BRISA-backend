@@ -1,5 +1,5 @@
 """
-tests/test_auth_service.py - COMPLETAMENTE CORREGIDO
+tests/test_auth_service.py -
 Pruebas unitarias para AuthService
 """
 import pytest
@@ -120,7 +120,7 @@ class TestAuthServiceRegistro:
             nombres="Another",
             apellido_paterno="User",
             apellido_materno="Last",
-            usuario=usuario_name,  # mismo nombre exacto
+            usuario=usuario_name,  
             correo=f"another{timestamp}@test.com",
             password="Password123!",
             tipo_persona="administrativo"

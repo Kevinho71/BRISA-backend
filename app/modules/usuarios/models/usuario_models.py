@@ -72,7 +72,7 @@ class Usuario(Base):
     correo = Column(String(50), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
-    # ELIMINADO: created_at y updated_at - no existen en tu BD
+    
 
     persona = relationship(
         "Persona1",
@@ -153,7 +153,7 @@ class RolHistorial(Base):
     __tablename__ = "rol_historial"
     __table_args__ = {'extend_existing': True}
 
-    # CAMBIADO: de 'id' a 'id_historial' para coincidir con tu SQL
+    
     id_historial = Column(Integer, primary_key=True, autoincrement=True)
     id_usuario = Column(Integer, ForeignKey('usuarios.id_usuario', ondelete='CASCADE'), nullable=False)
     id_rol = Column(Integer, ForeignKey('roles.id_rol', ondelete='CASCADE'), nullable=False)
