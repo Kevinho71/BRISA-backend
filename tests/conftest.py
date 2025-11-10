@@ -97,8 +97,17 @@ def crear_rol_base(db_session):
 
 @pytest.fixture
 def crear_persona_base(db_session):
-    """Fixture para crear personas con identificadores únicos"""
-    def _crear_persona(ci: str = None, nombres: str = None, tipo_persona: str = "administrativo"):
+    """
+    Fixture para crear personas con identificadores únicos
+    ✅ ACTUALIZADO: Acepta apellidos como parámetros opcionales
+    """
+    def _crear_persona(
+        ci: str = None, 
+        nombres: str = None, 
+        apellido_paterno: str = "TestApellido",  # ← Ahora es parámetro
+        apellido_materno: str = "TestMaterno",   # ← Ahora es parámetro
+        tipo_persona: str = "administrativo"
+    ):
         timestamp_ms = int(time.time() * 1000)
         rand_suffix = random.randint(10000, 99999)
         
@@ -112,8 +121,8 @@ def crear_persona_base(db_session):
         persona = Persona1(
             ci=ci,
             nombres=nombres,
-            apellido_paterno="TestApellido",
-            apellido_materno="TestMaterno",
+            apellido_paterno=apellido_paterno,  # ← Usa el parámetro
+            apellido_materno=apellido_materno,   # ← Usa el parámetro
             correo=correo_unico,
             telefono="12345678",
             direccion="Dirección test",
