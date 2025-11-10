@@ -40,7 +40,8 @@ def mi_endpoint():
 ### 2. Definir Modelos (`models.py`)
 
 ```python
-from app.core.extensions import db
+from app.core.database import get_db
+
 
 class MiModelo(db.Model):
     __tablename__ = 'mi_tabla'

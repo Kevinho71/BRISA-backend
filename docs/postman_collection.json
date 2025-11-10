@@ -1,0 +1,378 @@
+{
+	"info": {
+		"_postman_id": "6b68d9e2-a9e6-40ef-be3a-dae7656d8f92",
+		"name": "Backend API - Testing Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39515604"
+	},
+	 "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+                  "    pm.environment.set('access_token', jsonData.data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "item": [
+        {
+          "name": "Crear Usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ci\": \"1234567890\",\n  \"nombres\": \"Juan\",\n  \"apellido_paterno\": \"Pérez\",\n  \"apellido_materno\": \"García\",\n  \"usuario\": \"jperez\",\n  \"correo\": \"jperez@test.com\",\n  \"password\": \"Password123!\",\n  \"telefono\": \"12345678\",\n  \"direccion\": \"Calle Test 123\",\n  \"tipo_persona\": \"profesor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth?skip=0&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth"],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener Usuario por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar Usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"Juan Actualizado\",\n  \"correo\": \"nuevo@test.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar Usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        {
+          "name": "Crear Rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Profesor\",\n  \"descripcion\": \"Rol para profesores\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/roles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "roles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/roles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "roles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener Rol por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/roles/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "roles", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Asignar Rol a Usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/1/roles/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "1", "roles", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Asignar Permisos a Rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[1, 2, 3]"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/roles/1/permisos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "roles", "1", "permisos"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Permisos",
+      "item": [
+        {
+          "name": "Listar Permisos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/permisos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "permisos"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Permisos por Módulo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/permisos?modulo=usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "permisos"],
+              "query": [
+                {
+                  "key": "modulo",
+                  "value": "usuarios"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener Permiso por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/permisos/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "permisos", "1"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
