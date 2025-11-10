@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import Depends
 
-# ⭐ NUEVA LÍNEA 1: Importar el registro de handlers
+# NUEVA LÍNEA 1: Importar el registro de handlers
 from app.shared.exceptions.custom_exceptions import register_exception_handlers
 
 # Importar routers
@@ -41,7 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ⭐ NUEVA LÍNEA 2: Registrar manejadores de excepciones personalizadas
+# NUEVA LÍNEA 2: Registrar manejadores de excepciones personalizadas
 register_exception_handlers(app)
 
 # Incluir routers

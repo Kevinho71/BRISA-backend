@@ -11,9 +11,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ========================================
-# MAPEO DE ACCIONES A PERMISOS GENÉRICOS
-# ========================================
+
+# ================ MAPEO DE ACCIONES A PERMISOS GENÉRICOS ================ 
+
 PERMISSION_MAP: Dict[str, List[str]] = {
     # Usuarios - mapean a permisos GENÉRICOS en BD
     "crear_usuario": ["Agregar"],
@@ -43,9 +43,9 @@ PERMISSION_MAP: Dict[str, List[str]] = {
     "ver_bitacora": ["Lectura"],
 }
 
-# ========================================
-# ROLES CON ACCESO TOTAL
-# ========================================
+
+# ================ ROLES CON ACCESO TOTAL ================ 
+
 ADMIN_ROLES = ["Director", "Administrativo", "Admin"]  # ← Agregado "Admin"
 
 
@@ -69,7 +69,7 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
         logger.warning(f"Usuario sin roles intentando acción: {accion}")
         return False
     
-    # ✅ DEBUG: Log para ver qué roles tiene el usuario
+    # DEBUG: Log para ver qué roles tiene el usuario
     roles_usuario = [r.nombre for r in usuario.roles if r.is_active]
     logger.debug(f"Usuario {usuario.usuario} tiene roles: {roles_usuario}")
     
@@ -97,7 +97,7 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
             if permiso.is_active:
                 permisos_usuario.add(permiso.nombre)
     
-    # ✅ DEBUG: Log para ver qué permisos tiene
+    # DEBUG: Log para ver qué permisos tiene
     logger.debug(f"Usuario {usuario.usuario} tiene permisos: {permisos_usuario}")
     logger.debug(f"Acción '{accion}' requiere: {permisos_requeridos}")
     
@@ -174,7 +174,7 @@ def es_administrador(usuario: Usuario) -> bool:
     for rol in usuario.roles:
         if rol.is_active:
             roles_usuario.append(rol.nombre)
-            # ✅ DEBUG: Log detallado
+            # DEBUG: Log detallado
             logger.debug(f"Verificando rol: {rol.nombre}, ¿está en ADMIN_ROLES? {rol.nombre in ADMIN_ROLES}")
             if rol.nombre in ADMIN_ROLES:
                 logger.debug(f"✅ Usuario {usuario.usuario} ES administrador con rol: {rol.nombre}")
@@ -209,7 +209,7 @@ def puede_modificar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) -
         logger.debug(f"Usuario {usuario_actual.usuario} modificando su propio perfil")
         return True
     
-    # ✅ DEBUG: Log de verificación de admin
+    # DEBUG: Log de verificación de admin
     es_admin = es_administrador(usuario_actual)
     logger.debug(f"¿Usuario {usuario_actual.usuario} es admin? {es_admin}")
     

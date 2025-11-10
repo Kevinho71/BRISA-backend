@@ -1,5 +1,5 @@
 """
-auth_controller.py - CORREGIDO USANDO TU ResponseModel
+auth_controller.py -Usando ResponseModel
 Controlador de autenticación y usuarios
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -12,9 +12,9 @@ from app.modules.auth.dto.auth_dto import LoginDTO, RegistroDTO
 from app.modules.auth.services.auth_service import AuthService, get_current_user_dependency
 
 from app.core.database import get_db
-from app.shared.response import ResponseModel  # ✅ Usar TU ResponseModel
+from app.shared.response import ResponseModel 
 from app.shared.security import verify_token
-from app.shared.permissions import requires_permission  # ✅ Usar el correcto
+from app.shared.permissions import requires_permission
 from app.modules.usuarios.dto.usuario_dto import (
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
     RolCreateDTO, RolUpdateDTO, RolResponseDTO,
@@ -159,7 +159,7 @@ async def refresh_token(
 # ==================== USUARIOS ====================
 
 @router.get("/usuarios", response_model=dict)
-@requires_permission('ver_usuario')  # ✅ Decorador para validar permiso
+@requires_permission('ver_usuario')  # Decorador para validar permiso
 async def listar_usuarios(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -183,7 +183,7 @@ async def listar_usuarios(
 
 
 @router.get("/usuarios/{id_usuario}", response_model=dict)
-@requires_permission('ver_usuario')  # ✅ Decorador
+@requires_permission('ver_usuario')  # Decorador
 async def obtener_usuario(
     id_usuario: int,
     current_user: Usuario = Depends(get_current_user_dependency),
@@ -203,7 +203,7 @@ async def obtener_usuario(
 
 
 @router.put("/usuarios/{id_usuario}", response_model=dict)
-@requires_permission('editar_usuario')  # ✅ Decorador
+@requires_permission('editar_usuario')  # Decorador
 async def actualizar_usuario(
     id_usuario: int,
     usuario_update: UsuarioUpdateDTO,
@@ -231,7 +231,7 @@ async def actualizar_usuario(
 
 
 @router.delete("/usuarios/{id_usuario}", response_model=dict)
-@requires_permission('eliminar_usuario')  # ✅ Decorador
+@requires_permission('eliminar_usuario')  # Decorador
 async def eliminar_usuario(
     id_usuario: int,
     db: Session = Depends(get_db),
@@ -253,7 +253,7 @@ async def eliminar_usuario(
 # ==================== ROLES ====================
 
 @router.post("/roles", response_model=dict, status_code=status.HTTP_201_CREATED)
-@requires_permission('crear_rol')  # ✅ Decorador
+@requires_permission('crear_rol')  # Decorador
 async def crear_rol(
     rol_create: RolCreateDTO,
     db: Session = Depends(get_db),
@@ -269,7 +269,7 @@ async def crear_rol(
             data=nuevo_rol.dict()
         )
     except Conflict as e:
-        # ✅ Manejar conflicto de nombre duplicado
+        # Manejar conflicto de nombre duplicado
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
@@ -282,7 +282,7 @@ async def crear_rol(
 
 
 @router.get("/roles", response_model=dict)
-@requires_permission('ver_rol')  # ✅ Decorador
+@requires_permission('ver_rol')  # Decorador
 async def listar_roles(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -301,7 +301,7 @@ async def listar_roles(
 
 
 @router.get("/roles/{id_rol}", response_model=dict)
-@requires_permission('ver_rol')  # ✅ Decorador
+@requires_permission('ver_rol')  # Decorador
 async def obtener_rol(
     id_rol: int,
     current_user: Usuario = Depends(get_current_user_dependency),
@@ -318,7 +318,7 @@ async def obtener_rol(
 
 
 @router.post("/usuarios/{id_usuario}/roles/{id_rol}", response_model=dict)
-@requires_permission('asignar_permisos')  # ✅ Decorador
+@requires_permission('asignar_permisos')  # Decorador
 async def asignar_rol_usuario(
     id_usuario: int,
     id_rol: int,
@@ -334,7 +334,7 @@ async def asignar_rol_usuario(
 
 
 @router.post("/roles/{id_rol}/permisos", response_model=dict)
-@requires_permission('asignar_permisos')  # ✅ Decorador
+@requires_permission('asignar_permisos')  # Decorador
 async def asignar_permisos_rol(
     id_rol: int,
     permisos_ids: list[int],
@@ -352,7 +352,7 @@ async def asignar_permisos_rol(
 # ==================== PERMISOS ====================
 
 @router.get("/permisos", response_model=dict)
-@requires_permission('ver_rol')  # ✅ Decorador
+@requires_permission('ver_rol')  # Decorador
 async def listar_permisos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
@@ -369,7 +369,7 @@ async def listar_permisos(
 
 
 @router.get("/permisos/{id_permiso}", response_model=dict)
-@requires_permission('ver_rol')  # ✅ Decorador
+@requires_permission('ver_rol')  # Decorador
 async def obtener_permiso(
     id_permiso: int,
     current_user: Usuario = Depends(get_current_user_dependency),

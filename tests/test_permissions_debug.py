@@ -43,7 +43,7 @@ def test_admin_tiene_todos_los_permisos(usuario_admin_autenticado, db_session):
     assert tiene_permiso(usuario, "eliminar_usuario"), "Debería poder eliminar usuarios"
     assert tiene_permiso(usuario, "crear_usuario"), "Debería poder crear usuarios"
     
-    # ✅ NUEVO: Verificar puede_modificar_usuario
+    # NUEVO: Verificar puede_modificar_usuario
     puede_modificar = puede_modificar_usuario(usuario, 9999)
     print(f"🔍 ¿Puede modificar usuario 9999? {puede_modificar}")
     assert puede_modificar, "Admin debería poder modificar cualquier usuario"

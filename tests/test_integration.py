@@ -1,5 +1,5 @@
 """
-tests/test_integration.py - COMPLETAMENTE CORREGIDO
+tests/test_integration.py  
 Pruebas de integración end-to-end
 ✅ Flujos completos de casos de uso reales
 ✅ Adaptado para ResponseModel con "success": True
@@ -103,7 +103,7 @@ class TestFlujoGestionRolesPermisos:
         )
         assert response_permisos.status_code == status.HTTP_200_OK
         
-        # ✅ Paso 3: Crear usuario (el endpoint registrar_usuario crea la persona automáticamente)
+        # Paso 3: Crear usuario (el endpoint registrar_usuario crea la persona automáticamente)
         ci_unico = f"333444{timestamp}"
         datos_usuario = {
             "ci": ci_unico,
@@ -231,7 +231,7 @@ class TestFlujoSeguridadTokens:
     
     def test_sin_token_no_permite_acceso(self, client):
         """
-        ✅ CORRECCIÓN: Sin token debe retornar 401 (Unauthorized), no 403
+        ✅ Sin token debe retornar 401 (Unauthorized), no 403
         403 es para cuando estás autenticado pero no tienes permisos
         401 es para cuando NO estás autenticado
         """
@@ -280,7 +280,7 @@ class TestSmokeTests:
         # Decodificar el token
         decoded = AuthService.decode_token(token)
         
-        # ✅ CORRECCIÓN: JWT puede convertir int a string
+        # JWT puede convertir int a string
         # Verificar que sea 1 como int o "1" como string
         assert decoded["sub"] == 1 or decoded["sub"] == "1"
 

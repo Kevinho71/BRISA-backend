@@ -1,5 +1,5 @@
 """
-tests/conftest.py - CORREGIDO
+tests/conftest.py 
 Configuración global de pytest con soporte completo para permisos
 """
 import pytest
@@ -19,7 +19,7 @@ from app.modules.auth.services.auth_service import AuthService
 from app.main import app
 
 # ============================================
-# USAR LA BASE DE DATOS REAL DE LA APLICACIÓN (MYSQL)
+# USO DE LA BASE DE DATOS REAL DE LA APLICACIÓN (MYSQL)
 # ============================================
 
 @pytest.fixture(scope="function")
@@ -51,9 +51,9 @@ def client(db_session):
     finally:
         app.dependency_overrides.clear()
 
-# ============================================
-# FIXTURES DE CREACIÓN DE DATOS
-# ============================================
+
+# ================ FIXTURES DE CREACIÓN DE DATOS ================ 
+
 
 @pytest.fixture
 def crear_permiso_base(db_session):
@@ -99,13 +99,13 @@ def crear_rol_base(db_session):
 def crear_persona_base(db_session):
     """
     Fixture para crear personas con identificadores únicos
-    ✅ ACTUALIZADO: Acepta apellidos como parámetros opcionales
+    Acepta apellidos como parámetros opcionales
     """
     def _crear_persona(
         ci: str = None, 
         nombres: str = None, 
-        apellido_paterno: str = "TestApellido",  # ← Ahora es parámetro
-        apellido_materno: str = "TestMaterno",   # ← Ahora es parámetro
+        apellido_paterno: str = "TestApellido",  # parámetro
+        apellido_materno: str = "TestMaterno",   
         tipo_persona: str = "administrativo"
     ):
         timestamp_ms = int(time.time() * 1000)
@@ -121,8 +121,8 @@ def crear_persona_base(db_session):
         persona = Persona1(
             ci=ci,
             nombres=nombres,
-            apellido_paterno=apellido_paterno,  # ← Usa el parámetro
-            apellido_materno=apellido_materno,   # ← Usa el parámetro
+            apellido_paterno=apellido_paterno,  # Usa el parámetro
+            apellido_materno=apellido_materno,   #  Usa el parámetro
             correo=correo_unico,
             telefono="12345678",
             direccion="Dirección test",
@@ -135,7 +135,7 @@ def crear_persona_base(db_session):
 
 @pytest.fixture
 def crear_usuario_base(db_session, crear_persona_base):
-    """Fixture para crear usuarios - CORREGIDO: hashea correctamente"""
+    """Fixture para crear usuarios - hashea correctamente"""
     def _crear_usuario(usuario: str, password: str, roles: list = None, mantener_nombre: bool = False):
         timestamp_ms = int(time.time() * 1000)
         rand_suffix = random.randint(1000, 9999)
@@ -151,7 +151,7 @@ def crear_usuario_base(db_session, crear_persona_base):
 
         correo_unico = f"{usuario}_{timestamp_ms}@test.com"
         
-        # ✅ CORRECCIÓN: Usar AuthService.hash_password para consistencia
+        #  Usar AuthService.hash_password para consistencia
         password_hasheado = AuthService.hash_password(password)
 
         usuario_obj = Usuario(
@@ -178,7 +178,7 @@ def usuario_admin_autenticado(db_session, crear_usuario_base, crear_rol_base, cr
     """Fixture para usuario administrador con TODOS los permisos necesarios"""
     timestamp_ms = int(time.time() * 1000)
     
-    # ✅ Crear permisos GENÉRICOS que usa el sistema
+    # Crear permisos GENÉRICOS que usa el sistema
     permisos = [
         crear_permiso_base("Lectura", "usuarios", "Puede ver usuarios"),
         crear_permiso_base("Agregar", "usuarios", "Puede crear usuarios"),
@@ -186,11 +186,11 @@ def usuario_admin_autenticado(db_session, crear_usuario_base, crear_rol_base, cr
         crear_permiso_base("Eliminar", "usuarios", "Puede eliminar usuarios"),
     ]
     
-    # ✅ CORRECCIÓN: Usar nombre "Admin" (sin timestamp) para que coincida con ADMIN_ROLES
+    # Usar nombre "Admin" (sin timestamp) para que coincida con ADMIN_ROLES
     rol_admin = crear_rol_base("Admin", "Rol administrativo", permisos)
     db_session.flush()
     
-    # Crear usuario con rol - SIN mantener_nombre para evitar conflictos
+    # Crear usuario con rol
     usuario = crear_usuario_base(f"admin_test_{timestamp_ms}", "admin123", [rol_admin])
     db_session.flush()
     

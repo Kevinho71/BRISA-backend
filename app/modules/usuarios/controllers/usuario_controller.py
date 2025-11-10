@@ -1,5 +1,6 @@
 """
-usuario_controller.py - CORREGIDO CON DECORADORES DE SEGURIDAD
+usuario_controller.py 
+- CORREGIDO CON DECORADORES DE SEGURIDAD
 Controlador de usuarios, roles y permisos
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query

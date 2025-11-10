@@ -1,5 +1,5 @@
 """
-tests/test_security.py - CORREGIDO
+tests/test_security.py 
 Tests de seguridad y validaciones
 """
 import pytest
@@ -178,7 +178,7 @@ class TestAuthorizationSecurity:
             headers=headers
         )
         
-        # CORRECCIÓN: Si retorna 200, significa que NO hay validación de permisos
+        # Si retorna 200, significa que NO hay validación de permisos
         # Este es un problema de seguridad que debe corregirse
         if response.status_code == status.HTTP_200_OK:
             pytest.fail(
@@ -208,7 +208,7 @@ class TestAuthorizationSecurity:
             headers=headers
         )
         
-        # CORRECCIÓN: Si retorna 200, es una falla de seguridad
+        # Si retorna 200, es una falla de seguridad
         if response.status_code == status.HTTP_200_OK:
             pytest.fail(
                 "⚠️ FALLA DE SEGURIDAD: El endpoint permite eliminar usuarios sin validar permisos. "
@@ -254,7 +254,7 @@ class TestDataLeakage:
         # Los mensajes deben ser idénticos
         assert msg1 == msg2, f"Mensajes diferentes: '{msg1}' vs '{msg2}'"
         
-        # CORRECCIÓN: Normalizar texto para manejar caracteres especiales
+        #  Normalizar texto para manejar caracteres especiales
         # Convertir a minúsculas y verificar palabras clave
         msg_lower = msg1.lower()
         

@@ -14,7 +14,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 
 # Contexto para hash de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer(auto_error=False)  # ← CAMBIO AQUÍ
+security = HTTPBearer(auto_error=False) 
 
 def hash_password(password: str) -> str:
     """Encriptar contraseña con bcrypt"""
@@ -45,7 +45,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
 
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     """Verificar y decodificar token JWT"""
-    # ← AGREGAR ESTO
+    
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,14 +61,14 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token inválido",
-                headers={"WWW-Authenticate": "Bearer"}  # ← AGREGAR HEADER
+                headers={"WWW-Authenticate": "Bearer"}  
             )
         return {"usuario_id": usuario_id, "payload": payload}
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expirado o inválido",
-            headers={"WWW-Authenticate": "Bearer"}  # ← AGREGAR HEADER
+            headers={"WWW-Authenticate": "Bearer"}  
         )
 
 def validate_password_complexity(password: str) -> bool:
