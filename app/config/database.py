@@ -1,22 +1,45 @@
-# Configuración de la base de datos
-from app.core.extensions import db
+"""
+Utilidades para gestión de base de datos
+"""
+from app.core.extensions import Base, engine, create_tables, drop_tables
 
-def init_database(app):
+def init_database():
     """
-    Inicializar base de datos con datos de prueba
+    Crear todas las tablas en la base de datos
+    Usar solo en desarrollo o para inicialización
     """
-    with app.app_context():
-        # Crear todas las tablas
-        db.create_all()
-        
-        print("✅ Base de datos inicializada correctamente")
+    if engine is None:
+        raise RuntimeError("Database engine not initialized. Call init_extensions first.")
+    
+    print("🔨 Creando tablas en la base de datos...")
+    create_tables()
+    print("✅ Base de datos inicializada correctamente")
 
-def reset_database(app):
+def reset_database():
     """
-    Resetear la base de datos
+    Resetear la base de datos (eliminar y recrear todas las tablas)
+    ⚠️  CUIDADO: Esto elimina todos los datos
     """
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-        
-        print("🔄 Base de datos reseteada correctamente")
+    if engine is None:
+        raise RuntimeError("Database engine not initialized. Call init_extensions first.")
+    
+    print("⚠️  RESETEANDO BASE DE DATOS...")
+    drop_tables()
+    create_tables()
+    print("🔄 Base de datos reseteada correctamente")
+
+def check_connection():
+    """
+    Verificar la conexión a la base de datos
+    """
+    if engine is None:
+        raise RuntimeError("Database engine not initialized.")
+    
+    try:
+        with engine.connect() as connection:
+            result = connection.execute("SELECT 1")
+            print("✅ Conexión a base de datos exitosa")
+            return True
+    except Exception as e:
+        print(f"❌ Error de conexión: {e}")
+        return False

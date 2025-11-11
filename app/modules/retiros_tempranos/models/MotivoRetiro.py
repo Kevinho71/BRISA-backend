@@ -1,7 +1,14 @@
-""
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, Enum
 from sqlalchemy.orm import relationship
 from app.shared.models.base_models import BaseModel
+import enum
+
+
+class SeveridadEnum(str, enum.Enum):
+    """Enumeración para niveles de severidad de motivos"""
+    LEVE = "leve"
+    GRAVE = "grave"
+    MUY_GRAVE = "muy grave"
 
 
 class MotivoRetiro(BaseModel):
@@ -9,13 +16,13 @@ class MotivoRetiro(BaseModel):
     Modelo de Motivo de Retiro
     Catálogo de motivos para retiros tempranos
     """
-    __tablename__ = "motivo_retiro"
+    __tablename__ = "motivos_retiro"
     
     id_motivo = Column(Integer, primary_key=True, autoincrement=True)
-    nombre = Column(String(255), nullable=False)
-    severidad = Column(String(255), nullable=False)
-    activo = Column(String(1000), nullable=False, default='1')  # binary(1000) en MySQL
+    nombre = Column(String(100), unique=True, nullable=False)
     descripcion = Column(String(255), nullable=True)
+    severidad = Column(Enum(SeveridadEnum), nullable=False)
+    activo = Column(Boolean, nullable=False, default=True)
     
     # Relaciones
     solicitudes_retiro = relationship("SolicitudRetiro", back_populates="motivo")

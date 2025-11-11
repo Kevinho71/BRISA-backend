@@ -7,18 +7,19 @@ class Apoderado(BaseModel):
     Modelo de Apoderado
     Representa a los apoderados/tutores de los estudiantes
     """
-    __tablename__ = "apoderado"
+    __tablename__ = "apoderados"
     
     id_apoderado = Column(Integer, primary_key=True, autoincrement=True)
-    id_estudiante = Column(Integer, ForeignKey("estudiante.id_estudiante", ondelete="CASCADE"), nullable=False)
-    parentesco = Column(String(255), nullable=False)
-    nombres = Column(String(255), nullable=False)
-    apellidos = Column(String(255), nullable=False)
-    ci = Column(String(255), nullable=False)
-    telefono = Column(String(255), nullable=False)
+    ci = Column(String(20), unique=True, nullable=False, index=True)
+    nombres = Column(String(100), nullable=False)
+    apellidos = Column(String(100), nullable=False)
+    telefono = Column(String(20), nullable=True)
+    correo = Column(String(50), nullable=True)
+    direccion = Column(String(100), nullable=True)
     
     # Relaciones
-    estudiante = relationship("Estudiante", back_populates="apoderados")
+    estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="apoderado")
+    solicitudes_retiro = relationship("SolicitudRetiro", back_populates="apoderado")
     
     def __repr__(self):
         return f"<Apoderado(id={self.id_apoderado}, nombres={self.nombres} {self.apellidos})>"

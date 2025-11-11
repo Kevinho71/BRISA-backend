@@ -14,16 +14,24 @@ from .apoderado_dto import (
     ApoderadoResponseDTO
 )
 
+from .estudiante_apoderado_dto import (
+    EstudianteApoderadoCreateDTO,
+    EstudianteApoderadoUpdateDTO,
+    EstudianteApoderadoResponseDTO
+)
+
 from .motivo_retiro_dto import (
     MotivoRetiroCreateDTO,
     MotivoRetiroUpdateDTO,
-    MotivoRetiroResponseDTO
+    MotivoRetiroResponseDTO,
+    SeveridadEnum
 )
 
 from .autorizacion_retiro_dto import (
     AutorizacionRetiroCreateDTO,
     AutorizacionRetiroUpdateDTO,
-    AutorizacionRetiroResponseDTO
+    AutorizacionRetiroResponseDTO,
+    DecisionEnum
 )
 
 from .registro_salida_dto import (
@@ -55,15 +63,22 @@ __all__ = [
     "ApoderadoUpdateDTO",
     "ApoderadoResponseDTO",
     
+    # Estudiante-Apoderado
+    "EstudianteApoderadoCreateDTO",
+    "EstudianteApoderadoUpdateDTO",
+    "EstudianteApoderadoResponseDTO",
+    
     # Motivo Retiro
     "MotivoRetiroCreateDTO",
     "MotivoRetiroUpdateDTO",
     "MotivoRetiroResponseDTO",
+    "SeveridadEnum",
     
     # Autorización Retiro
     "AutorizacionRetiroCreateDTO",
     "AutorizacionRetiroUpdateDTO",
     "AutorizacionRetiroResponseDTO",
+    "DecisionEnum",
     
     # Registro Salida
     "RegistroSalidaCreateDTO",

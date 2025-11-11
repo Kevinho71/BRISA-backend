@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import date
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.modules.retiros_tempranos.models.RegistroSalida import RegistroSalida
 from app.modules.retiros_tempranos.repositories.registro_salida_repository_interface import IRegistroSalidaRepository
@@ -24,6 +24,12 @@ class RegistroSalidaRepository(IRegistroSalidaRepository):
             RegistroSalida.id_registro == id_registro
         ).first()
     
+    def get_by_solicitud(self, id_solicitud: int) -> Optional[RegistroSalida]:
+        """Obtener un registro por su ID de solicitud"""
+        return self.db.query(RegistroSalida).filter(
+            RegistroSalida.id_solicitud == id_solicitud
+        ).first()
+    
     def get_by_estudiante(self, id_estudiante: int) -> List[RegistroSalida]:
         """Obtener todos los registros de un estudiante"""
         return self.db.query(RegistroSalida).filter(
@@ -37,14 +43,14 @@ class RegistroSalidaRepository(IRegistroSalidaRepository):
     def get_sin_retorno(self) -> List[RegistroSalida]:
         """Obtener registros de salidas sin retorno"""
         return self.db.query(RegistroSalida).filter(
-            RegistroSalida.retorno_en.is_(None)
+            RegistroSalida.fecha_hora_retorno_real.is_(None)
         ).all()
     
-    def get_by_fecha_rango(self, fecha_inicio: date, fecha_fin: date) -> List[RegistroSalida]:
+    def get_by_fecha_rango(self, fecha_inicio: datetime, fecha_fin: datetime) -> List[RegistroSalida]:
         """Obtener registros en un rango de fechas"""
         return self.db.query(RegistroSalida).filter(
-            RegistroSalida.salida_en >= fecha_inicio,
-            RegistroSalida.salida_en <= fecha_fin
+            RegistroSalida.fecha_hora_salida_real >= fecha_inicio,
+            RegistroSalida.fecha_hora_salida_real <= fecha_fin
         ).all()
     
     def update(self, id_registro: int, registro_data: dict) -> Optional[RegistroSalida]:
@@ -70,3 +76,4 @@ class RegistroSalidaRepository(IRegistroSalidaRepository):
         self.db.delete(registro)
         self.db.commit()
         return True
+

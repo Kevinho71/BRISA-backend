@@ -18,8 +18,9 @@ class RegistroSalidaService(BaseService):
         """Crear un nuevo registro de salida"""
         registro = RegistroSalida(
             id_estudiante=registro_dto.id_estudiante,
-            salida_en=registro_dto.salida_en,
-            retorno_en=registro_dto.retorno_en,
+            id_solicitud=registro_dto.id_solicitud,
+            fecha_hora_salida_real=registro_dto.fecha_hora_salida_real,
+            fecha_hora_retorno_real=registro_dto.fecha_hora_retorno_real,
         )
         creado = self.repository.create(registro)
         return RegistroSalidaResponseDTO.model_validate(creado)

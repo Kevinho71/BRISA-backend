@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from datetime import date
+from datetime import datetime
 from app.modules.retiros_tempranos.models.RegistroSalida import RegistroSalida
 
 
@@ -15,6 +15,11 @@ class IRegistroSalidaRepository(ABC):
     @abstractmethod
     def get_by_id(self, id_registro: int) -> Optional[RegistroSalida]:
         """Obtener un registro por su ID"""
+        pass
+    
+    @abstractmethod
+    def get_by_solicitud(self, id_solicitud: int) -> Optional[RegistroSalida]:
+        """Obtener un registro por su ID de solicitud"""
         pass
     
     @abstractmethod
@@ -33,7 +38,7 @@ class IRegistroSalidaRepository(ABC):
         pass
     
     @abstractmethod
-    def get_by_fecha_rango(self, fecha_inicio: date, fecha_fin: date) -> List[RegistroSalida]:
+    def get_by_fecha_rango(self, fecha_inicio: datetime, fecha_fin: datetime) -> List[RegistroSalida]:
         """Obtener registros en un rango de fechas"""
         pass
     

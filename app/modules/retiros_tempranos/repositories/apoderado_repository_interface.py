@@ -17,8 +17,13 @@ class IApoderadoRepository(ABC):
         pass
     
     @abstractmethod
+    def get_by_ci(self, ci: str) -> Optional[Apoderado]:
+        """Obtener un apoderado por su cédula de identidad"""
+        pass
+    
+    @abstractmethod
     def get_by_estudiante(self, id_estudiante: int) -> List[Apoderado]:
-        """Obtener todos los apoderados de un estudiante"""
+        """Obtener todos los apoderados de un estudiante a través de la tabla intermedia"""
         pass
     
     @abstractmethod
@@ -34,4 +39,9 @@ class IApoderadoRepository(ABC):
     @abstractmethod
     def delete(self, id_apoderado: int) -> bool:
         """Eliminar un apoderado"""
+        pass
+    
+    @abstractmethod
+    def exists_by_ci(self, ci: str) -> bool:
+        """Verificar si existe un apoderado con la cédula dada"""
         pass

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from datetime import date
+from datetime import datetime
 from app.modules.retiros_tempranos.models.SolicitudRetiro import SolicitudRetiro
 
 
@@ -38,7 +38,7 @@ class ISolicitudRetiroRepository(ABC):
         pass
     
     @abstractmethod
-    def get_by_fecha_rango(self, fecha_inicio: date, fecha_fin: date) -> List[SolicitudRetiro]:
+    def get_by_fecha_rango(self, fecha_inicio: datetime, fecha_fin: datetime) -> List[SolicitudRetiro]:
         """Obtener solicitudes en un rango de fechas"""
         pass
     

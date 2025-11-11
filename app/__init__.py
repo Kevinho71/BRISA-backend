@@ -56,6 +56,19 @@ def register_routes(app):
     from app.modules.health.routes import health_router
     app.include_router(health_router, prefix="/api")
     
+    # Retiros Tempranos
+    from app.modules.retiros_tempranos.controllers.autorizacion_retiro_controller import router as autorizacion_router
+    from app.modules.retiros_tempranos.controllers.motivo_retiro_controller import router as motivo_router
+    from app.modules.retiros_tempranos.controllers.registro_salida_controller import router as registro_router
+    from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller import router as solicitud_router
+    from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
+    
+    app.include_router(autorizacion_router, tags=["Retiros Tempranos - Autorizaciones"])
+    app.include_router(motivo_router, tags=["Retiros Tempranos - Motivos"])
+    app.include_router(registro_router, tags=["Retiros Tempranos - Registros"])
+    app.include_router(solicitud_router, tags=["Retiros Tempranos - Solicitudes"])
+    app.include_router(estudiante_apoderado_router, tags=["Retiros Tempranos - Relaciones"])
+    
     # Los módulos específicos serán implementados por cada equipo
     # Ejemplo de cómo registrar un módulo:
     # from app.modules.usuarios.controllers.usuario_controller import usuarios_router

@@ -27,7 +27,7 @@ class MotivoRetiroRepository(IMotivoRetiroRepository):
     
     def get_activos(self) -> List[MotivoRetiro]:
         """Obtener solo los motivos activos"""
-        return self.db.query(MotivoRetiro).filter(MotivoRetiro.activo == '1').all()
+        return self.db.query(MotivoRetiro).filter(MotivoRetiro.activo == True).all()
     
     def get_by_severidad(self, severidad: str) -> List[MotivoRetiro]:
         """Obtener motivos por nivel de severidad"""

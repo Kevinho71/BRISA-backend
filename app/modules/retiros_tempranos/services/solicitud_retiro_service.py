@@ -22,10 +22,10 @@ class SolicitudRetiroService(BaseService):
             id_motivo=solicitud_dto.id_motivo,
             id_autorizacion=solicitud_dto.id_autorizacion,
             fecha_hora_salida=solicitud_dto.fecha_hora_salida,
-            fecha_hora_retorno=solicitud_dto.fecha_hora_retorno,
+            fecha_hora_retorno_previsto=solicitud_dto.fecha_hora_retorno_previsto,
             observacion=solicitud_dto.observacion,
             foto_retirante_url=solicitud_dto.foto_retirante_url,
-            id_registro_salida=solicitud_dto.id_registro_salida,
+            fecha_creacion=solicitud_dto.fecha_creacion,
         )
         creada = self.repository.create(solicitud)
         return SolicitudRetiroResponseDTO.model_validate(creada)

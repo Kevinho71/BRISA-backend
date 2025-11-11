@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import date
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.modules.retiros_tempranos.models.SolicitudRetiro import SolicitudRetiro
 from app.modules.retiros_tempranos.repositories.solicitud_retiro_repository_interface import ISolicitudRetiroRepository
@@ -46,11 +46,11 @@ class SolicitudRetiroRepository(ISolicitudRetiroRepository):
             SolicitudRetiro.id_motivo == id_motivo
         ).all()
     
-    def get_by_fecha_rango(self, fecha_inicio: date, fecha_fin: date) -> List[SolicitudRetiro]:
+    def get_by_fecha_rango(self, fecha_inicio: datetime, fecha_fin: datetime) -> List[SolicitudRetiro]:
         """Obtener solicitudes en un rango de fechas"""
         return self.db.query(SolicitudRetiro).filter(
-            SolicitudRetiro.creada_en >= fecha_inicio,
-            SolicitudRetiro.creada_en <= fecha_fin
+            SolicitudRetiro.fecha_creacion >= fecha_inicio,
+            SolicitudRetiro.fecha_creacion <= fecha_fin
         ).all()
     
     def update(self, id_solicitud: int, solicitud_data: dict) -> Optional[SolicitudRetiro]:
