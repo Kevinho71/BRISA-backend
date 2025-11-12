@@ -1,16 +1,16 @@
 from sqlalchemy import Column, Integer, String, Boolean, Enum
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 import enum
 
 
 class TipoPersonaEnum(str, enum.Enum):
     """Enumeración para tipos de persona"""
-    PROFESOR = "profesor"
-    ADMINISTRATIVO = "administrativo"
+    profesor = "profesor"
+    administrativo = "administrativo"
 
 
-class Persona(BaseModel):
+class Persona(Base):
     """
     Modelo de Persona
     Representa a profesores y personal administrativo
@@ -29,7 +29,8 @@ class Persona(BaseModel):
     is_active = Column(Boolean, nullable=False, default=True)
     
     # Relaciones
-    usuario = relationship("Usuario", back_populates="persona", uselist=False)
+    # TODO: Descomentar cuando se implemente el módulo de autenticación
+    # usuario = relationship("Usuario", back_populates="persona", uselist=False)
     autorizaciones_retiro = relationship("AutorizacionRetiro", back_populates="persona_decidio", foreign_keys="AutorizacionRetiro.decidido_por")
     profesores_cursos_materias = relationship("ProfesorCursoMateria", back_populates="profesor")
     

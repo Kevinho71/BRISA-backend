@@ -1,17 +1,17 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 import enum
 
 
 class DecisionEnum(str, enum.Enum):
     """Enumeración para decisiones de autorización"""
-    APROBADO = "aprobado"
-    RECHAZADO = "rechazado"
-    PENDIENTE = "pendiente"
+    aprobado = "aprobado"
+    rechazado = "rechazado"
+    pendiente = "pendiente"
 
 
-class AutorizacionRetiro(BaseModel):
+class AutorizacionRetiro(Base):
     """
     Modelo de Autorización de Retiro
     Representa las autorizaciones para retiros tempranos
@@ -26,7 +26,7 @@ class AutorizacionRetiro(BaseModel):
     
     # Relaciones
     persona_decidio = relationship("Persona", foreign_keys=[decidido_por])
-    solicitudes = relationship("SolicitudRetiro", back_populates="autorizacion")
+    solicitud = relationship("SolicitudRetiro", back_populates="autorizacion", uselist=False)  # Relación 1:1
     
     def __repr__(self):
         return f"<AutorizacionRetiro(id={self.id_autorizacion}, decision={self.decision})>"

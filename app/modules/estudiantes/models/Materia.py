@@ -1,17 +1,17 @@
 from sqlalchemy import Column, Integer, String, Enum
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 import enum
 
 
 class NivelEnum(str, enum.Enum):
     """Enumeración para niveles educativos"""
-    INICIAL = "inicial"
-    PRIMARIA = "primaria"
-    SECUNDARIA = "secundaria"
+    inicial = "inicial"
+    primaria = "primaria"
+    secundaria = "secundaria"
 
 
-class Materia(BaseModel):
+class Materia(Base):
     """
     Modelo de Materia
     Representa las materias académicas

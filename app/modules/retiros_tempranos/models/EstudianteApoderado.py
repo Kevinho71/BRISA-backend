@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 
 
-class EstudianteApoderado(BaseModel):
+class EstudianteApoderado(Base):
     """
     Modelo de Estudiante-Apoderado (tabla intermedia)
     Relación N:N entre estudiantes y apoderados con información adicional

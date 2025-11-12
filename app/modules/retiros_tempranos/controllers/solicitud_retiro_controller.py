@@ -5,7 +5,8 @@ from app.modules.retiros_tempranos.services.solicitud_retiro_service import Soli
 from app.modules.retiros_tempranos.dto import (
     SolicitudRetiroCreateDTO,
     SolicitudRetiroUpdateDTO,
-    SolicitudRetiroResponseDTO
+    SolicitudRetiroResponseDTO,
+    EstadoSolicitudEnum
 )
 from app.core.extensions import get_db
 from app.modules.retiros_tempranos.repositories import SolicitudRetiroRepository
@@ -23,8 +24,25 @@ async def create_solicitud(
     solicitud_dto: SolicitudRetiroCreateDTO,
     service: SolicitudRetiroService = Depends(get_solicitud_retiro_service)
 ) -> SolicitudRetiroResponseDTO:
-    """Crear una nueva solicitud de retiro"""
+    """Crear una nueva solicitud de retiro (estado inicial: recibida, automáticamente)"""
     return service.create_solicitud(solicitud_dto)
+
+
+@router.get("/", response_model=List[SolicitudRetiroResponseDTO])
+async def get_all_solicitudes(
+    service: SolicitudRetiroService = Depends(get_solicitud_retiro_service)
+) -> List[SolicitudRetiroResponseDTO]:
+    """Obtener todas las solicitudes de retiro"""
+    return service.get_all_solicitudes()
+
+
+@router.get("/estado/{estado}", response_model=List[SolicitudRetiroResponseDTO])
+async def get_solicitudes_by_estado(
+    estado: EstadoSolicitudEnum,
+    service: SolicitudRetiroService = Depends(get_solicitud_retiro_service)
+) -> List[SolicitudRetiroResponseDTO]:
+    """Obtener solicitudes por estado (recibida, derivada, aprobada, rechazada, cancelada)"""
+    return service.get_solicitudes_by_estado(estado)
 
 
 @router.get("/{solicitud_id}", response_model=SolicitudRetiroResponseDTO)
@@ -36,14 +54,6 @@ async def get_solicitud(
     return service.get_solicitud(solicitud_id)
 
 
-@router.get("/", response_model=List[SolicitudRetiroResponseDTO])
-async def get_all_solicitudes(
-    service: SolicitudRetiroService = Depends(get_solicitud_retiro_service)
-) -> List[SolicitudRetiroResponseDTO]:
-    """Obtener todas las solicitudes de retiro"""
-    return service.get_all_solicitudes()
-
-
 @router.get("/estudiante/{estudiante_id}", response_model=List[SolicitudRetiroResponseDTO])
 async def get_solicitudes_by_estudiante(
     estudiante_id: int,
@@ -53,13 +63,13 @@ async def get_solicitudes_by_estudiante(
     return service.get_solicitudes_by_estudiante(estudiante_id)
 
 
-@router.get("/apoderado/{apoderado_id}", response_model=List[SolicitudRetiroResponseDTO])
-async def get_solicitudes_by_apoderado(
-    apoderado_id: int,
+@router.post("/{solicitud_id}/derivar", response_model=SolicitudRetiroResponseDTO)
+async def derivar_solicitud(
+    solicitud_id: int,
     service: SolicitudRetiroService = Depends(get_solicitud_retiro_service)
-) -> List[SolicitudRetiroResponseDTO]:
-    """Obtener todas las solicitudes de retiro de un apoderado"""
-    return service.get_solicitudes_by_apoderado(apoderado_id)
+) -> SolicitudRetiroResponseDTO:
+    """RECEPCIONISTA: Derivar solicitud al regente (recibida → derivada, automático sin body)"""
+    return service.derivar_solicitud(solicitud_id)
 
 
 @router.put("/{solicitud_id}", response_model=SolicitudRetiroResponseDTO)

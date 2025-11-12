@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import HTTPException
 from app.modules.retiros_tempranos.models.RegistroSalida import RegistroSalida
-from app.modules.retiros_tempranos.repositories import IRegistroSalidaRepository
+from app.modules.retiros_tempranos.repositories import IRegistroSalidaRepository, ISolicitudRetiroRepository
 from app.modules.retiros_tempranos.dto import (
     RegistroSalidaCreateDTO,
     RegistroSalidaUpdateDTO,
@@ -11,13 +11,31 @@ from app.shared.services.base_services import BaseService
 
 
 class RegistroSalidaService(BaseService):
-    def __init__(self, repository: IRegistroSalidaRepository):
+    def __init__(self, repository: IRegistroSalidaRepository, solicitud_repository: ISolicitudRetiroRepository = None):
         self.repository = repository
+        self.solicitud_repository = solicitud_repository
 
     def create_registro(self, registro_dto: RegistroSalidaCreateDTO) -> RegistroSalidaResponseDTO:
-        """Crear un nuevo registro de salida"""
+        """Crear un nuevo registro de salida (solo para solicitudes aprobadas)"""
+        
+        # Obtener la solicitud y validar
+        if not self.solicitud_repository:
+            raise HTTPException(status_code=500, detail="Repositorio de solicitudes no configurado")
+        
+        solicitud = self.solicitud_repository.get_by_id(registro_dto.id_solicitud)
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="Solicitud de retiro no encontrada")
+        
+        # Validar que la solicitud esté aprobada
+        if solicitud.estado != 'aprobada':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Solo se pueden registrar salidas para solicitudes aprobadas. Estado actual: '{solicitud.estado}'"
+            )
+        
+        # Crear el registro con el id_estudiante de la solicitud
         registro = RegistroSalida(
-            id_estudiante=registro_dto.id_estudiante,
+            id_estudiante=solicitud.id_estudiante,  # Obtenido automáticamente de la solicitud
             id_solicitud=registro_dto.id_solicitud,
             fecha_hora_salida_real=registro_dto.fecha_hora_salida_real,
             fecha_hora_retorno_real=registro_dto.fecha_hora_retorno_real,

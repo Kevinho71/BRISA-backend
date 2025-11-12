@@ -53,6 +53,12 @@ class SolicitudRetiroRepository(ISolicitudRetiroRepository):
             SolicitudRetiro.fecha_creacion <= fecha_fin
         ).all()
     
+    def get_by_estado(self, estado: str) -> List[SolicitudRetiro]:
+        """Obtener solicitudes por estado"""
+        return self.db.query(SolicitudRetiro).filter(
+            SolicitudRetiro.estado == estado
+        ).all()
+    
     def update(self, id_solicitud: int, solicitud_data: dict) -> Optional[SolicitudRetiro]:
         """Actualizar una solicitud"""
         solicitud = self.get_by_id(id_solicitud)
@@ -66,6 +72,12 @@ class SolicitudRetiroRepository(ISolicitudRetiroRepository):
         self.db.commit()
         self.db.refresh(solicitud)
         return solicitud
+    
+    def get_by_autorizacion(self, id_autorizacion: int) -> Optional[SolicitudRetiro]:
+        """Obtener una solicitud por id_autorizacion"""
+        return self.db.query(SolicitudRetiro).filter(
+            SolicitudRetiro.id_autorizacion == id_autorizacion
+        ).first()
     
     def delete(self, id_solicitud: int) -> bool:
         """Eliminar una solicitud"""

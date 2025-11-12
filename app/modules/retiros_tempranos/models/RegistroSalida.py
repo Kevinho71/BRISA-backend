@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 
 
-class RegistroSalida(BaseModel):
+class RegistroSalida(Base):
     """
     Modelo de Registro de Salida
     Representa el registro de salidas efectivas de estudiantes

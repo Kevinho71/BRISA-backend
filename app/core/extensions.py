@@ -35,11 +35,10 @@ def init_extensions(app):
     
     # Si es Aiven o requiere SSL, configurar SSL
     if 'aivencloud.com' in database_url or 'ssl' in database_url.lower():
-        print("🔒 Conexión SSL detectada")
+        print("🔒 Conexión SSL REQUIRED detectada (Aiven Cloud)")
+        # PyMySQL requiere ssl como diccionario o True para SSL
         connect_args = {
-            'ssl': {
-                'ssl_disabled': False
-            }
+            'ssl': {'check_hostname': False, 'verify_mode': False}
         }
     
     # Crear engine de SQLAlchemy

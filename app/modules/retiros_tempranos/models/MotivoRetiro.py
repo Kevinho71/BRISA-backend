@@ -1,17 +1,17 @@
 from sqlalchemy import Column, Integer, String, Boolean, Enum
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 import enum
 
 
 class SeveridadEnum(str, enum.Enum):
     """Enumeración para niveles de severidad de motivos"""
-    LEVE = "leve"
-    GRAVE = "grave"
-    MUY_GRAVE = "muy grave"
+    leve = "leve"
+    grave = "grave"
+    muy_grave = "muy grave"
 
 
-class MotivoRetiro(BaseModel):
+class MotivoRetiro(Base):
     """
     Modelo de Motivo de Retiro
     Catálogo de motivos para retiros tempranos

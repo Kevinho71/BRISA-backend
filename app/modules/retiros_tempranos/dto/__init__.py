@@ -43,7 +43,8 @@ from .registro_salida_dto import (
 from .solicitud_retiro_dto import (
     SolicitudRetiroCreateDTO,
     SolicitudRetiroUpdateDTO,
-    SolicitudRetiroResponseDTO
+    SolicitudRetiroResponseDTO,
+    EstadoSolicitudEnum
 )
 
 from .solicitud_retiro_detalle_dto import (
@@ -89,6 +90,7 @@ __all__ = [
     "SolicitudRetiroCreateDTO",
     "SolicitudRetiroUpdateDTO",
     "SolicitudRetiroResponseDTO",
+    "EstadoSolicitudEnum",
     
     # Solicitud Retiro Detalle
     "SolicitudRetiroDetalleCreateDTO",

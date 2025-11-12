@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 
 
-class Estudiante(BaseModel):
+class Estudiante(Base):
     """
     Modelo de Estudiante
     Representa la entidad estudiante con información personal y de contacto

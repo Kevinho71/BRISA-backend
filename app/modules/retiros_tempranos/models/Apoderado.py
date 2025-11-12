@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
+from app.core.extensions import Base
 
-class Apoderado(BaseModel):
+class Apoderado(Base):
     """
     Modelo de Apoderado
     Representa a los apoderados/tutores de los estudiantes

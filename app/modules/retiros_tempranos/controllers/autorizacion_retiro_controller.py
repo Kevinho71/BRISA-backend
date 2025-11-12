@@ -8,14 +8,15 @@ from app.modules.retiros_tempranos.dto import (
     AutorizacionRetiroResponseDTO
 )
 from app.core.extensions import get_db
-from app.modules.retiros_tempranos.repositories import AutorizacionRetiroRepository
+from app.modules.retiros_tempranos.repositories import AutorizacionRetiroRepository, SolicitudRetiroRepository
 
 router = APIRouter(prefix="/api/autorizaciones-retiro", tags=["autorizaciones-retiro"])
 
 
 def get_autorizacion_retiro_service(db: Session = Depends(get_db)) -> AutorizacionRetiroService:
     repo = AutorizacionRetiroRepository(db)
-    return AutorizacionRetiroService(repo)
+    solicitud_repo = SolicitudRetiroRepository(db)
+    return AutorizacionRetiroService(repo, solicitud_repo)
 
 
 @router.post("/", response_model=AutorizacionRetiroResponseDTO, status_code=status.HTTP_201_CREATED)

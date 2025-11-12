@@ -43,6 +43,16 @@ class ISolicitudRetiroRepository(ABC):
         pass
     
     @abstractmethod
+    def get_by_estado(self, estado: str) -> List[SolicitudRetiro]:
+        """Obtener solicitudes por estado"""
+        pass
+    
+    @abstractmethod
+    def get_by_autorizacion(self, id_autorizacion: int) -> Optional[SolicitudRetiro]:
+        """Obtener una solicitud por id_autorizacion"""
+        pass
+    
+    @abstractmethod
     def update(self, id_solicitud: int, solicitud_data: dict) -> Optional[SolicitudRetiro]:
         """Actualizar una solicitud"""
         pass

@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel 
+from app.core.extensions import Base
 
-class SolicitudRetiroDetalle(BaseModel):
+class SolicitudRetiroDetalle(Base):
     """
     Modelo de Detalle de Solicitud de Retiro
     Representa los detalles por materia/curso de una solicitud de retiro

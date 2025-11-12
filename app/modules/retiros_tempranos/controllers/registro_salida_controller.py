@@ -8,14 +8,15 @@ from app.modules.retiros_tempranos.dto import (
     RegistroSalidaResponseDTO
 )
 from app.core.extensions import get_db
-from app.modules.retiros_tempranos.repositories import RegistroSalidaRepository
+from app.modules.retiros_tempranos.repositories import RegistroSalidaRepository, SolicitudRetiroRepository
 
 router = APIRouter(prefix="/api/registros-salida", tags=["registros-salida"])
 
 
 def get_registro_salida_service(db: Session = Depends(get_db)) -> RegistroSalidaService:
     repo = RegistroSalidaRepository(db)
-    return RegistroSalidaService(repo)
+    solicitud_repo = SolicitudRetiroRepository(db)
+    return RegistroSalidaService(repo, solicitud_repo)
 
 
 @router.post("/", response_model=RegistroSalidaResponseDTO, status_code=status.HTTP_201_CREATED)

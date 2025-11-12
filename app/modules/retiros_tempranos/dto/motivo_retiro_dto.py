@@ -5,9 +5,9 @@ from enum import Enum
 
 class SeveridadEnum(str, Enum):
     """Niveles de severidad para motivos de retiro"""
-    LEVE = "leve"
-    GRAVE = "grave"
-    MUY_GRAVE = "muy grave"
+    leve = "leve"
+    grave = "grave"
+    muy_grave = "muy grave"
 
 
 class MotivoRetiroCreateDTO(BaseModel):

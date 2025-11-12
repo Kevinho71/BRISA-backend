@@ -27,15 +27,6 @@ async def create_motivo(
     return service.create_motivo(motivo_dto)
 
 
-@router.get("/{motivo_id}", response_model=MotivoRetiroResponseDTO)
-async def get_motivo(
-    motivo_id: int,
-    service: MotivoRetiroService = Depends(get_motivo_retiro_service)
-) -> MotivoRetiroResponseDTO:
-    """Obtener un motivo de retiro por ID"""
-    return service.get_motivo(motivo_id)
-
-
 @router.get("/", response_model=List[MotivoRetiroResponseDTO])
 async def get_all_motivos(
     skip: int = 0,
@@ -59,11 +50,20 @@ async def get_motivos_by_severidad(
     severidad: str,
     service: MotivoRetiroService = Depends(get_motivo_retiro_service)
 ) -> List[MotivoRetiroResponseDTO]:
-    """Obtener motivos de retiro por nivel de severidad"""
+    """Obtener motivos de retiro por nivel de severidad (alta, media, baja)"""
     return service.get_motivos_by_severidad(severidad)
 
 
-@router.put("/{motivo_id}", response_model=MotivoRetiroResponseDTO)
+@router.get("/{motivo_id:int}", response_model=MotivoRetiroResponseDTO)
+async def get_motivo(
+    motivo_id: int,
+    service: MotivoRetiroService = Depends(get_motivo_retiro_service)
+) -> MotivoRetiroResponseDTO:
+    """Obtener un motivo de retiro por ID"""
+    return service.get_motivo(motivo_id)
+
+
+@router.put("/{motivo_id:int}", response_model=MotivoRetiroResponseDTO)
 async def update_motivo(
     motivo_id: int,
     motivo_dto: MotivoRetiroUpdateDTO,
@@ -73,7 +73,7 @@ async def update_motivo(
     return service.update_motivo(motivo_id, motivo_dto)
 
 
-@router.delete("/{motivo_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{motivo_id:int}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_motivo(
     motivo_id: int,
     service: MotivoRetiroService = Depends(get_motivo_retiro_service)
