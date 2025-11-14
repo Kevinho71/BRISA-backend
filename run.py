@@ -4,13 +4,14 @@ Punto de entrada principal para la aplicación BRISA Backend
 
 import os
 import uvicorn
-from app import create_app
+# from app import create_app
+from app.main import app  # Usar el app de main.py directamente
 
 # Obtener configuración del entorno
 config_name = os.environ.get('ENV', 'development')
 
 # Crear aplicación
-app = create_app(config_name)
+# app = create_app(config_name)  # Comentado: usar app de main.py
 
 if __name__ == '__main__':
     # Configuración para desarrollo

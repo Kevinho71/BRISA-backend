@@ -12,12 +12,16 @@ from app.modules.usuarios.controllers import usuario_controller
 from app.modules.auth.controllers import auth_controller
 from app.modules.bitacora.controllers import bitacora_controller
 from app.modules.esquelas.controllers import esquela_controller, codigo_esquela_controller
-from app.modules.administracion.controllers import curso_controller, estudiante_controller, persona_controller
+from app.modules.administracion.controllers import curso_controller, estudiante_controller
+from app.modules.administracion.controllers.persona_controller import (
+    estudiantes_router, profesores_router, registradores_router
+)
 #from app.modules.reportes.controllers import reportes_controller
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+# from app.core.extensions import router as auth_router  # Comentado: usar auth_controller en su lugar
 
 load_dotenv()
 
@@ -54,7 +58,9 @@ app.include_router(esquela_controller.router, prefix="/api")
 app.include_router(codigo_esquela_controller.router, prefix="/api")
 app.include_router(curso_controller.router, prefix="/api")
 app.include_router(estudiante_controller.router, prefix="/api")
-app.include_router(persona_controller.router, prefix="/api")
+app.include_router(estudiantes_router, prefix="/api")
+app.include_router(profesores_router, prefix="/api")
+app.include_router(registradores_router, prefix="/api")
 #app.include_router(reportes_controller.router, prefix="/api/reportes", tags=["Reportes"])
 
 @app.get("/")
