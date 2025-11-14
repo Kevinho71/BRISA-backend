@@ -11,6 +11,8 @@ from app.shared.exceptions.custom_exceptions import register_exception_handlers
 from app.modules.usuarios.controllers import usuario_controller
 from app.modules.auth.controllers import auth_controller
 from app.modules.bitacora.controllers import bitacora_controller
+from app.modules.esquelas.controllers import esquela_controller, codigo_esquela_controller
+from app.modules.administracion.controllers import curso_controller, estudiante_controller, persona_controller
 #from app.modules.reportes.controllers import reportes_controller
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
@@ -48,6 +50,11 @@ register_exception_handlers(app)
 app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
+app.include_router(esquela_controller.router, prefix="/api")
+app.include_router(codigo_esquela_controller.router, prefix="/api")
+app.include_router(curso_controller.router, prefix="/api")
+app.include_router(estudiante_controller.router, prefix="/api")
+app.include_router(persona_controller.router, prefix="/api")
 #app.include_router(reportes_controller.router, prefix="/api/reportes", tags=["Reportes"])
 
 @app.get("/")
