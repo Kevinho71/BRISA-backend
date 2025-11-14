@@ -1,5 +1,5 @@
 # app/modules/esquelas/models/esquela_models.py
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Table, Date
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -24,20 +24,24 @@ class Esquela(Base):
     __tablename__ = "esquelas"
 
     id_esquela = Column("id_esquela", Integer, primary_key=True, index=True)
-    # Campos opcionales para asignar la esquela después
-    # TODO: Agregar ForeignKey cuando los módulos estudiantes, personas y usuarios estén implementados
-    id_estudiante = Column(Integer, nullable=True)  # ForeignKey("estudiantes.id_estudiante")
-    id_profesor = Column(Integer, nullable=True)  # ForeignKey("personas.id_persona")
-    id_registrador = Column(Integer, nullable=True)  # ForeignKey("usuarios.id_usuario")
-    fecha = Column(DateTime, nullable=False)
+    id_estudiante = Column(Integer, ForeignKey("estudiantes.id_estudiante"), nullable=False, index=True)
+    id_profesor = Column(Integer, ForeignKey("personas.id_persona"), nullable=False, index=True)
+    id_registrador = Column(Integer, ForeignKey("personas.id_persona"), nullable=False)
+    fecha = Column(Date, nullable=False, index=True)
     observaciones = Column(Text)
 
+    # Relaciones
+    estudiante = relationship("Estudiante", back_populates="esquelas")
+    profesor = relationship("Persona", foreign_keys=[id_profesor], back_populates="esquelas_profesor")
+    registrador = relationship("Persona", foreign_keys=[id_registrador], back_populates="esquelas_registrador")
+    
     # Relación hacia códigos usando la tabla intermedia
     codigos = relationship(
         "CodigoEsquela",
         secondary="esquelas_codigos",
         back_populates="esquelas"
     )
+
 
 
 class EsquelaCodigo(Base):

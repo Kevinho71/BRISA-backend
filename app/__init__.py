@@ -64,6 +64,18 @@ def register_routes(app):
     app.include_router(esquelas_router, prefix="/api", tags=["Esquelas"])
     app.include_router(codigos_esquelas_router, prefix="/api", tags=["Códigos de Esquela"])
     
+    # Cursos
+    from app.modules.administracion.controllers.curso_controller import router as cursos_router
+    app.include_router(cursos_router, prefix="/api", tags=["Courses"])
+    
+    # Estudiantes (consultas de esquelas)
+    from app.modules.administracion.controllers.estudiante_controller import router as estudiantes_router
+    app.include_router(estudiantes_router, prefix="/api", tags=["Students"])
+    
+    # Reportes
+    from app.modules.reportes.controllers.reporte_controller import router as reportes_router
+    app.include_router(reportes_router, prefix="/api", tags=["Reports"])
+    
     # Administración (Personas)
     from app.modules.administracion import (
         estudiantes_router,
@@ -87,5 +99,5 @@ def register_routes(app):
 # Modelos de Esquelas
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela
 
-# Modelos de Administración (Personas)
-from app.modules.administracion.models.persona_models import Estudiante, Persona
+# Modelos de Administración (Personas, Cursos, Estudiantes)
+from app.modules.administracion.models.persona_models import Estudiante, Persona, Curso, Materia
