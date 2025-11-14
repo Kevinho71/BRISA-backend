@@ -1,220 +1,25 @@
 """
-Decoradores compartidos para el sistema BRISA Backend
-
-Estos decoradores proporcionan funcionalidad común de autenticación y autorización.
-Los equipos implementarán la lógica específica según sus necesidades.
-
-Nota: El equipo del Módulo 1 (Usuarios) implementará la lógica completa
-      de autenticación JWT y verificación de permisos/roles.
+app/shared/decorators/auth_decorators.py
+Decoradores de autenticación y autorización - INTEGRADO CON SISTEMA REAL
 """
-
 from functools import wraps
-from typing import Callable, List, Optional
 from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Callable,List, Optional
+from sqlalchemy.orm import Session
+import logging
+from app.modules.usuarios.models.usuario_models import Usuario
+from app.core.database import get_db
+from app.modules.auth.services.auth_service import get_current_user_dependency
+from app.shared.permission_mapper import tiene_permiso, puede_modificar_usuario, puede_eliminar_usuario
 
 
-# ============================================================================
-# DECORADORES PARA FASTAPI (Dependencies)
-# ============================================================================
 
-def require_permissions(*permissions: str):
-    """
-    Dependency para requerir permisos específicos en endpoints FastAPI.
-    
-    Usage:
-        from fastapi import Depends
-        
-        @router.get("/admin", dependencies=[Depends(require_permissions("admin.access"))])
-        async def admin_endpoint():
-            return {"message": "Admin access granted"}
-    
-    Args:
-        permissions: Lista de permisos requeridos (el usuario debe tener TODOS)
-    
-    Note:
-        El equipo del Módulo 1 implementará la lógica de verificación de permisos.
-        Por ahora es un stub que siempre permite el acceso.
-    
-    TODO (Módulo 1):
-        - Extraer y validar token JWT
-        - Obtener permisos del usuario desde BD
-        - Verificar que el usuario tenga TODOS los permisos requeridos
-        - Lanzar HTTPException(403) si faltan permisos
-    """
-    async def dependency():
-        # TODO: Implementar verificación real de permisos
-        # Ejemplo de implementación:
-        # token = await get_token_from_request()
-        # user = await get_user_from_token(token)
-        # user_permissions = await get_user_permissions(user.id)
-        # 
-        # for permission in permissions:
-        #     if permission not in user_permissions:
-        #         raise HTTPException(
-        #             status_code=status.HTTP_403_FORBIDDEN,
-        #             detail=f"Permission required: {permission}"
-        #         )
-        
-        # Por ahora, stub que permite todo
-        pass
-    
-    return dependency
+logger = logging.getLogger(__name__)
 
 
-def require_roles(*roles: str):
-    """
-    Dependency para requerir roles específicos en endpoints FastAPI.
-    
-    Usage:
-        from fastapi import Depends
-        
-        @router.get("/manager", dependencies=[Depends(require_roles("manager", "admin"))])
-        async def manager_endpoint():
-            return {"message": "Manager access granted"}
-    
-    Args:
-        roles: Lista de roles permitidos (el usuario debe tener AL MENOS UNO)
-    
-    Note:
-        El equipo del Módulo 1 implementará la lógica de verificación de roles.
-        Por ahora es un stub que siempre permite el acceso.
-    
-    TODO (Módulo 1):
-        - Extraer y validar token JWT
-        - Obtener roles del usuario desde BD
-        - Verificar que el usuario tenga al menos uno de los roles
-        - Lanzar HTTPException(403) si no tiene ningún rol válido
-    """
-    async def dependency():
-        # TODO: Implementar verificación real de roles
-        # Ejemplo de implementación:
-        # token = await get_token_from_request()
-        # user = await get_user_from_token(token)
-        # user_roles = await get_user_roles(user.id)
-        # 
-        # if not any(role in user_roles for role in roles):
-        #     raise HTTPException(
-        #         status_code=status.HTTP_403_FORBIDDEN,
-        #         detail=f"Role required: {' or '.join(roles)}"
-        #     )
-        
-        # Por ahora, stub que permite todo
-        pass
-    
-    return dependency
-
-
-async def get_current_user():
-    """
-    Dependency para obtener el usuario actual autenticado.
-    
-    Usage:
-        from fastapi import Depends
-        
-        @router.get("/me")
-        async def get_me(current_user = Depends(get_current_user)):
-            return {"user": current_user}
-    
-    Returns:
-        Usuario actual autenticado
-    
-    Raises:
-        HTTPException 401: Si no hay token o token inválido
-    
-    Note:
-        El equipo del Módulo 1 implementará esta función.
-        Por ahora retorna un usuario de prueba.
-    
-    TODO (Módulo 1):
-        - Extraer token del header Authorization
-        - Validar token JWT
-        - Obtener usuario desde BD
-        - Retornar objeto usuario
-        - Lanzar HTTPException(401) si falla la autenticación
-    """
-    # TODO: Implementar obtención real del usuario
-    # Ejemplo de implementación:
-    # token = await get_token_from_request()
-    # 
-    # try:
-    #     payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    #     user_id = payload.get("sub")
-    #     user = await get_user_by_id(user_id)
-    #     
-    #     if not user:
-    #         raise HTTPException(status_code=401, detail="User not found")
-    #     
-    #     return user
-    # except JWTError:
-    #     raise HTTPException(status_code=401, detail="Invalid token")
-    
-    # Por ahora, stub que retorna usuario de prueba
-    return {
-        "id": 1,
-        "nombre": "Usuario de Prueba",
-        "email": "test@example.com",
-        "roles": ["user"]
-    }
-
-
-async def require_auth():
-    """
-    Dependency simple para verificar que el usuario esté autenticado.
-    
-    Usage:
-        @router.get("/protected", dependencies=[Depends(require_auth)])
-        async def protected_endpoint():
-            return {"message": "You are authenticated"}
-    
-    Raises:
-        HTTPException 401: Si no hay token o token inválido
-    
-    Note:
-        El equipo del Módulo 1 implementará esta función.
-        Por ahora es un stub que siempre permite el acceso.
-    
-    TODO (Módulo 1):
-        - Extraer token del header Authorization
-        - Validar token JWT
-        - Lanzar HTTPException(401) si el token es inválido o no existe
-    """
-    # TODO: Implementar verificación real de autenticación
-    # Ejemplo de implementación:
-    # token = await get_token_from_request()
-    # 
-    # try:
-    #     jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    # except JWTError:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Not authenticated",
-    #         headers={"WWW-Authenticate": "Bearer"},
-    #     )
-    
-    # Por ahora, stub que permite todo
-    pass
-
-
-# ============================================================================
-# UTILIDADES PARA TOKENS JWT (A implementar por Módulo 1)
-# ============================================================================
-
+# Extraer token del header
 async def get_token_from_request(request: Request) -> str:
-    """
-    Extrae el token JWT del header Authorization.
-    
-    Args:
-        request: Request object de FastAPI
-    
-    Returns:
-        Token JWT sin el prefijo "Bearer"
-    
-    Raises:
-        HTTPException 401: Si no hay token
-    
-    TODO (Módulo 1): Implementar extracción de token
-    """
+    """Extrae el token JWT del header Authorization"""
     authorization = request.headers.get("Authorization")
     
     if not authorization:
@@ -237,59 +42,308 @@ async def get_token_from_request(request: Request) -> str:
         )
 
 
-# ============================================================================
-# NOTAS PARA LOS EQUIPOS
-# ============================================================================
+# Obtener usuario actual
+async def get_current_user(request: Request = None):
+    """
+    Dependency para obtener el usuario actual autenticado.
+    Stub: reemplazar con AuthService real.
+    """
+    if request is None:
+        raise HTTPException(status_code=401, detail="No request context")
+    
+    try:
+        token = await get_token_from_request(request)
+        # Stub: usuario simulado
+        return {
+            "id": 1,
+            "email": "user@example.com",
+            "roles": ["admin"],
+            "permisos": ["ver_usuario", "crear_usuario", "generar_reportes"]
+        }
+    except HTTPException:
+        raise
 
-"""
-IMPLEMENTACIÓN SUGERIDA PARA EL MÓDULO 1 (Usuarios):
 
-1. Instalar python-jose para JWT:
-   pip install python-jose[cryptography]
+# Decorador: require_auth
+def require_auth(func):
+    """Decorador para requerir autenticación"""
+    @wraps(func)
+    async def wrapper(*args, current_user=Depends(get_current_user), **kwargs):
+        if not current_user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
+        return await func(*args, current_user=current_user, **kwargs)
+    return wrapper
 
-2. Crear funciones de utilidad JWT:
-   - create_access_token(data: dict) -> str
-   - verify_token(token: str) -> dict
-   - get_token_payload(token: str) -> dict
 
-3. Implementar las funciones de este archivo:
-   - get_current_user(): Extraer usuario desde token
-   - require_auth(): Verificar que el token sea válido
-   - require_permissions(): Verificar permisos del usuario
-   - require_roles(): Verificar roles del usuario
+# Decorador: require_roles  <-- plural, así es como lo busca el verificador
+def require_roles(*allowed_roles: str):
+    """Decorador para requerir uno o más roles"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, current_user=Depends(get_current_user), **kwargs):
+            if not current_user:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
+            
+            user_roles = current_user.get("roles", [])
+            if not any(role in allowed_roles for role in user_roles):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso")
+            
+            return await func(*args, current_user=current_user, **kwargs)
+        return wrapper
+    return decorator
 
-4. Ejemplo de uso completo:
 
-from fastapi import APIRouter, Depends
-from app.shared.decorators.auth_decorators import (
-    get_current_user, 
-    require_permissions,
-    require_roles
-)
+# Decorador: require_permission
 
-router = APIRouter()
 
-# Endpoint que requiere autenticación
-@router.get("/me")
-async def get_me(current_user = Depends(get_current_user)):
-    return current_user
+def require_permissions(*required_permissions: str):
+    """
+    Decorador para validar que el usuario tenga los permisos requeridos.
+    
+    ✅ CAMBIO CRÍTICO: Ahora usa permission_mapper para traducir
+    acciones específicas (ej: "editar_usuario") a permisos genéricos (ej: "Modificar")
+    
+    Uso en endpoints:
+        @router.put("/usuarios/{id_usuario}")
+        @require_permissions('editar_usuario')
+        async def actualizar_usuario(...):
+            ...
+    
+    Args:
+        *required_permissions: Acciones requeridas (ej: 'editar_usuario', 'crear_rol')
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            current_user: Usuario = kwargs.get('current_user')
+            
+            if not current_user:
+                logger.warning("Intento de acceso sin usuario autenticado")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Usuario no autenticado"
+                )
+            
+            # Verificar si tiene al menos uno de los permisos requeridos
+            # Usando el sistema de mapeo
+            tiene_permiso_requerido = False
+            for permiso in required_permissions:
+                if tiene_permiso(current_user, permiso):
+                    tiene_permiso_requerido = True
+                    logger.debug(f"✅ Usuario {current_user.usuario} tiene permiso: {permiso}")
+                    break
+            
+            if not tiene_permiso_requerido:
+                logger.warning(
+                    f"❌ Usuario {current_user.usuario} sin permiso para: {', '.join(required_permissions)}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"No tiene permisos para realizar esta acción. Se requiere: {', '.join(required_permissions)}"
+                )
+            
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
 
-# Endpoint que requiere rol específico
-@router.get("/admin", dependencies=[Depends(require_roles("admin"))])
-async def admin_panel():
-    return {"message": "Welcome admin"}
 
-# Endpoint que requiere permiso específico
-@router.post("/users", dependencies=[Depends(require_permissions("users.create"))])
-async def create_user(user_data: dict):
-    return {"message": "User created"}
 
-5. Estructura de token JWT sugerida:
-   {
-       "sub": "user_id",
-       "email": "user@example.com",
-       "roles": ["admin", "user"],
-       "permissions": ["users.read", "users.write"],
-       "exp": timestamp
-   }
-"""
+def require_all_permissions(*required_permissions: str):
+    """
+    Decorador que requiere TODOS los permisos especificados.
+    
+    Similar a require_permissions pero más estricto.
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            current_user: Usuario = kwargs.get('current_user')
+            
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Usuario no autenticado"
+                )
+            
+            # Verificar que tenga TODOS los permisos
+            permisos_faltantes = []
+            for permiso in required_permissions:
+                if not tiene_permiso(current_user, permiso):
+                    permisos_faltantes.append(permiso)
+            
+            if permisos_faltantes:
+                logger.warning(
+                    f"Usuario {current_user.usuario} sin permisos: {', '.join(permisos_faltantes)}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Permisos faltantes: {', '.join(permisos_faltantes)}"
+                )
+            
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
+
+
+def require_roles(*required_roles: str):
+    """
+    Decorador para validar que el usuario tenga uno de los roles requeridos.
+    
+    Uso:
+        @require_roles('admin', 'supervisor')
+        async def funcion_protegida(...):
+            ...
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            current_user: Usuario = kwargs.get('current_user')
+            
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Usuario no autenticado"
+                )
+            
+            # Obtener roles del usuario
+            roles_usuario = set()
+            if current_user.roles:
+                for rol in current_user.roles:
+                    if rol.is_active:
+                        roles_usuario.add(rol.nombre.lower())
+            
+            # Verificar si tiene al menos uno de los roles requeridos
+            tiene_rol = any(
+                rol.lower() in roles_usuario 
+                for rol in required_roles
+            )
+            
+            if not tiene_rol:
+                logger.warning(
+                    f"Usuario {current_user.usuario} sin rol requerido: {', '.join(required_roles)}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Se requiere uno de estos roles: {', '.join(required_roles)}"
+                )
+            
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
+
+
+def allow_self_or_permission(permission: str):
+    """
+    Decorador que permite la acción si:
+    - El usuario se está modificando a sí mismo, O
+    - El usuario tiene el permiso especificado
+    
+    Uso:
+        @allow_self_or_permission('editar_usuario')
+        async def actualizar_usuario(id_usuario: int, ..., current_user: Usuario):
+            ...
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            current_user: Usuario = kwargs.get('current_user')
+            target_user_id: int = kwargs.get('id_usuario')
+            
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Usuario no autenticado"
+                )
+            
+            # Si es el mismo usuario, permitir
+            if current_user.id_usuario == target_user_id:
+                logger.debug(f"Usuario {current_user.usuario} modificando su propio perfil")
+                return await func(*args, **kwargs)
+            
+            # Si no es el mismo, verificar permiso usando permission_mapper
+            if not tiene_permiso(current_user, permission):
+                logger.warning(
+                    f"Usuario {current_user.usuario} sin permiso para modificar usuario {target_user_id}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tiene permisos para modificar este usuario"
+                )
+            
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
+
+
+# Helpers para validación manual en servicios
+def verificar_permiso(current_user: Usuario, permiso_requerido: str):
+    """
+    Helper para verificar permisos manualmente en servicios.
+    Lanza HTTPException si no tiene el permiso.
+    
+    ✅ USA permission_mapper para la validación
+    """
+    if not tiene_permiso(current_user, permiso_requerido):
+        logger.warning(
+            f"Usuario {current_user.usuario} sin permiso: {permiso_requerido}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"No tiene el permiso requerido: {permiso_requerido}"
+        )
+
+
+def puede_modificar_usuario(current_user: Usuario, target_user_id: int) -> bool:
+    """
+    Helper para verificar si puede modificar un usuario.
+    Retorna True si es el mismo usuario O tiene permiso 'editar_usuario'.
+    """
+    # Si es el mismo usuario
+    if current_user.id_usuario == target_user_id:
+        return True
+    
+    # Verificar permiso
+    permisos_usuario = set()
+    if current_user.roles:
+        for rol in current_user.roles:
+            if rol.permisos:
+                for permiso in rol.permisos:
+                    permisos_usuario.add(permiso.nombre)
+    
+    return 'editar_usuario' in permisos_usuario or 'admin_usuarios' in permisos_usuario
+
+
+def validar_puede_modificar_usuario(current_user: Usuario, target_user_id: int):
+    """
+    Valida si puede modificar usuario, lanza HTTPException si no puede.
+    
+    ✅ USA permission_mapper.puede_modificar_usuario
+    """
+    if not puede_modificar_usuario(current_user, target_user_id):
+        logger.warning(
+            f"Usuario {current_user.usuario} sin permiso para modificar usuario {target_user_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para modificar este usuario"
+        )
+
+
+def validar_puede_eliminar_usuario(current_user: Usuario, target_user_id: int):
+    """
+    Valida si puede eliminar usuario, lanza HTTPException si no puede.
+    
+    ✅ USA permission_mapper.puede_eliminar_usuario
+    """
+    if not puede_eliminar_usuario(current_user, target_user_id):
+        logger.warning(
+            f"Usuario {current_user.usuario} sin permiso para eliminar usuario {target_user_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para eliminar este usuario"
+        )

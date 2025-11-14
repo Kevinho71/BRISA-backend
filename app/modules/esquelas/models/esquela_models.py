@@ -1,7 +1,7 @@
 # app/modules/esquelas/models/esquela_models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Table, Date
 from sqlalchemy.orm import relationship
-from app.core.extensions import Base
+from app.core.database import Base
 
 
 class CodigoEsquela(Base):

@@ -1,0 +1,24 @@
+{
+  "name": "brisa-backend",
+  "version": "1.0.0",
+  "description": "Backend API REST desarrollado en FastAPI para el sistema de gestión institucional BRISA de la Universidad Católica Boliviana.  Arquitectura modular diseñada para desarrollo colaborativo entre múltiples equipos.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://GabMer@github.com/GabMer/BRISA-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GabMer/BRISA-backend/issues"
+  },
+  "homepage": "https://github.com/GabMer/BRISA-backend#readme"
+}

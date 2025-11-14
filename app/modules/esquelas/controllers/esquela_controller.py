@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import date
 
 # Fuente correcta del dependency de BD
-from app.core.extensions import get_db
+from app.core.database import get_db
 
 from app.modules.esquelas.services.esquela_service import EsquelaService
 from app.modules.esquelas.dto.esquela_dto import (

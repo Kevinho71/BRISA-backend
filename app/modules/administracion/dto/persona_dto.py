@@ -4,7 +4,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date
-
+from app.core.database import Base
 
 class EstudianteResponseDTO(BaseModel):
     """DTO para respuesta de estudiante"""

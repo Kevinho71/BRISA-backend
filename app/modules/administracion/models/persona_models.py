@@ -1,10 +1,8 @@
 # app/modules/administracion/models/persona_models.py
 """Modelos para estudiantes y personas (profesores/registradores)"""
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, Table
-from sqlalchemy.orm import relationship
-from app.core.extensions import Base
-
+from sqlalchemy import Column, Integer, String, Date, Text
+from app.core.database import Base
 
 # Tabla intermedia para relación muchos-a-muchos entre estudiantes y cursos
 estudiantes_cursos = Table(
@@ -59,7 +57,7 @@ class Estudiante(Base):
 class Persona(Base):
     """Modelo para personas (profesores y administrativos)"""
     __tablename__ = "personas"
-
+    __table_args__ = {'extend_existing': True} 
     id_persona = Column(Integer, primary_key=True, index=True)
     ci = Column(String(20), unique=True, nullable=False, index=True)
     nombres = Column(String(100), nullable=False)
