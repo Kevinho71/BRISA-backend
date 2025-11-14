@@ -1,12 +1,16 @@
 """Controlador (router) para el módulo de Esquelas."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 
 # Fuente correcta del dependency de BD
 from app.core.database import get_db
+from app.modules.auth.services.auth_service import get_current_user_dependency
+from app.modules.usuarios.models.usuario_models import Usuario
+from app.shared.decorators.auth_decorators import require_esquela_access, require_permissions
+from app.shared.permission_mapper import puede_ver_todas_esquelas
 
 from app.modules.esquelas.services.esquela_service import EsquelaService
 from app.modules.esquelas.dto.esquela_dto import (
@@ -24,7 +28,8 @@ router = APIRouter(prefix="/esquelas", tags=["Esquelas"])
 
 
 @router.get("/", response_model=EsquelaListResponseDTO)
-def listar_esquelas(
+@require_esquela_access(allow_owner=True)
+async def listar_esquelas(
     name: Optional[str] = Query(None, description="Filtrar por nombre del estudiante"),
     course: Optional[int] = Query(None, description="Filtrar por ID de curso"),
     type: Optional[str] = Query(None, description="Filtrar por tipo: 'reconocimiento' u 'orientacion'"),
@@ -34,10 +39,15 @@ def listar_esquelas(
     month: Optional[int] = Query(None, ge=1, le=12, description="Filtrar por mes (1-12)"),
     page: int = Query(1, ge=1, description="Número de página"),
     page_size: int = Query(10, ge=1, le=100, description="Tamaño de página"),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
     """
     Lista esquelas con filtros avanzados y paginación.
+    
+    **Permisos:**
+    - **Admin/Regente**: Ve todas las esquelas
+    - **Profesor**: Ve solo las esquelas que él asignó
     
     **Filtros disponibles:**
     - **name**: Busca por nombre, apellido paterno o materno del estudiante
@@ -65,7 +75,8 @@ def listar_esquelas(
         year=year,
         month=month,
         page=page,
-        page_size=page_size
+        page_size=page_size,
+        current_user=current_user
     )
 
 
@@ -133,25 +144,53 @@ def obtener_agregado_por_periodo(
 
 
 @router.get("/{id}", response_model=EsquelaResponseDTO)
-def obtener_esquela(id: int, db: Session = Depends(get_db)):
+@require_esquela_access(allow_owner=True)
+async def obtener_esquela(
+    id: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Obtiene una esquela específica por ID.
+    
+    **Permisos:**
+    - **Admin/Regente**: Puede ver cualquier esquela
+    - **Profesor**: Solo puede ver esquelas que él asignó
     """
-    return EsquelaService.obtener_esquela(db, id)
+    return EsquelaService.obtener_esquela(db, id, current_user=current_user)
 
 
-@router.post("/", response_model=EsquelaResponseDTO)
-def crear_esquela(esquela_data: EsquelaBaseDTO, db: Session = Depends(get_db)):
+@router.post("/", response_model=EsquelaResponseDTO, status_code=status.HTTP_201_CREATED)
+@require_permissions('crear_esquela')
+async def crear_esquela(
+    esquela_data: EsquelaBaseDTO,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Crea una nueva esquela.
+    
+    **Permisos:**
+    - **Admin/Regente**: Puede crear esquelas para cualquier profesor
+    - **Profesor**: Solo puede crear esquelas en su propio nombre
+    
+    **Nota**: El profesor solo puede asignar esquelas donde él sea el id_profesor.
     """
-    return EsquelaService.crear_esquela(db, esquela_data)
+    return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
 
 
 @router.delete("/{id}")
-def eliminar_esquela(id: int, db: Session = Depends(get_db)):
+@require_permissions('eliminar_esquela')
+async def eliminar_esquela(
+    id: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Elimina una esquela por ID.
+    
+    **Permisos:**
+    - Requiere permiso 'eliminar_esquela' (generalmente Admin/Regente)
     """
     return EsquelaService.eliminar_esquela(db, id)
 

@@ -18,6 +18,17 @@ class EsquelaRepository:
         ).all()
 
     @staticmethod
+    def get_by_profesor(db: Session, id_profesor: int) -> List[Esquela]:
+        """Obtiene todas las esquelas de un profesor específico"""
+        return db.query(Esquela).options(
+            joinedload(Esquela.codigos),
+            joinedload(Esquela.estudiante),
+            joinedload(Esquela.profesor)
+        ).filter(
+            Esquela.id_profesor == id_profesor
+        ).order_by(Esquela.fecha.desc()).all()
+
+    @staticmethod
     def get_by_id(db: Session, id: int):
         return db.query(Esquela).options(
             joinedload(Esquela.codigos),
@@ -36,17 +47,25 @@ class EsquelaRepository:
         year: Optional[int] = None,
         month: Optional[int] = None,
         page: int = 1,
-        page_size: int = 10
+        page_size: int = 10,
+        id_profesor: Optional[int] = None  # NUEVO: filtro por profesor
     ):
         """
         Obtiene esquelas con filtros avanzados y paginación
         NOTA: Filtrado por curso se hace a través de estudiantes_cursos
+        
+        Args:
+            id_profesor: Si se proporciona, filtra por profesor específico
         """
         query = db.query(Esquela).options(
             joinedload(Esquela.codigos),
             joinedload(Esquela.estudiante),
             joinedload(Esquela.profesor)
         )
+
+        # NUEVO: Filtro por profesor
+        if id_profesor:
+            query = query.filter(Esquela.id_profesor == id_profesor)
 
         # Filtro por nombre de estudiante
         if name:

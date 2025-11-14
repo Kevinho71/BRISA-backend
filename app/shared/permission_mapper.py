@@ -41,12 +41,22 @@ PERMISSION_MAP: Dict[str, List[str]] = {
     # Sistema
     "gestionar_sistema": ["Modificar", "Eliminar"],
     "ver_bitacora": ["Lectura"],
+    
+    # Esquelas - Permisos específicos
+    "ver_esquelas": ["Lectura"],
+    "crear_esquela": ["Agregar"],
+    "editar_esquela": ["Modificar"],
+    "eliminar_esquela": ["Eliminar"],
 }
 
 
 # ================ ROLES CON ACCESO TOTAL ================ 
 
 ADMIN_ROLES = ["Director", "Administrativo", "Admin"]  # ← Agregado "Admin"
+
+# Roles con permisos específicos para esquelas
+ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo"]
+ROLES_VER_PROPIAS_ESQUELAS = ["Profesor"]
 
 
 def tiene_permiso(usuario: Usuario, accion: str) -> bool:
@@ -253,3 +263,44 @@ def puede_eliminar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) ->
     
     # Verificar si tiene permiso específico
     return tiene_permiso(usuario_actual, "eliminar_usuario")
+
+
+def puede_ver_esquela(usuario: Usuario, id_profesor: int = None) -> bool:
+    """
+    Determina si el usuario puede ver una esquela específica.
+    
+    Args:
+        usuario: Usuario autenticado
+        id_profesor: ID del profesor que asignó la esquela (opcional)
+    
+    Returns:
+        bool: True si puede ver la esquela
+    """
+    if not usuario or not usuario.is_active:
+        return False
+    
+    # Administradores y roles especiales ven todo
+    for rol in usuario.roles:
+        if rol.is_active and rol.nombre in ROLES_VER_TODAS_ESQUELAS:
+            return True
+    
+    # Profesores solo ven sus propias esquelas
+    if id_profesor:
+        for rol in usuario.roles:
+            if rol.is_active and rol.nombre in ROLES_VER_PROPIAS_ESQUELAS:
+                # Verificar que el usuario corresponda al profesor
+                return usuario.id_persona == id_profesor
+    
+    return False
+
+
+def puede_ver_todas_esquelas(usuario: Usuario) -> bool:
+    """Verifica si el usuario puede ver todas las esquelas"""
+    if not usuario or not usuario.is_active:
+        return False
+    
+    for rol in usuario.roles:
+        if rol.is_active and rol.nombre in ROLES_VER_TODAS_ESQUELAS:
+            return True
+    
+    return False
