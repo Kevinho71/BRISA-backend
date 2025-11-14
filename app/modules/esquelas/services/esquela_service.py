@@ -127,22 +127,69 @@ class EsquelaService:
         return EsquelaRepository.get_aggregate_by_year_month(db, group_by)
 
     @staticmethod
-    def crear_esquela(db: Session, esquela_data: EsquelaBaseDTO, current_user: Usuario = None):
-        # Validación: profesor solo puede crear sus propias esquelas
-        if current_user and not puede_ver_todas_esquelas(current_user):
-            if esquela_data.id_profesor != current_user.id_persona:
+    def crear_esquela(db: Session, esquela_data, current_user: Usuario = None):
+        """
+        Crea una nueva esquela con validaciones de permisos y autogeneración de registrador.
+        
+        Reglas:
+        - id_registrador siempre es current_user.id_persona
+        - Si es profesor, id_profesor debe ser su id_persona
+        - El profesor debe impartir clases en el curso del estudiante
+        """
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no autenticado"
+            )
+        
+        # El registrador siempre es el usuario autenticado
+        id_registrador = current_user.id_persona
+        
+        # Determinar id_profesor según rol
+        if puede_ver_todas_esquelas(current_user):
+            # Admin/Regente puede especificar cualquier profesor
+            if not esquela_data.id_profesor:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Debe especificar el profesor para esta esquela"
+                )
+            id_profesor = esquela_data.id_profesor
+        else:
+            # Profesor solo puede crear esquelas en su nombre
+            id_profesor = current_user.id_persona
+            if esquela_data.id_profesor and esquela_data.id_profesor != id_profesor:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Solo puede asignar esquelas en su propio nombre"
                 )
         
+        # Obtener curso del estudiante
+        from app.modules.administracion.repositories.curso_repository import CursoRepository
+        curso = CursoRepository.get_curso_by_estudiante(db, esquela_data.id_estudiante)
+        
+        if not curso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El estudiante no está asignado a ningún curso"
+            )
+        
+        # Validar que el profesor imparte clases en el curso del estudiante
+        from app.modules.administracion.repositories.persona_repository import PersonaRepository
+        if not PersonaRepository.es_profesor_del_curso(db, id_profesor, curso.id_curso):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El profesor no imparte clases en el curso {curso.nombre_curso} del estudiante"
+            )
+        
+        # Crear esquela
         nueva_esquela = Esquela(
             id_estudiante=esquela_data.id_estudiante,
-            id_profesor=esquela_data.id_profesor,
-            id_registrador=esquela_data.id_registrador,
+            id_profesor=id_profesor,
+            id_registrador=id_registrador,  # Autogenerado
             fecha=esquela_data.fecha,
             observaciones=esquela_data.observaciones
         )
+        
         return EsquelaRepository.create(db, nueva_esquela, esquela_data.codigos)
 
     @staticmethod

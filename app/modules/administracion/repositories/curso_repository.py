@@ -28,9 +28,31 @@ class CursoRepository:
         """
         Obtiene los estudiantes de un curso con filtro opcional por nombre
         """
+        from app.modules.administracion.models.persona_models import estudiantes_cursos
+        
+        print(f"\n🔍 DEBUG get_estudiantes_by_curso:")
+        print(f"   - curso_id: {curso_id}")
+        print(f"   - name: {name}")
+        print(f"   - page: {page}, page_size: {page_size}")
+        
+        # Primero verificar si hay registros en estudiantes_cursos
+        count_ec = db.query(estudiantes_cursos).filter(
+            estudiantes_cursos.c.id_curso == curso_id
+        ).count()
+        print(f"   - Registros en estudiantes_cursos: {count_ec}")
+        
+        # Usar la tabla intermedia explícitamente
         query = db.query(Estudiante).join(
-            Estudiante.cursos
-        ).filter(Curso.id_curso == curso_id)
+            estudiantes_cursos,
+            Estudiante.id_estudiante == estudiantes_cursos.c.id_estudiante
+        ).filter(
+            estudiantes_cursos.c.id_curso == curso_id
+        )
+        
+        # DEBUG: Ver SQL generado
+        from sqlalchemy.dialects import mysql
+        sql_str = str(query.statement.compile(dialect=mysql.dialect(), compile_kwargs={"literal_binds": True}))
+        print(f"   - SQL Query: {sql_str[:200]}...")
 
         # Filtro por nombre
         if name:
@@ -44,6 +66,7 @@ class CursoRepository:
 
         # Contar total
         total = query.count()
+        print(f"   - Total encontrado: {total}")
 
         # Paginación
         offset = (page - 1) * page_size
@@ -52,6 +75,10 @@ class CursoRepository:
             Estudiante.apellido_materno,
             Estudiante.nombres
         ).offset(offset).limit(page_size).all()
+        
+        print(f"   - Estudiantes retornados: {len(estudiantes)}")
+        if len(estudiantes) > 0:
+            print(f"   - Primer estudiante: {estudiantes[0].nombres} {estudiantes[0].apellido_paterno}")
 
         return {
             "total": total,
@@ -111,3 +138,17 @@ class CursoRepository:
             "total_pages": (total + page_size - 1) // page_size,
             "data": profesores
         }
+    
+    @staticmethod
+    def get_curso_by_estudiante(db: Session, id_estudiante: int) -> Optional[Curso]:
+        """Obtiene el curso de un estudiante (asume que el estudiante está en un solo curso)"""
+        from app.modules.administracion.models.persona_models import estudiantes_cursos
+        
+        curso = db.query(Curso).join(
+            estudiantes_cursos,
+            Curso.id_curso == estudiantes_cursos.c.id_curso
+        ).filter(
+            estudiantes_cursos.c.id_estudiante == id_estudiante
+        ).first()
+        
+        return curso

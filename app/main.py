@@ -21,7 +21,6 @@ from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-# from app.core.extensions import router as auth_router  # Comentado: usar auth_controller en su lugar
 
 load_dotenv()
 

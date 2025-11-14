@@ -15,6 +15,7 @@ from app.shared.permission_mapper import puede_ver_todas_esquelas
 from app.modules.esquelas.services.esquela_service import EsquelaService
 from app.modules.esquelas.dto.esquela_dto import (
     EsquelaBaseDTO,
+    EsquelaCreateDTO,
     EsquelaResponseDTO,
     EsquelaListResponseDTO,
     EsquelasAggregateByCourseDTO,
@@ -163,7 +164,7 @@ async def obtener_esquela(
 @router.post("/", response_model=EsquelaResponseDTO, status_code=status.HTTP_201_CREATED)
 @require_permissions('crear_esquela')
 async def crear_esquela(
-    esquela_data: EsquelaBaseDTO,
+    esquela_data: EsquelaCreateDTO,
     current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
@@ -171,10 +172,35 @@ async def crear_esquela(
     Crea una nueva esquela.
     
     **Permisos:**
-    - **Admin/Regente**: Puede crear esquelas para cualquier profesor
-    - **Profesor**: Solo puede crear esquelas en su propio nombre
+    - **Admin/Regente**: Puede crear esquelas para cualquier profesor (debe especificar id_profesor)
+    - **Profesor**: Solo puede crear esquelas en su propio nombre (id_profesor opcional, se autocompleta)
     
-    **Nota**: El profesor solo puede asignar esquelas donde él sea el id_profesor.
+    **Cambios importantes:**
+    - ❌ **NO enviar** `id_registrador` - se autogenera con el usuario autenticado
+    - ✅ **Profesor**: `id_profesor` es opcional (se autocompleta automáticamente)
+    - ✅ **Admin/Regente**: `id_profesor` es requerido
+    - ✅ Validación automática: el profesor debe impartir clases en el curso del estudiante
+    
+    **Ejemplo para Profesor:**
+    ```json
+    {
+      "id_estudiante": 5,
+      "fecha": "2024-11-14",
+      "observaciones": "Buen comportamiento",
+      "codigos": [1, 3]
+    }
+    ```
+    
+    **Ejemplo para Admin/Regente:**
+    ```json
+    {
+      "id_estudiante": 5,
+      "id_profesor": 3,
+      "fecha": "2024-11-14",
+      "observaciones": "Excelente participación",
+      "codigos": [1, 3]
+    }
+    ```
     """
     return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
 
