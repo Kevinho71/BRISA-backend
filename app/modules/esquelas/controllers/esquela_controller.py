@@ -176,10 +176,10 @@ async def crear_esquela(
     - **Profesor**: Solo puede crear esquelas en su propio nombre (id_profesor opcional, se autocompleta)
     
     **Cambios importantes:**
-    - ❌ **NO enviar** `id_registrador` - se autogenera con el usuario autenticado
-    - ✅ **Profesor**: `id_profesor` es opcional (se autocompleta automáticamente)
-    - ✅ **Admin/Regente**: `id_profesor` es requerido
-    - ✅ Validación automática: el profesor debe impartir clases en el curso del estudiante
+    - **NO enviar** `id_registrador` - se autogenera con el usuario autenticado
+    -  **Profesor**: `id_profesor` es opcional (se autocompleta automáticamente)
+    -  **Admin/Regente**: `id_profesor` es requerido
+    - Validación automática: el profesor debe impartir clases en el curso del estudiante
     
     **Ejemplo para Profesor:**
     ```json
