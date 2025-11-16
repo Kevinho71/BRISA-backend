@@ -1,9 +1,10 @@
-"app/module/auth/dto/auth_dto"
+"""
+app/modules/auth/dto/auth_dto.py - Mejorado
+"""
 
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Literal
 from datetime import datetime
-from app.core.database import Base
 from typing import TYPE_CHECKING
 
 # ==========================
@@ -28,20 +29,25 @@ class RegistroDTO(BaseModel):
     telefono: Optional[str] = None
     direccion: Optional[str] = None
     tipo_persona: Literal["profesor", "administrativo"] = "administrativo"
-    id_rol: Optional[int] = None  # ID del rol a asignar al usuario
+    id_rol: Optional[int] = None
     
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
-        """Validar complejidad de contraseña"""
-        if len(v) < 8:
-            raise ValueError('Contraseña debe tener mínimo 8 caracteres')
-        if not any(c.isupper() for c in v):
-            raise ValueError('Contraseña debe contener mayúsculas')
-        if not any(c.islower() for c in v):
-            raise ValueError('Contraseña debe contener minúsculas')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Contraseña debe contener números')
+        """
+        Validar complejidad de contraseña.
+        Usa la función mejorada de security.py que maneja
+        contraseñas largas automáticamente.
+        """
+        from app.shared.security import validate_password_strength
+        
+        # Usar la validación robusta
+        es_valida, errores = validate_password_strength(v)
+        
+        if not es_valida:
+            # Unir todos los errores en un mensaje
+            raise ValueError("; ".join(errores))
+        
         return v
     
     model_config = {
