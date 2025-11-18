@@ -383,3 +383,45 @@ async def obtener_permiso(
         message="Permiso obtenido",
         data=permiso.dict()
     )
+
+# ==================== LOGS DE ACCESO ====================
+
+@router.get("/logs-acceso", response_model=dict)
+@requires_permission('ver_rol')
+async def listar_logs_acceso(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+) -> dict:
+    """Listar logs de acceso al sistema"""
+    try:
+        from app.modules.usuarios.models.usuario_models import LoginLog
+        
+        logs = db.query(LoginLog).order_by(
+            LoginLog.fecha_hora.desc()
+        ).offset(skip).limit(limit).all()
+        
+        logs_data = []
+        for log in logs:
+            logs_data.append({
+                "id": log.id_log,
+                "usuario_id": log.id_usuario,
+                "fecha": log.fecha_hora.isoformat() if log.fecha_hora else None,
+                "accion": "Inicio de sesión",
+                "ip": log.ip_address or "N/A",
+                "estado": log.estado,
+                "detalles": log.user_agent
+            })
+        
+        return ResponseModel.success(
+            message="Logs de acceso obtenidos",
+            data=logs_data
+        )
+        
+    except Exception as e:
+        logger.error(f"Error al listar logs: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
