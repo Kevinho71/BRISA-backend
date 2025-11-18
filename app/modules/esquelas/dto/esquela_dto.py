@@ -91,7 +91,6 @@ class EsquelaResponseDTO(BaseModel):
     observaciones: Optional[str]
     estudiante: Optional[EstudianteSimpleDTO] = None
     profesor: Optional[ProfesorSimpleDTO] = None
-    # NOTA: No incluimos curso directamente porque no existe id_curso en esquelas
     codigos: List[CodigoEsquelaDTO]
 
 
