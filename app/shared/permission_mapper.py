@@ -52,10 +52,10 @@ PERMISSION_MAP: Dict[str, List[str]] = {
 
 # ================ ROLES CON ACCESO TOTAL ================ 
 
-ADMIN_ROLES = ["Director", "Administrativo", "Admin"]  # ← Agregado "Admin"
+ADMIN_ROLES = ["Director", "Administrativo", "Admin", "Administrador"]  # ← Agregado "Administrador"
 
 # Roles con permisos específicos para esquelas
-ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo"]
+ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo", "Administrador"]
 ROLES_VER_PROPIAS_ESQUELAS = ["Profesor"]
 
 
