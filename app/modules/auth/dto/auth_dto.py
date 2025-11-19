@@ -36,6 +36,8 @@ class RegistroDTO(BaseModel):
         """Validar complejidad de contraseña"""
         if len(v) < 8:
             raise ValueError('Contraseña debe tener mínimo 8 caracteres')
+        if len(v) > 72:
+            raise ValueError('Contraseña no puede exceder 72 caracteres')
         if not any(c.isupper() for c in v):
             raise ValueError('Contraseña debe contener mayúsculas')
         if not any(c.islower() for c in v):

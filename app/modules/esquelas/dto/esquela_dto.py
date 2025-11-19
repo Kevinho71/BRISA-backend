@@ -52,6 +52,7 @@ class CursoSimpleDTO(BaseModel):
 
 
 class EsquelaBaseDTO(BaseModel):
+    """DTO base para esquelas - LEGACY - Mantener por compatibilidad"""
     # Campos requeridos según la base de datos
     id_estudiante: int
     id_profesor: int
@@ -59,6 +60,27 @@ class EsquelaBaseDTO(BaseModel):
     fecha: date
     observaciones: Optional[str] = None
     codigos: List[int]  # Lista de IDs de códigos
+
+
+class EsquelaCreateDTO(BaseModel):
+    """DTO para crear esquelas - SIN registrador (se autogenera en backend)"""
+    id_estudiante: int
+    id_profesor: Optional[int] = None  # Opcional: se autocompleta para profesores
+    fecha: date
+    observaciones: Optional[str] = None
+    codigos: List[int] = Field(..., description="Lista de IDs de códigos de esquela")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id_estudiante": 5,
+                "id_profesor": 3,
+                "fecha": "2024-11-14",
+                "observaciones": "Excelente participación en clase",
+                "codigos": [1, 3]
+            }
+        }
+    )
 
 
 class EsquelaResponseDTO(BaseModel):
@@ -69,7 +91,6 @@ class EsquelaResponseDTO(BaseModel):
     observaciones: Optional[str]
     estudiante: Optional[EstudianteSimpleDTO] = None
     profesor: Optional[ProfesorSimpleDTO] = None
-    # NOTA: No incluimos curso directamente porque no existe id_curso en esquelas
     codigos: List[CodigoEsquelaDTO]
 
 
