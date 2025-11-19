@@ -3,6 +3,8 @@
 
 from sqlalchemy import Column, Integer, String, Date, Text
 from app.core.database import Base
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Date, Text, Table, ForeignKey
 
 # Tabla intermedia para relación muchos-a-muchos entre estudiantes y cursos
 estudiantes_cursos = Table(

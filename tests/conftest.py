@@ -1,6 +1,7 @@
 """
 tests/conftest.py 
 Configuración global de pytest con soporte completo para permisos
+✅ CÓDIGO CORREGIDO - Manejo de transacciones para tests de Bitacora
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -24,32 +25,36 @@ from app.main import app
 
 @pytest.fixture(scope="function")
 def db_session():
-    """Sesión de base de datos REAL con rollback automático"""
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    """
+    Sesión ÚNICA por test.
+    ❗ Sin commit automático.
+    ❗ Sin rollback automático.
+    ❗ La sesión usada por FastAPI y por el test es la MISMA.
+    """
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine
+    )
     session = TestingSessionLocal()
-    
-    try:
-        yield session
-    finally:
-        session.rollback()
-        session.close()
+
+    yield session
+
+    session.close()
+
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    """Cliente de pruebas de FastAPI"""
+    """Forzar a que TODO FastAPI use la MISMA sesión"""
     def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-    
+        yield db_session  # <-- SESIÓN COMPARTIDA REAL
+
     app.dependency_overrides[get_db] = override_get_db
-    
-    try:
-        with TestClient(app) as test_client:
-            yield test_client
-    finally:
-        app.dependency_overrides.clear()
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
 
 
 # ================ FIXTURES DE CREACIÓN DE DATOS ================ 
@@ -104,7 +109,7 @@ def crear_persona_base(db_session):
     def _crear_persona(
         ci: str = None, 
         nombres: str = None, 
-        apellido_paterno: str = "TestApellido",  # parámetro
+        apellido_paterno: str = "TestApellido",
         apellido_materno: str = "TestMaterno",   
         tipo_persona: str = "administrativo"
     ):
@@ -121,8 +126,8 @@ def crear_persona_base(db_session):
         persona = Persona1(
             ci=ci,
             nombres=nombres,
-            apellido_paterno=apellido_paterno,  # Usa el parámetro
-            apellido_materno=apellido_materno,   #  Usa el parámetro
+            apellido_paterno=apellido_paterno,
+            apellido_materno=apellido_materno,
             correo=correo_unico,
             telefono="12345678",
             direccion="Dirección test",
@@ -135,39 +140,47 @@ def crear_persona_base(db_session):
 
 @pytest.fixture
 def crear_usuario_base(db_session, crear_persona_base):
-    """Fixture para crear usuarios - hashea correctamente"""
+    """
+    ✅ Fixture CORREGIDA para crear usuarios
+    - Genera CI único siempre
+    - Retorna el usuario CON EL NOMBRE EXACTO solicitado (sin sufijos)
+    - Hace flush automático
+    """
     def _crear_usuario(usuario: str, password: str, roles: list = None, mantener_nombre: bool = False):
         timestamp_ms = int(time.time() * 1000)
         rand_suffix = random.randint(1000, 9999)
 
+        # ✅ CI siempre único
         ci_unico = f"TEST_{timestamp_ms}_{rand_suffix}"
         
-        if mantener_nombre:
-            usuario_unico = usuario
-        else:
-            usuario_unico = f"{usuario}_{rand_suffix}"
-
+        # ✅ Nombre de usuario: SIEMPRE el que se pide (sin modificar)
+        usuario_final = usuario
+        
+        # Crear persona
         persona = crear_persona_base(ci=ci_unico, nombres=f"Usuario {usuario}")
 
+        # ✅ Correo único
         correo_unico = f"{usuario}_{timestamp_ms}@test.com"
         
-        #  Usar AuthService.hash_password para consistencia
+        # Hashear password
         password_hasheado = AuthService.hash_password(password)
 
+        # Crear usuario con el nombre EXACTO
         usuario_obj = Usuario(
             id_persona=persona.id_persona,
-            usuario=usuario_unico,
+            usuario=usuario_final,  # ✅ Nombre exacto
             correo=correo_unico,
             password=password_hasheado,
             is_active=True
         )
 
         db_session.add(usuario_obj)
-        db_session.commit()
+        db_session.flush()
 
+        # Asignar roles
         if roles:
             usuario_obj.roles = roles
-            db_session.commit()
+            db_session.flush()
 
         return usuario_obj
     return _crear_usuario
@@ -186,13 +199,13 @@ def usuario_admin_autenticado(db_session, crear_usuario_base, crear_rol_base, cr
         crear_permiso_base("Eliminar", "usuarios", "Puede eliminar usuarios"),
     ]
     
-    # Usar nombre "Admin" (sin timestamp) para que coincida con ADMIN_ROLES
-    rol_admin = crear_rol_base("Admin", "Rol administrativo", permisos)
+    # Crear rol admin con timestamp
+    rol_admin = crear_rol_base(f"Admin_{timestamp_ms}", "Rol administrativo", permisos)
     db_session.flush()
     
-    # Crear usuario con rol
-    usuario = crear_usuario_base(f"admin_test_{timestamp_ms}", "admin123", [rol_admin])
-    db_session.flush()
+    # ✅ Crear usuario con nombre ÚNICO usando timestamp
+    usuario_name = f"admin_test_{timestamp_ms}"
+    usuario = crear_usuario_base(usuario_name, "admin123", [rol_admin])
     
     # Generar token
     token = AuthService.create_access_token(
@@ -213,8 +226,9 @@ def usuario_simple_autenticado(db_session, crear_usuario_base, crear_rol_base):
     rol_simple = crear_rol_base(f"Usuario_{timestamp_ms}", "Rol básico")
     db_session.flush()
     
-    usuario = crear_usuario_base(f"user1_test_{timestamp_ms}", "user123", [rol_simple])
-    db_session.flush()
+    # ✅ Crear usuario con nombre ÚNICO usando timestamp
+    usuario_name = f"user1_test_{timestamp_ms}"
+    usuario = crear_usuario_base(usuario_name, "user123", [rol_simple])
     
     token = AuthService.create_access_token(
         data={"sub": usuario.id_usuario, "usuario": usuario.usuario}
@@ -251,3 +265,35 @@ def datos_login_valido():
         "usuario": "admin_test",
         "password": "admin123"
     }
+
+@pytest.fixture(autouse=True)
+def clear_token_blacklist():
+    """Limpiar blacklist de tokens entre tests"""
+    from app.modules.auth.services.auth_service import token_blacklist
+    token_blacklist.clear()
+    yield
+    token_blacklist.clear()
+
+@pytest.fixture
+def fresh_db_session():
+    """
+    Crear nueva sesión independiente para consultas post-commit.
+    
+    Útil cuando:
+    - El servicio hace commit() y el test necesita ver esos cambios
+    - Necesitas consultar la BD sin el cache de SQLAlchemy
+    
+    Uso:
+        def test_algo(db_session, fresh_db_session):
+            # db_session: para crear datos de prueba
+            # fresh_db_session: para verificar datos después de commit
+    """
+    from sqlalchemy.orm import sessionmaker
+    from app.core.database import engine
+    
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = SessionLocal()
+    
+    yield session
+    
+    session.close()
