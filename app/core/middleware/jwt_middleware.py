@@ -1,6 +1,6 @@
 """
 app/core/middleware/jwt_middleware.py
-Middleware para validar JWT en todas las rutas protegidas
+✅ FIX: Permitir peticiones OPTIONS (CORS preflight) sin autenticación
 """
 
 from fastapi import Request, HTTPException, status
@@ -17,11 +17,12 @@ logger = logging.getLogger(__name__)
 # Rutas públicas que NO requieren autenticación
 PUBLIC_ROUTES = [
     "/api/auth/login",
-    "/api/auth/registro",
+    # "/api/auth/registro",  # Comentado - ahora requiere autenticación
     "/docs",
     "/redoc",
     "/openapi.json",
     "/health",
+    "/",  # Root
 ]
 
 
@@ -30,6 +31,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
     Middleware para validar JWT en todas las rutas protegidas
     
     - Intercepta TODAS las requests
+    - ✅ Permite peticiones OPTIONS (CORS preflight) sin validación
     - Valida token JWT si la ruta NO es pública
     - Inyecta usuario autenticado en request.state
     - Registra IP del cliente
@@ -37,6 +39,10 @@ class JWTMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable):
         """Procesar request y validar JWT"""
+        
+        # ✅ CRÍTICO: Permitir peticiones OPTIONS sin autenticación (CORS preflight)
+        if request.method == "OPTIONS":
+            return await call_next(request)
         
         # 1. Verificar si la ruta es pública
         if self._is_public_route(request.url.path):
