@@ -52,7 +52,7 @@ class Persona1(Base):
     direccion = Column(Text, nullable=True)
     tipo_persona = Column(Enum('profesor', 'administrativo', name='tipo_persona_enum'), nullable=False)
     is_active = Column(Boolean, default=True)
-
+    
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}"

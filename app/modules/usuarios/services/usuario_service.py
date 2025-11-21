@@ -19,6 +19,7 @@ from app.modules.usuarios.dto.usuario_dto import (
     PermisoCreateDTO, PermisoResponseDTO,
     AsignarRolDTO
 )
+from app.modules.usuarios.models.usuario_models import Bitacora
 from app.shared.services.base_services import BaseService
 from app.shared.exceptions.custom_exceptions import NotFound, Conflict, ValidationException, DatabaseException
 from app.shared.security import hash_password, verify_password
@@ -28,44 +29,214 @@ from app.shared.decorators.auth_decorators import (
     verificar_permiso, 
     validar_puede_modificar_usuario
 )
+import random
+import string
+import re
+
 
 logger = logging.getLogger(__name__)
 
 
 class PersonaService(BaseService):
-    """Servicio de gestión de personas (RF-01)"""
+    """Servicio de gestión de personas con generación automática de credenciales"""
     model_class = Persona1
     
-    @classmethod
-    def crear_persona(cls, db: Session, persona_dto: PersonaCreateDTO, user_id: Optional[int] = None) -> PersonaResponseDTO:
-        """Crear nueva persona"""
-        persona_existente = db.query(Persona1).filter(Persona1.ci == persona_dto.ci).first()
-        if persona_existente:
-            raise Conflict(f"CI {persona_dto.ci} ya registrado")
+    @staticmethod
+    def limpiar_texto(texto: str) -> str:
+        """Limpiar texto para generar username"""
+        replacements = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+            'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
+            'ñ': 'n', 'Ñ': 'n', 'ü': 'u', 'Ü': 'u'
+        }
+        for old, new in replacements.items():
+            texto = texto.replace(old, new)
+        texto = texto.replace(' ', '').lower()
+        texto = re.sub(r'[^a-z]', '', texto)
+        return texto
+    
+    @staticmethod
+    def generar_username_base(nombres: str, apellido_paterno: str) -> str:
+        """Generar username: primera_letra_apellido + nombre"""
+        nombres_limpio = PersonaService.limpiar_texto(nombres)
+        apellido_limpio = PersonaService.limpiar_texto(apellido_paterno)
         
+        if not nombres_limpio or not apellido_limpio:
+            raise ValueError("Nombres y apellidos deben contener al menos una letra válida")
+        
+        return apellido_limpio[0] + nombres_limpio
+    
+    @staticmethod
+    def validar_username_disponible(db: Session, username: str) -> str:
+        """Validar username disponible, agregar número si existe"""
+        username_final = username
+        contador = 1
+        
+        while db.query(Usuario).filter(Usuario.usuario == username_final).first():
+            username_final = f"{username}{contador}"
+            contador += 1
+            if contador > 100:
+                raise DatabaseException("No se pudo generar username único")
+        
+        return username_final
+    
+    @staticmethod
+    def generar_password_temporal() -> str:
+        """Generar contraseña temporal: Temporal{año}*{números}"""
+        año_actual = datetime.now().year
+        numeros = ''.join(random.choices(string.digits, k=3))
+        simbolo = random.choice('*#@!')
+        return f"Temporal{año_actual}{simbolo}{numeros}"
+    
+    @classmethod
+    def crear_persona_con_usuario(cls, db: Session, persona_dto: PersonaCreateDTO, user_id: Optional[int] = None) -> dict:
+        """Crear persona con generación automática de credenciales"""
         try:
-            data = persona_dto.dict(exclude_unset=True)
-            persona = Persona1(**data)
+            # Validar CI único
+            if db.query(Persona1).filter(Persona1.ci == persona_dto.ci).first():
+                raise Conflict(f"CI {persona_dto.ci} ya está registrado")
+            
+            # Crear persona
+            persona_data = persona_dto.dict(exclude={'tiene_acceso', 'id_rol'})
+            persona = Persona1(**persona_data)
             db.add(persona)
+            db.flush()
+            
+            credenciales = None
+            usuario_creado = None
+            
+            # ¿Generar credenciales?
+            if persona_dto.tiene_acceso:
+                username_base = cls.generar_username_base(persona.nombres, persona.apellido_paterno)
+                username_final = cls.validar_username_disponible(db, username_base)
+                password_temporal = cls.generar_password_temporal()
+                
+                usuario_creado = Usuario(
+                    id_persona=persona.id_persona,
+                    usuario=username_final,
+                    correo=persona.correo,
+                    password=hash_password(password_temporal),
+                    is_active=True
+                )
+                db.add(usuario_creado)
+                db.flush()
+                
+                # Asignar rol
+                if persona_dto.id_rol:
+                    rol = db.query(Rol).filter(Rol.id_rol == persona_dto.id_rol, Rol.is_active == True).first()
+                    if rol:
+                        usuario_creado.roles.append(rol)
+                
+                credenciales = {
+                    "usuario": username_final,
+                    "password_temporal": password_temporal,
+                    "mensaje": "⚠️ Guarde estas credenciales"
+                }
+            
+            # Bitácora
+            if user_id:
+                bitacora = Bitacora(
+                    id_usuario_admin=user_id,
+                    accion="CREAR_PERSONA",
+                    tipo_objetivo="Persona",
+                    id_objetivo=persona.id_persona,
+                    descripcion=f"Persona creada: {persona.nombre_completo}"
+                )
+                db.add(bitacora)
+            
             db.commit()
             db.refresh(persona)
-            logger.info(f"Persona creada: {persona.nombre_completo}")
-            return PersonaResponseDTO.from_orm(persona)
+            
+            persona_response = PersonaResponseDTO.from_orm(persona)
+            if usuario_creado:
+                persona_response.usuario = credenciales['usuario']
+                persona_response.id_usuario = usuario_creado.id_usuario
+                persona_response.tiene_acceso = True
+            
+            return {"persona": persona_response.dict(), "credenciales": credenciales}
+            
         except Exception as e:
             db.rollback()
-            logger.error(f"Error al crear persona: {str(e)}")
             raise DatabaseException(f"Error al crear persona: {str(e)}")
     
     @classmethod
-    def obtener_persona(cls, db: Session, persona_id: int) -> PersonaResponseDTO:
-        """Obtener persona por ID"""
-        persona = db.query(Persona1).filter(
-            Persona1.id_persona == persona_id, 
-            Persona1.is_active == True
-        ).first()
+    def listar_personas(cls, db: Session, skip: int = 0, limit: int = 50, tipo_persona: Optional[str] = None) -> List[dict]:
+        """Listar personas"""
+        query = db.query(Persona1).filter(Persona1.is_active == True)
+        if tipo_persona:
+            query = query.filter(Persona1.tipo_persona == tipo_persona)
+        
+        personas = query.offset(skip).limit(limit).all()
+        resultado = []
+        
+        for persona in personas:
+            usuario = db.query(Usuario).filter(Usuario.id_persona == persona.id_persona).first()
+            persona_dict = PersonaResponseDTO.from_orm(persona).dict()
+            persona_dict['tiene_acceso'] = usuario is not None
+            if usuario:
+                persona_dict['usuario'] = usuario.usuario
+            resultado.append(persona_dict)
+        
+        return resultado
+    
+    @classmethod
+    def actualizar_persona(cls, db: Session, persona_id: int, persona_dto: PersonaUpdateDTO, user_id: Optional[int] = None) -> dict:
+        """Actualizar persona"""
+        persona = db.query(Persona1).filter(Persona1.id_persona == persona_id, Persona1.is_active == True).first()
         if not persona:
             raise NotFound("Persona", persona_id)
-        return PersonaResponseDTO.from_orm(persona)
+        
+        try:
+            data = persona_dto.dict(exclude_unset=True)
+            for key, value in data.items():
+                if value is not None:
+                    setattr(persona, key, value)
+            
+            if user_id:
+                bitacora = Bitacora(
+                    id_usuario_admin=user_id,
+                    accion="EDITAR_PERSONA",
+                    tipo_objetivo="Persona",
+                    id_objetivo=persona_id,
+                    descripcion=f"Persona editada: {persona.nombre_completo}"
+                )
+                db.add(bitacora)
+            
+            db.commit()
+            db.refresh(persona)
+            return PersonaResponseDTO.from_orm(persona).dict()
+        except Exception as e:
+            db.rollback()
+            raise DatabaseException(f"Error: {str(e)}")
+    
+    @classmethod
+    def eliminar_persona(cls, db: Session, persona_id: int, user_id: Optional[int] = None) -> dict:
+        """Eliminar persona (lógico)"""
+        persona = db.query(Persona1).filter(Persona1.id_persona == persona_id).first()
+        if not persona:
+            raise NotFound("Persona", persona_id)
+        
+        try:
+            persona.is_active = False
+            usuario = db.query(Usuario).filter(Usuario.id_persona == persona_id).first()
+            if usuario:
+                usuario.is_active = False
+            
+            if user_id:
+                bitacora = Bitacora(
+                    id_usuario_admin=user_id,
+                    accion="ELIMINAR_PERSONA",
+                    tipo_objetivo="Persona",
+                    id_objetivo=persona_id,
+                    descripcion=f"Persona eliminada: {persona.nombre_completo}"
+                )
+                db.add(bitacora)
+            
+            db.commit()
+            return {"mensaje": "Persona eliminada", "id_persona": persona_id}
+        except Exception as e:
+            db.rollback()
+            raise DatabaseException(f"Error: {str(e)}")
 
 
 class UsuarioService(BaseService):

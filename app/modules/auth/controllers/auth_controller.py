@@ -12,7 +12,7 @@ from app.modules.usuarios.models.usuario_models import Persona1, Usuario
 from app.modules.auth.dto.auth_dto import LoginDTO, RegistroDTO
 from app.modules.auth.services.auth_service import AuthService, get_current_user_dependency
 from app.core.utils import success_response
-
+from app.modules.usuarios.services.usuario_service import PersonaService
 from app.core.database import get_db
 from app.shared.response import ResponseModel 
 from app.shared.security import verify_token
@@ -20,7 +20,7 @@ from app.shared.permissions import requires_permission
 from app.modules.usuarios.dto.usuario_dto import (
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
     RolCreateDTO, RolUpdateDTO, RolResponseDTO,
-    PermisoResponseDTO, AsignarRolDTO
+    PermisoResponseDTO, AsignarRolDTO, PersonaCreateDTO, PersonaResponseDTO, PersonaUpdateDTO, 
 )
 from app.modules.usuarios.services.usuario_service import (
     UsuarioService, RolService, PermisoService
@@ -125,11 +125,11 @@ async def obtener_usuario_actual(
 
 
 @router.post("/registro", status_code=status.HTTP_201_CREATED)
-@requires_permission('crear_usuario')  # ✅ PROTEGIDO - Requiere permiso
+@requires_permission('crear_usuario') 
 async def registrar_usuario(
     registro_dto: RegistroDTO,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)  # ✅ Requiere autenticación
+    current_user: Usuario = Depends(get_current_user_dependency)
 ):
     """
     Registrar nuevo usuario
@@ -436,3 +436,52 @@ async def listar_logs_acceso(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+    
+# ==================== PERSONAS ====================
+
+@router.post("/personas", status_code=status.HTTP_201_CREATED)
+@requires_permission("crear_usuario")
+async def crear_persona(
+    persona_create: PersonaCreateDTO,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """Crear persona con generación automática de credenciales"""
+    resultado = PersonaService.crear_persona_con_usuario(db, persona_create, user_id=current_user.id_usuario)
+    return ResponseModel.success(message="Persona creada", data=resultado, status_code=201)
+
+@router.get("/personas")
+@requires_permission("ver_usuario")
+async def listar_personas(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    tipo_persona: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """Listar personas"""
+    personas = PersonaService.listar_personas(db, skip, limit, tipo_persona)
+    return ResponseModel.success(message="Personas obtenidas", data=personas)
+
+@router.put("/personas/{id_persona}")
+@requires_permission("editar_usuario")
+async def actualizar_persona(
+    id_persona: int,
+    persona_update: PersonaUpdateDTO,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """Actualizar persona"""
+    persona = PersonaService.actualizar_persona(db, id_persona, persona_update, user_id=current_user.id_usuario)
+    return ResponseModel.success(message="Persona actualizada", data=persona)
+
+@router.delete("/personas/{id_persona}")
+@requires_permission("eliminar_usuario")
+async def eliminar_persona(
+    id_persona: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """Eliminar persona"""
+    resultado = PersonaService.eliminar_persona(db, id_persona, user_id=current_user.id_usuario)
+    return ResponseModel.success(message="Persona eliminada", data=resultado)
