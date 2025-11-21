@@ -3,6 +3,7 @@ app/modules/usuarios/services/usuario_service
 Servicios del Módulo de Usuarios - FINAL
 """
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import logging
@@ -16,7 +17,7 @@ from app.modules.usuarios.dto.usuario_dto import (
     PersonaCreateDTO, PersonaUpdateDTO, PersonaResponseDTO,
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
     RolCreateDTO, RolUpdateDTO, RolResponseDTO, 
-    PermisoCreateDTO, PermisoResponseDTO,
+    PermisoCreateDTO, PermisoResponseDTO,PersonasStatsDTO,
     AsignarRolDTO
 )
 from app.modules.usuarios.models.usuario_models import Bitacora
@@ -24,6 +25,7 @@ from app.shared.services.base_services import BaseService
 from app.shared.exceptions.custom_exceptions import NotFound, Conflict, ValidationException, DatabaseException
 from app.shared.security import hash_password, verify_password
 from app.shared.permission_mapper import puede_modificar_usuario
+import unicodedata
 
 from app.shared.decorators.auth_decorators import (
     verificar_permiso, 
@@ -36,6 +38,12 @@ import re
 
 logger = logging.getLogger(__name__)
 
+def limpiar_texto(texto: str) -> str:
+        """Normaliza texto, elimina tildes y caracteres especiales."""
+        texto = unicodedata.normalize("NFD", texto)
+        texto = texto.encode("ascii", "ignore").decode("utf-8")
+        texto = re.sub(r'[^a-zA-Z0-9]', '', texto)
+        return texto.lower()
 
 class PersonaService(BaseService):
     """Servicio de gestión de personas con generación automática de credenciales"""
@@ -88,13 +96,19 @@ class PersonaService(BaseService):
         simbolo = random.choice('*#@!')
         return f"Temporal{año_actual}{simbolo}{numeros}"
     
+
     @classmethod
     def crear_persona_con_usuario(cls, db: Session, persona_dto: PersonaCreateDTO, user_id: Optional[int] = None) -> dict:
         """Crear persona con generación automática de credenciales"""
         try:
-            # Validar CI único
+            # ✅ Validar CI único
             if db.query(Persona1).filter(Persona1.ci == persona_dto.ci).first():
                 raise Conflict(f"CI {persona_dto.ci} ya está registrado")
+            
+            # ✅ Validar correo único
+            if persona_dto.correo:
+                if db.query(Persona1).filter(Persona1.correo == persona_dto.correo).first():
+                    raise Conflict(f"Correo {persona_dto.correo} ya está registrado")
             
             # Crear persona
             persona_data = persona_dto.dict(exclude={'tiene_acceso', 'id_rol'})
@@ -130,7 +144,7 @@ class PersonaService(BaseService):
                 credenciales = {
                     "usuario": username_final,
                     "password_temporal": password_temporal,
-                    "mensaje": "⚠️ Guarde estas credenciales"
+                    "mensaje": "⚠ Guarde estas credenciales"
                 }
             
             # Bitácora
@@ -154,27 +168,106 @@ class PersonaService(BaseService):
                 persona_response.tiene_acceso = True
             
             return {"persona": persona_response.dict(), "credenciales": credenciales}
+        
+        # ✅ CRÍTICO: NO convertir Conflict en DatabaseException
+        except Conflict:
+            db.rollback()
+            raise  # ← Re-lanzar sin modificar
+        
+        except ValidationException:
+            db.rollback()
+            raise  # ← Re-lanzar sin modificar
+        
+        # ✅ Solo capturar errores de SQLAlchemy
+        except IntegrityError as e:
+            db.rollback()
+            error_msg = str(e.orig)
             
+            # Detectar tipo de conflicto
+            if "Duplicate entry" in error_msg and "ci" in error_msg.lower():
+                raise Conflict(f"CI {persona_dto.ci} ya está registrado")
+            elif "Duplicate entry" in error_msg and "correo" in error_msg.lower():
+                raise Conflict(f"Correo {persona_dto.correo} ya está registrado")
+            else:
+                raise Conflict("Valor duplicado en la base de datos")
+        
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise DatabaseException(f"Error de base de datos: {str(e)}")
+        
         except Exception as e:
             db.rollback()
-            raise DatabaseException(f"Error al crear persona: {str(e)}")
+            raise DatabaseException(f"Error inesperado: {str(e)}")
     
     @classmethod
-    def listar_personas(cls, db: Session, skip: int = 0, limit: int = 50, tipo_persona: Optional[str] = None) -> List[dict]:
-        """Listar personas"""
-        query = db.query(Persona1).filter(Persona1.is_active == True)
+    def listar_personas(
+        cls, 
+        db: Session, 
+        skip: int = 0, 
+        limit: int = 10000,  # ✅ AUMENTADO: Cargar todos por defecto
+        tipo_persona: Optional[str] = None,
+        busqueda: Optional[str] = None,  # ✅ NUEVO: Búsqueda general
+        estado: Optional[str] = None  # ✅ NUEVO: Filtro activo/inactivo
+    ) -> List[dict]:
+        """
+        Listar personas con filtros opcionales
+        
+        Args:
+            db: Sesión de base de datos
+            skip: Registros a saltar (paginación)
+            limit: Límite de registros (por defecto 10000 = todos)
+            tipo_persona: 'profesor' o 'administrativo'
+            busqueda: Texto para buscar en nombres, CI, correo
+            estado: 'activo' o 'inactivo'
+        """
+        query = db.query(Persona1)
+        
+        # Filtro por tipo
         if tipo_persona:
             query = query.filter(Persona1.tipo_persona == tipo_persona)
         
-        personas = query.offset(skip).limit(limit).all()
-        resultado = []
+        # Filtro por estado
+        if estado:
+            if estado == 'activo':
+                query = query.filter(Persona1.is_active == True)
+            elif estado == 'inactivo':
+                query = query.filter(Persona1.is_active == False)
+        else:
+            # Por defecto, mostrar activos e inactivos
+            pass
         
+        # Búsqueda general
+        if busqueda:
+            busqueda_lower = f"%{busqueda.lower()}%"
+            query = query.filter(
+                db.or_(
+                    Persona1.nombres.ilike(busqueda_lower),
+                    Persona1.apellido_paterno.ilike(busqueda_lower),
+                    Persona1.apellido_materno.ilike(busqueda_lower),
+                    Persona1.ci.ilike(busqueda_lower),
+                    Persona1.correo.ilike(busqueda_lower)
+                )
+            )
+        
+        # Ordenar por nombre
+        query = query.order_by(Persona1.apellido_paterno, Persona1.nombres)
+        
+        # Aplicar paginación
+        personas = query.offset(skip).limit(limit).all()
+        
+        # Construir respuesta
+        resultado = []
         for persona in personas:
-            usuario = db.query(Usuario).filter(Usuario.id_persona == persona.id_persona).first()
+            usuario = db.query(Usuario).filter(
+                Usuario.id_persona == persona.id_persona
+            ).first()
+            
             persona_dict = PersonaResponseDTO.from_orm(persona).dict()
             persona_dict['tiene_acceso'] = usuario is not None
             if usuario:
                 persona_dict['usuario'] = usuario.usuario
+                persona_dict['id_usuario'] = usuario.id_usuario
+            
             resultado.append(persona_dict)
         
         return resultado
@@ -211,33 +304,165 @@ class PersonaService(BaseService):
     
     @classmethod
     def eliminar_persona(cls, db: Session, persona_id: int, user_id: Optional[int] = None) -> dict:
-        """Eliminar persona (lógico)"""
+        """
+        Eliminar persona (borrado lógico)
+        ✅ CORREGIDO: Evita el error de UnmappedColumnError
+        """
+        # 1. Verificar que existe
         persona = db.query(Persona1).filter(Persona1.id_persona == persona_id).first()
         if not persona:
             raise NotFound("Persona", persona_id)
         
+        # 2. Guardar nombre antes de modificar
+        nombre_completo = persona.nombre_completo
+        
         try:
-            persona.is_active = False
-            usuario = db.query(Usuario).filter(Usuario.id_persona == persona_id).first()
-            if usuario:
-                usuario.is_active = False
+            # 3. Desactivar usuario asociado PRIMERO (query directa sin relación)
+            db.query(Usuario).filter(
+                Usuario.id_persona == persona_id
+            ).update(
+                {"is_active": False},
+                synchronize_session=False  # ✅ CRÍTICO: Evita sync de relaciones
+            )
             
+            # 4. Desactivar persona
+            persona.is_active = False
+            
+            # 5. Registrar en bitácora
             if user_id:
                 bitacora = Bitacora(
                     id_usuario_admin=user_id,
                     accion="ELIMINAR_PERSONA",
                     tipo_objetivo="Persona",
                     id_objetivo=persona_id,
-                    descripcion=f"Persona eliminada: {persona.nombre_completo}"
+                    descripcion=f"Persona eliminada: {nombre_completo}"
                 )
                 db.add(bitacora)
             
+            # 6. Commit
             db.commit()
-            return {"mensaje": "Persona eliminada", "id_persona": persona_id}
+            
+            return {
+                "mensaje": "Persona eliminada exitosamente",
+                "id_persona": persona_id,
+                "nombre_completo": nombre_completo
+            }
+            
         except Exception as e:
             db.rollback()
-            raise DatabaseException(f"Error: {str(e)}")
+            import traceback
+            print(f"❌ ERROR en eliminar_persona:")
+            print(traceback.format_exc())
+            raise DatabaseException(f"Error al eliminar persona: {str(e)}")
+        
+    @classmethod
+    def obtener_estadisticas(cls, db: Session) -> PersonasStatsDTO:
+        """
+        Obtener estadísticas de personas
+        
+        Args:
+            db: Sesión de base de datos
+            
+        Returns:
+            PersonasStatsDTO: Estadísticas generales
+        """
+        total_personas = db.query(Persona1).count()
+        total_profesores = db.query(Persona1).filter(
+            Persona1.tipo_persona == 'profesor'
+        ).count()
+        total_administrativos = db.query(Persona1).filter(
+            Persona1.tipo_persona == 'administrativo'
+        ).count()
+        personas_activas = db.query(Persona1).filter(
+            Persona1.is_active == True
+        ).count()
+        personas_inactivas = db.query(Persona1).filter(
+            Persona1.is_active == False
+        ).count()
+        
+        # Contar personas con usuario
+        personas_con_usuario = db.query(Persona1).join(
+            Usuario, Persona1.id_persona == Usuario.id_persona
+        ).count()
+        
+        personas_sin_usuario = total_personas - personas_con_usuario
+        
+        return PersonasStatsDTO(
+            total_personas=total_personas,
+            total_profesores=total_profesores,
+            total_administrativos=total_administrativos,
+            personas_activas=personas_activas,
+            personas_inactivas=personas_inactivas,
+            personas_con_usuario=personas_con_usuario,
+            personas_sin_usuario=personas_sin_usuario
+        )
+    
+    @staticmethod
+    def _build_persona_response(db: Session, persona: Persona1) -> PersonaResponseDTO:
+        """
+        Construir respuesta de persona con información adicional
+        
+        Args:
+            db: Sesión de base de datos
+            persona: Objeto Persona1
+            
+        Returns:
+            PersonaResponseDTO con información completa
+        """
+        # Verificar si tiene usuario asociado
+        usuario = db.query(Usuario).filter(
+            Usuario.id_persona == persona.id_persona
+        ).first()
+        
+        usuario_info = None
+        tiene_usuario = False
+        
+        if usuario:
+            tiene_usuario = True
+            usuario_info = {
+                "id_usuario": usuario.id_usuario,
+                "usuario": usuario.usuario,
+                "correo": usuario.correo,
+                "is_active": usuario.is_active
+            }
+        
+        return PersonaResponseDTO(
+            id_persona=persona.id_persona,
+            ci=persona.ci,
+            nombres=persona.nombres,
+            apellido_paterno=persona.apellido_paterno,
+            apellido_materno=persona.apellido_materno,
+            nombre_completo=persona.nombre_completo,
+            direccion=persona.direccion,
+            telefono=persona.telefono,
+            correo=persona.correo,
+            tipo_persona=persona.tipo_persona,
+            is_active=persona.is_active,
+            tiene_usuario=tiene_usuario,
+            usuario_info=usuario_info
+        )
 
+    def generar_username_base(nombres: str, apellido_paterno: str) -> str:
+        nombres_limpio = limpiar_texto(nombres.split()[0])
+        apellido_limpio = limpiar_texto(apellido_paterno)
+        return f"{nombres_limpio}.{apellido_limpio}"
+
+    def validar_username_disponible(db, username_base: str) -> str:
+        username = username_base
+        counter = 1
+        from app.modules.usuarios.models.usuario_models import Usuario
+
+        while db.query(Usuario).filter(Usuario.username == username).first():
+            username = f"{username_base}{counter}"
+            counter += 1
+
+        return username
+
+    def generar_password_temporal() -> str:
+        year = datetime.now().year
+        simbolo = random.choice(["@", "#", "$"])
+        numeros = ''.join(random.choices(string.digits, k=4))
+        return f"Temporal{year}{simbolo}{numeros}"
 
 class UsuarioService(BaseService):
     """Servicio de gestión de usuarios (RF-01, RF-06, RF-08)"""
@@ -523,6 +748,20 @@ class RolService:
                 rol.created_by = current_user.id_usuario
             
             db.add(rol)
+            db.flush()
+            
+            # ✅ Registrar en bitácora
+            from app.modules.auth.services.auth_service import AuthService
+            if current_user:
+                AuthService.registrar_bitacora(
+                    db,
+                    usuario_id=current_user.id_usuario,
+                    accion='CREAR_ROL',
+                    tipo_objetivo='Rol',
+                    id_objetivo=rol.id_rol,
+                    descripcion=f"Rol '{rol.nombre}' creado"
+                )
+            
             db.commit()
             db.refresh(rol)
             logger.info(f"Rol creado: {rol.nombre}")
@@ -534,24 +773,60 @@ class RolService:
     
     @classmethod
     def obtener_rol(cls, db: Session, rol_id: int) -> RolResponseDTO:
-        """Obtener rol por ID"""
+        """Obtener rol por ID con contador de permisos y lista de permisos"""
         rol = db.query(Rol).filter(
             Rol.id_rol == rol_id, 
             Rol.is_active == True
         ).first()
         if not rol:
             raise NotFound("Rol", rol_id)
-        return RolResponseDTO.from_orm(rol)
+        
+        # ✅ Construir respuesta con permisos incluidos
+        rol_dto = RolResponseDTO.from_orm(rol)
+        
+        # ✅ Contar permisos activos
+        rol_dto.permisosCount = len([p for p in rol.permisos if p.is_active])
+        
+        # ✅ Contar usuarios activos
+        rol_dto.usuariosCount = len([u for u in rol.usuarios if u.is_active])
+        
+        # ✅ AGREGAR LISTA DE PERMISOS (esto faltaba)
+        rol_dto.permisos = [
+            {
+                "id_permiso": p.id_permiso,
+                "nombre": p.nombre,
+                "descripcion": p.descripcion,
+                "modulo": p.modulo
+            }
+            for p in rol.permisos if p.is_active
+        ]
+        
+        return rol_dto
     
     @classmethod
     def listar_roles(cls, db: Session, skip: int = 0, limit: int = 50):
-        """Listar roles con paginación"""
+        """Listar roles con contadores de permisos y usuarios"""
         roles = db.query(Rol).filter(Rol.is_active == True).offset(skip).limit(limit).all()
-        return [RolResponseDTO.from_orm(r) for r in roles]
+        
+        roles_dto = []
+        for rol in roles:
+            rol_dto = RolResponseDTO.from_orm(rol)
+            # ✅ Agregar contadores
+            rol_dto.permisosCount = len([p for p in rol.permisos if p.is_active])
+            rol_dto.usuariosCount = len([u for u in rol.usuarios if u.is_active])
+            roles_dto.append(rol_dto)
+        
+        return roles_dto
     
     @classmethod
-    def actualizar_rol(cls, db: Session, rol_id: int, rol_dto: RolUpdateDTO, current_user: Usuario = None) -> RolResponseDTO:
-        """Actualizar rol"""
+    def actualizar_rol(
+        cls, 
+        db: Session, 
+        rol_id: int, 
+        rol_dto: RolUpdateDTO, 
+        current_user: Usuario = None
+    ) -> RolResponseDTO:
+        """✅ Actualizar rol con registro en bitácora"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'editar_rol'):
@@ -568,6 +843,13 @@ class RolService:
             raise NotFound("Rol", rol_id)
         
         try:
+            # Guardar estado anterior
+            estado_anterior = {
+                'nombre': rol.nombre,
+                'descripcion': rol.descripcion
+            }
+            
+            # Aplicar cambios
             data = rol_dto.dict(exclude_unset=True)
             for key, value in data.items():
                 if value is not None:
@@ -576,18 +858,48 @@ class RolService:
             if current_user:
                 rol.updated_by = current_user.id_usuario
             
+            db.flush()
+            
+            # ✅ Registrar en bitácora
+            from app.modules.auth.services.auth_service import AuthService
+            if current_user:
+                cambios = []
+                for key in data.keys():
+                    if estado_anterior.get(key) != data.get(key):
+                        cambios.append(f"{key}: '{estado_anterior.get(key)}' → '{data.get(key)}'")
+                
+                AuthService.registrar_bitacora(
+                    db,
+                    usuario_id=current_user.id_usuario,
+                    accion='EDITAR_ROL',
+                    tipo_objetivo='Rol',
+                    id_objetivo=rol.id_rol,
+                    descripcion=f"Rol '{rol.nombre}' actualizado. Cambios: {', '.join(cambios)}"
+                )
+            
             db.commit()
             db.refresh(rol)
             logger.info(f"Rol actualizado: {rol.nombre}")
-            return RolResponseDTO.from_orm(rol)
+            
+            # Retornar con contadores
+            rol_response = RolResponseDTO.from_orm(rol)
+            rol_response.permisosCount = len([p for p in rol.permisos if p.is_active])
+            rol_response.usuariosCount = len([u for u in rol.usuarios if u.is_active])
+            
+            return rol_response
         except Exception as e:
             db.rollback()
             logger.error(f"Error al actualizar rol: {str(e)}")
             raise DatabaseException(f"Error al actualizar rol: {str(e)}")
     
     @classmethod
-    def eliminar_rol(cls, db: Session, rol_id: int, current_user: Usuario = None) -> dict:
-        """ Eliminar rol (borrado lógico)"""
+    def eliminar_rol(
+        cls, 
+        db: Session, 
+        rol_id: int, 
+        current_user: Usuario = None
+    ) -> dict:
+        """✅ Eliminar rol (borrado lógico) con registro en bitácora"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'eliminar_rol'):
@@ -603,14 +915,45 @@ class RolService:
         if not rol:
             raise NotFound("Rol", rol_id)
         
+        # ✅ Verificar si tiene usuarios asignados
+        usuarios_activos = [u for u in rol.usuarios if u.is_active]
+        if usuarios_activos:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No se puede eliminar el rol '{rol.nombre}' porque tiene {len(usuarios_activos)} usuarios asignados"
+            )
+        
         try:
+            nombre_rol = rol.nombre  # Guardar antes de eliminar
+            
             rol.is_active = False
             if current_user:
                 rol.updated_by = current_user.id_usuario
             
+            db.flush()
+            
+            # ✅ Registrar en bitácora
+            from app.modules.auth.services.auth_service import AuthService
+            if current_user:
+                AuthService.registrar_bitacora(
+                    db,
+                    usuario_id=current_user.id_usuario,
+                    accion='ELIMINAR_ROL',
+                    tipo_objetivo='Rol',
+                    id_objetivo=rol_id,
+                    descripcion=f"Rol '{nombre_rol}' eliminado (borrado lógico)"
+                )
+            
             db.commit()
             logger.info(f"Rol eliminado: ID {rol_id}")
-            return {"mensaje": "Rol eliminado exitosamente"}
+            
+            return {
+                "mensaje": "Rol eliminado exitosamente",
+                "id_rol": rol_id,
+                "nombre": nombre_rol
+            }
+        except HTTPException:
+            raise
         except Exception as e:
             db.rollback()
             logger.error(f"Error al eliminar rol: {str(e)}")
@@ -624,7 +967,7 @@ class RolService:
         permisos_ids: List[int], 
         current_user: Usuario = None
     ) -> RolResponseDTO:
-        """ Asignar permisos a rol (RF-04)"""
+        """✅ Asignar permisos a rol (RF-04) con bitácora"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):
@@ -641,6 +984,10 @@ class RolService:
             raise NotFound("Rol", rol_id)
         
         try:
+            # Obtener permisos anteriores
+            permisos_anteriores = {p.id_permiso: p.nombre for p in rol.permisos if p.is_active}
+            
+            # Obtener nuevos permisos
             permisos = db.query(Permiso).filter(
                 Permiso.id_permiso.in_(permisos_ids), 
                 Permiso.is_active == True
@@ -652,16 +999,50 @@ class RolService:
                     detail="Algunos permisos no existen o están inactivos"
                 )
             
+            # Actualizar permisos
             rol.permisos = permisos
             
             if current_user:
                 rol.updated_by = current_user.id_usuario
             
+            db.flush()
+            
+            # ✅ Registrar en bitácora
+            from app.modules.auth.services.auth_service import AuthService
+            if current_user:
+                permisos_nuevos = {p.id_permiso: p.nombre for p in permisos}
+                
+                agregados = [nombre for id, nombre in permisos_nuevos.items() if id not in permisos_anteriores]
+                removidos = [nombre for id, nombre in permisos_anteriores.items() if id not in permisos_nuevos]
+                
+                cambios = []
+                if agregados:
+                    cambios.append(f"Agregados: {', '.join(agregados)}")
+                if removidos:
+                    cambios.append(f"Removidos: {', '.join(removidos)}")
+                
+                descripcion = f"Permisos del rol '{rol.nombre}' actualizados. {' | '.join(cambios)}" if cambios else f"Permisos del rol '{rol.nombre}' actualizados"
+                
+                AuthService.registrar_bitacora(
+                    db,
+                    usuario_id=current_user.id_usuario,
+                    accion='ASIGNAR_PERMISOS',
+                    tipo_objetivo='Rol',
+                    id_objetivo=rol.id_rol,
+                    descripcion=descripcion
+                )
+            
             db.commit()
             db.refresh(rol)
             
             logger.info(f"Permisos asignados al rol {rol_id}")
-            return RolResponseDTO.from_orm(rol)
+            
+            # Retornar con contadores
+            rol_response = RolResponseDTO.from_orm(rol)
+            rol_response.permisosCount = len([p for p in rol.permisos if p.is_active])
+            rol_response.usuariosCount = len([u for u in rol.usuarios if u.is_active])
+            
+            return rol_response
         except HTTPException:
             raise
         except Exception as e:
@@ -677,7 +1058,7 @@ class RolService:
         id_rol: int, 
         current_user: Usuario = None
     ) -> dict:
-        """ Asignar rol a usuario"""
+        """Asignar rol a usuario"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):
@@ -701,7 +1082,7 @@ class RolService:
         rol_id: int,
         current_user: Usuario = None
     ) -> dict:
-        """ Remover rol de un usuario"""
+        """Remover rol de un usuario"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):
@@ -754,7 +1135,6 @@ class RolService:
             logger.error(f"Error al remover rol: {str(e)}")
             raise DatabaseException(f"Error al remover rol: {str(e)}")
 
-
 class PermisoService(BaseService):
     """Servicio de gestión de permisos (RF-04)"""
     model_class = Permiso
@@ -800,3 +1180,35 @@ class PermisoService(BaseService):
         
         permisos = query.offset(skip).limit(limit).all()
         return [PermisoResponseDTO.from_orm(p) for p in permisos]
+    
+    @classmethod
+    def obtener_roles_con_permiso(cls, db: Session, permiso_id: int) -> List[dict]:
+        """Obtener roles que tienen un permiso específico con contador de usuarios"""
+        permiso = db.query(Permiso).filter(
+            Permiso.id_permiso == permiso_id,
+            Permiso.is_active == True
+        ).first()
+        
+        if not permiso:
+            raise NotFound("Permiso", permiso_id)
+        
+        roles_data = []
+        for rol in permiso.roles:
+            if rol.is_active:
+                # Contar usuarios activos con este rol
+                usuarios_count = db.query(Usuario).join(
+                    usuario_roles_table,
+                    Usuario.id_usuario == usuario_roles_table.c.id_usuario
+                ).filter(
+                    usuario_roles_table.c.id_rol == rol.id_rol,
+                    Usuario.is_active == True
+                ).count()
+                
+                roles_data.append({
+                    "id_rol": rol.id_rol,
+                    "nombre": rol.nombre,
+                    "descripcion": rol.descripcion,
+                    "usuariosCount": usuarios_count
+                })
+        
+        return roles_data

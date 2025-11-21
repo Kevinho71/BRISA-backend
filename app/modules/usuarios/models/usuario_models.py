@@ -77,12 +77,14 @@ class Usuario(Base):
     persona = relationship(
         "Persona1",
         foreign_keys=[id_persona],
-        uselist=False
+        uselist=False,
+        viewonly=True
     )
     
     roles = relationship("Rol", secondary=usuario_roles_table, back_populates="usuarios")
     login_logs = relationship("LoginLog", back_populates="usuario", cascade="all, delete-orphan")
     historial_roles = relationship("RolHistorial", back_populates="usuario", cascade="all, delete-orphan")
+
 
     def __repr__(self):
         return f"<Usuario {self.usuario}>"

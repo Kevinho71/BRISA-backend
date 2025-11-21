@@ -4,7 +4,18 @@ Controlador de autenticación y usuarios
 ✅ CORREGIDO: Request como dependencia para evitar error 422 en tests
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi.exceptions import RequestValidationError
+
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from app.shared.exceptions.custom_exceptions import (
+    Conflict, 
+    DatabaseException, 
+    ValidationException,
+    NotFound
+)
+
+
 from typing import List, Optional
 import logging
 
@@ -173,16 +184,34 @@ async def refresh_token(
 @requires_permission('ver_usuario')
 async def listar_usuarios(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(1000, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
-    """Listar todos los usuarios"""
+    """Listar todos los usuarios con información de persona"""
     try:
-        usuarios = UsuarioService.listar_usuarios(db, skip, limit)
+        # ✅ Query con join a personas
+        usuarios = db.query(Usuario).join(
+            Persona1, Usuario.id_persona == Persona1.id_persona
+        ).filter(
+            Usuario.is_active == True
+        ).offset(skip).limit(limit).all()
+        
+        # ✅ Construir respuesta con nombre de persona
+        usuarios_list = []
+        for u in usuarios:
+            usuario_dict = {
+                "id_usuario": u.id_usuario,
+                "usuario": u.usuario,
+                "correo": u.correo,
+                "is_active": u.is_active,
+                "persona_nombre": u.persona.nombre_completo if u.persona else None
+            }
+            usuarios_list.append(usuario_dict)
+        
         return ResponseModel.success(
             message="Usuarios obtenidos",
-            data=[u.dict() for u in usuarios]
+            data=usuarios_list
         )
     except HTTPException:
         raise
@@ -271,13 +300,12 @@ async def crear_rol(
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """Crear nuevo rol"""
-    from app.shared.exceptions.custom_exceptions import Conflict, DatabaseException
-    
     try:
         nuevo_rol = RolService.crear_rol(db, rol_create, current_user=current_user)
         return ResponseModel.success(
             message="Rol creado exitosamente",
-            data=nuevo_rol.dict()
+            data=nuevo_rol.dict() if hasattr(nuevo_rol, 'dict') else nuevo_rol,
+            status_code=status.HTTP_201_CREATED
         )
     except Conflict as e:
         raise HTTPException(
@@ -292,19 +320,28 @@ async def crear_rol(
 
 
 @router.get("/roles", response_model=dict)
-@requires_permission('ver_rol')
+@requires_permission('ver_rol') 
 async def listar_roles(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
 ) -> dict:
     """Listar todos los roles"""
     try:
         roles = RolService.listar_roles(db, skip, limit)
+        
+        # ✅ Convertir a dict si es necesario
+        roles_list = []
+        for rol in roles:
+            if hasattr(rol, 'dict'):
+                roles_list.append(rol.dict())
+            else:
+                roles_list.append(rol)
+        
         return ResponseModel.success(
             message="Roles obtenidos",
-            data=[r.dict() for r in roles]
+            data=roles_list
         )
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -314,17 +351,88 @@ async def listar_roles(
 @requires_permission('ver_rol')
 async def obtener_rol(
     id_rol: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
 ) -> dict:
     """Obtener detalles de rol específico"""
     rol = RolService.obtener_rol(db, id_rol)
-    if not rol:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rol no encontrado")
+    
+    # ✅ Convertir a dict si tiene el método
+    rol_dict = rol.dict() if hasattr(rol, 'dict') else rol
+    
     return ResponseModel.success(
         message="Rol obtenido",
-        data=rol.dict()
+        data=rol_dict
     )
+
+
+@router.put("/roles/{id_rol}")
+@requires_permission("editar_rol")
+async def actualizar_rol(
+    id_rol: int,
+    rol_update: RolUpdateDTO,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """Actualizar rol"""
+    try:
+        # ✅ CORRECCIÓN: Parámetro debe ser rol_id, no id_rol
+        rol_actualizado = RolService.actualizar_rol(
+            db=db,
+            rol_id=id_rol,  # ← Cambiar de id_rol a rol_id
+            rol_dto=rol_update,  # ← Parámetro correcto es rol_dto
+            current_user=current_user  # ← Parámetro correcto es current_user
+        )
+
+        return ResponseModel.success(
+            message="Rol actualizado exitosamente",
+            data=rol_actualizado.dict() if hasattr(rol_actualizado, 'dict') else rol_actualizado,
+            status_code=200
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al actualizar rol: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.delete("/roles/{id_rol}")
+@requires_permission("eliminar_rol")
+async def eliminar_rol(
+    id_rol: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """
+    Eliminar rol del sistema (borrado lógico)
+    ⚠ SEGURIDAD: Requiere permiso 'eliminar_rol'
+    """
+    try:
+        # ✅ Parámetros CORRECTOS según la firma del método
+        resultado = RolService.eliminar_rol(
+            db=db,
+            rol_id=id_rol,  # ← Correcto nombre del parámetro
+            current_user=current_user  # ← Parámetro correcto
+        )
+        
+        return ResponseModel.success(
+            message="Rol eliminado exitosamente",
+            data=resultado,
+            status_code=status.HTTP_200_OK
+        )
+        
+    except HTTPException as e:
+        raise e
+        
+    except Exception as e:
+        logger.error(f"Error inesperado al eliminar rol {id_rol}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al eliminar rol: {str(e)}"
+        )
 
 
 @router.post("/usuarios/{id_usuario}/roles/{id_rol}", response_model=dict)
@@ -355,9 +463,8 @@ async def asignar_permisos_rol(
     rol_actualizado = RolService.asignar_permisos_rol(db, id_rol, permisos_ids, current_user=current_user)
     return ResponseModel.success(
         message="Permisos asignados al rol",
-        data=rol_actualizado.dict()
+        data=rol_actualizado.dict() if hasattr(rol_actualizado, 'dict') else rol_actualizado
     )
-
 
 # ==================== PERMISOS ====================
 
@@ -394,6 +501,28 @@ async def obtener_permiso(
         data=permiso.dict()
     )
 
+@router.get("/permisos/{id_permiso}/roles", response_model=dict)
+@requires_permission('ver_rol')
+async def obtener_roles_con_permiso(
+    id_permiso: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """Obtener roles que tienen un permiso específico"""
+    try:
+        roles = PermisoService.obtener_roles_con_permiso(db, id_permiso)
+        return ResponseModel.success(
+            message="Roles con permiso obtenidos",
+            data=roles
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al obtener roles con permiso: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 # ==================== LOGS DE ACCESO ====================
 
@@ -437,51 +566,277 @@ async def listar_logs_acceso(
             detail=str(e)
         )
     
-# ==================== PERSONAS ====================
+# ==================== ENDPOINTS DE PERSONAS ====================
 
+# 1️ Estadísticas (específica)
+@router.get("/personas/estadisticas")
+async def obtener_estadisticas(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    try:
+        stats = PersonaService.obtener_estadisticas(db=db)
+        return ResponseModel.success(
+            message="Estadísticas obtenidas",
+            data=stats.dict() if hasattr(stats, 'dict') else stats,
+            status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener estadísticas: {str(e)}"
+        )
+
+# 2️ Buscar por CI (específica)
+@router.get("/personas/buscar/ci/{ci}")
+async def buscar_por_ci(
+    ci: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    try:
+        from app.modules.usuarios.models.usuario_models import Persona1
+        persona = db.query(Persona1).filter(
+            Persona1.ci == ci,
+            Persona1.is_active == True
+        ).first()
+        if not persona:
+            raise HTTPException(status_code=404, detail=f"No se encontró persona con CI {ci}")
+        persona_response = PersonaService._build_persona_response(db, persona)
+        return ResponseModel.success(
+            message="Persona encontrada",
+            data=persona_response.dict() if hasattr(persona_response, 'dict') else persona_response,
+            status_code=status.HTTP_200_OK
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al buscar persona: {str(e)}")
+
+# 3️ Listar por tipo (específica)
+@router.get("/personas/tipo/{tipo_persona}")
+async def listar_por_tipo(
+    tipo_persona: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    try:
+        if tipo_persona not in ["profesor", "administrativo"]:
+            raise HTTPException(status_code=400, detail="tipo_persona debe ser 'profesor' o 'administrativo'")
+        from app.modules.usuarios.dto.usuario_dto import PersonaFiltrosDTO
+        filtros = PersonaFiltrosDTO(tipo_persona=tipo_persona, is_active=True, skip=0, limit=1000)
+        resultado = PersonaService.listar_personas(db=db, filtros=filtros)
+        return ResponseModel.success(
+            message=f"Personas tipo {tipo_persona} obtenidas",
+            data=resultado["items"],
+            status_code=200
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al listar personas por tipo: {str(e)}")
+
+# 4️ Listar personas con filtros opcionales
+@router.get("/personas")
+async def listar_personas(
+    tipo_persona: Optional[str] = Query(None, description="Filtrar por tipo: profesor o administrativo"),
+    busqueda: Optional[str] = Query(None, description="Buscar por nombre, CI o correo"),
+    estado: Optional[str] = Query(None, description="Filtrar por estado: activo o inactivo"),
+    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
+    limit: int = Query(10000, ge=1, le=10000, description="Límite de registros"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    try:
+        if tipo_persona and tipo_persona not in ["profesor", "administrativo"]:
+            raise HTTPException(status_code=400, detail="tipo_persona debe ser 'profesor' o 'administrativo'")
+        if estado and estado not in ["activo", "inactivo"]:
+            raise HTTPException(status_code=400, detail="estado debe ser 'activo' o 'inactivo'")
+
+        # Llamada al servicio con filtros
+        personas_list = PersonaService.listar_personas(
+            db=db,
+            skip=skip,
+            limit=limit,
+            tipo_persona=tipo_persona,
+            busqueda=busqueda,
+            estado=estado
+        )
+
+        # Contar total con filtros
+        from app.modules.usuarios.models.usuario_models import Persona1
+        query = db.query(Persona1)
+        if tipo_persona:
+            query = query.filter(Persona1.tipo_persona == tipo_persona)
+        if estado:
+            query = query.filter(Persona1.is_active == (estado == "activo"))
+        if busqueda:
+            busqueda_lower = f"%{busqueda.lower()}%"
+            query = query.filter(
+                db.or_(
+                    Persona1.nombres.ilike(busqueda_lower),
+                    Persona1.apellido_paterno.ilike(busqueda_lower),
+                    Persona1.apellido_materno.ilike(busqueda_lower),
+                    Persona1.ci.ilike(busqueda_lower),
+                    Persona1.correo.ilike(busqueda_lower)
+                )
+            )
+        total = query.count()
+        import math
+        pages = math.ceil(total / limit) if limit > 0 else 1
+        resultado = {
+            "items": personas_list,
+            "total": total,
+            "page": (skip // limit) + 1 if limit > 0 else 1,
+            "per_page": limit,
+            "pages": pages
+        }
+
+        return ResponseModel.success(message="Personas obtenidas", data=resultado, status_code=200)
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al listar personas: {str(e)}")
+
+# 5️ Crear persona
 @router.post("/personas", status_code=status.HTTP_201_CREATED)
 @requires_permission("crear_usuario")
 async def crear_persona(
+    request: Request,
     persona_create: PersonaCreateDTO,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
-    """Crear persona con generación automática de credenciales"""
-    resultado = PersonaService.crear_persona_con_usuario(db, persona_create, user_id=current_user.id_usuario)
-    return ResponseModel.success(message="Persona creada", data=resultado, status_code=201)
+    try:
+        body = await request.json()
+        resultado = PersonaService.crear_persona_con_usuario(db, persona_create, user_id=current_user.id_usuario)
+        return ResponseModel.success(message="Persona creada", data=resultado, status_code=201)
 
-@router.get("/personas")
-@requires_permission("ver_usuario")
-async def listar_personas(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    tipo_persona: Optional[str] = None,
+    # Manejo de errores específicos
+    except RequestValidationError as e:
+        raise
+    except Conflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except DatabaseException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except ValidationException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="CI o correo duplicado")
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error de base de datos")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
+
+# 6️ Obtener persona por ID
+@router.get("/personas/{persona_id}")
+async def obtener_persona(
+    persona_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
-    """Listar personas"""
-    personas = PersonaService.listar_personas(db, skip, limit, tipo_persona)
-    return ResponseModel.success(message="Personas obtenidas", data=personas)
+    try:
+        persona = PersonaService.obtener_persona(db=db, persona_id=persona_id)
+        return ResponseModel.success(
+            message="Persona obtenida",
+            data=persona.dict() if hasattr(persona, 'dict') else persona,
+            status_code=200
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Error al obtener persona: {str(e)}")
 
-@router.put("/personas/{id_persona}")
-@requires_permission("editar_usuario")
+# 7️ Actualizar persona
+@router.put("/personas/{persona_id}")
+@requires_permission("editar_persona")
 async def actualizar_persona(
-    id_persona: int,
+    persona_id: int,
     persona_update: PersonaUpdateDTO,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
-    """Actualizar persona"""
-    persona = PersonaService.actualizar_persona(db, id_persona, persona_update, user_id=current_user.id_usuario)
-    return ResponseModel.success(message="Persona actualizada", data=persona)
+    try:
+        persona_actualizada = PersonaService.actualizar_persona(
+            db=db,
+            persona_id=persona_id,
+            persona_dto=persona_update,
+            user_id=current_user.id_usuario
+        )
+        return ResponseModel.success(message="Persona actualizada exitosamente", data=persona_actualizada, status_code=200)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al actualizar persona: {str(e)}")
 
-@router.delete("/personas/{id_persona}")
-@requires_permission("eliminar_usuario")
+# 8️ Eliminar persona
+@router.delete("/personas/{persona_id}")
+@requires_permission("eliminar_persona")
 async def eliminar_persona(
-    id_persona: int,
+    persona_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
-    """Eliminar persona"""
-    resultado = PersonaService.eliminar_persona(db, id_persona, user_id=current_user.id_usuario)
-    return ResponseModel.success(message="Persona eliminada", data=resultado)
+    try:
+        resultado = PersonaService.eliminar_persona(db=db, persona_id=persona_id, user_id=current_user.id_usuario)
+        return ResponseModel.success(message="Persona eliminada exitosamente", data=resultado, status_code=200)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al eliminar persona: {str(e)}")
+
+# 9️ Reactivar persona
+@router.patch("/personas/{persona_id}/activar")
+@requires_permission("editar_persona")
+async def reactivar_persona(
+    persona_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    try:
+        from app.modules.usuarios.models.usuario_models import Persona1
+        persona = db.query(Persona1).filter(Persona1.id_persona == persona_id).first()
+        if not persona:
+            raise HTTPException(status_code=404, detail=f"Persona con ID {persona_id} no encontrada")
+        if persona.is_active:
+            raise HTTPException(status_code=400, detail="La persona ya está activa")
+        persona.is_active = True
+        db.commit()
+        db.refresh(persona)
+        persona_response = PersonaService._build_persona_response(db, persona)
+        return ResponseModel.success(
+            message="Persona reactivada exitosamente",
+            data=persona_response.dict() if hasattr(persona_response, 'dict') else persona_response,
+            status_code=200
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al reactivar persona: {str(e)}")
+
+# 10️ Desactivar persona
+@router.patch("/personas/{id_persona}/desactivar")
+async def desactivar_persona(
+    id_persona: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    from app.modules.usuarios.models.usuario_models import Persona1
+    persona = db.query(Persona1).filter(Persona1.id_persona == id_persona).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
+    if not persona.is_active:
+        raise HTTPException(status_code=400, detail="La persona ya está inactiva")
+    # Verificar si tiene usuario asociado
+    if persona.tiene_usuario:
+        raise HTTPException(status_code=409, detail="No se puede desactivar una persona con usuario asociado")
+    persona.is_active = False
+    db.commit()
+    db.refresh(persona)
+    return persona

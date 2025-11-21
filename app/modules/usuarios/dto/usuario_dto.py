@@ -91,7 +91,6 @@ class PersonaCreateDTO(BaseModel):
         
         return v.upper()
 
-
 class PersonaUpdateDTO(BaseModel):
     """DTO para actualizar persona"""
     nombres: Optional[str] = Field(None, min_length=2, max_length=50)
@@ -141,6 +140,8 @@ class PersonaUpdateDTO(BaseModel):
         return v
 
 
+# En usuario_dto.py
+
 class PersonaResponseDTO(BaseModel):
     """
     DTO de respuesta de persona
@@ -169,6 +170,25 @@ class PersonaResponseDTO(BaseModel):
         """Nombre completo de la persona"""
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}"
 
+
+class PersonaFiltrosDTO(BaseModel):
+    """DTO para filtros de búsqueda de personas"""
+    tipo_persona: Optional[str] = None
+    is_active: Optional[bool] = None
+    busqueda: Optional[str] = None
+    skip: int = 0
+    limit: int = 50
+
+
+class PersonasStatsDTO(BaseModel):
+    """DTO para estadísticas de personas"""
+    total_personas: int
+    total_profesores: int
+    total_administrativos: int
+    personas_activas: int
+    personas_inactivas: int
+    personas_con_usuario: int
+    personas_sin_usuario: int
 
 class PersonaConCredencialesDTO(BaseModel):
     """
@@ -211,7 +231,8 @@ class RolResponseDTO(BaseModel):
     is_active: bool
     permisosCount: int = 0
     usuariosCount: int = 0
-    
+    permisos: List[dict] = []
+
     model_config = ConfigDict(from_attributes=True)
     
     @classmethod
@@ -222,7 +243,8 @@ class RolResponseDTO(BaseModel):
             descripcion=rol.descripcion,
             is_active=rol.is_active,
             permisosCount=0,
-            usuariosCount=0
+            usuariosCount=0,
+            permisos=[]
         )
 
 
