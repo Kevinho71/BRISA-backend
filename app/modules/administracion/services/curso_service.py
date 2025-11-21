@@ -21,6 +21,12 @@ class CursoService:
         return curso
 
     @staticmethod
+    def listar_cursos_por_profesor(db: Session, id_persona: int):
+        """Lista los cursos donde un profesor imparte clases"""
+        return CursoRepository.get_by_profesor(db, id_persona)
+    
+    
+    @staticmethod
     def listar_estudiantes_por_curso(
         db: Session,
         curso_id: int,

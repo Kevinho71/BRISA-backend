@@ -20,7 +20,7 @@ class EstudianteRepository:
         return db.query(Estudiante).filter(
             Estudiante.id_estudiante == id_estudiante
         ).first()
-
+    
 
 class PersonaRepository:
     """Repositorio para operaciones CRUD de Personas (profesores y administrativos)"""
