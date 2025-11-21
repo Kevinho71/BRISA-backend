@@ -8,11 +8,20 @@ from typing import Optional
 class CursoRepository:
 
     @staticmethod
-    def get_all(db: Session):
+    def get_all(db: Session, id_persona):
         """Obtiene todos los cursos"""
         return db.query(Curso).order_by(Curso.nombre_curso).all()
-
     @staticmethod
+
+    def get_by_profesor(db: Session, id_persona: int):
+        """Obtiene los cursos asignados a un profesor específico"""
+        return db.query(Curso).join(
+            'profesores_cursos_materias'
+        ).filter(
+            db.text('profesores_cursos_materias.id_persona = :id_persona')
+        ).order_by(Curso.nombre_curso).all()
+    
+
     def get_by_id(db: Session, curso_id: int):
         """Obtiene un curso por ID"""
         return db.query(Curso).filter(Curso.id_curso == curso_id).first()
@@ -30,16 +39,10 @@ class CursoRepository:
         """
         from app.modules.administracion.models.persona_models import estudiantes_cursos
         
-        print(f"\n🔍 DEBUG get_estudiantes_by_curso:")
-        print(f"   - curso_id: {curso_id}")
-        print(f"   - name: {name}")
-        print(f"   - page: {page}, page_size: {page_size}")
-        
         # Primero verificar si hay registros en estudiantes_cursos
         count_ec = db.query(estudiantes_cursos).filter(
             estudiantes_cursos.c.id_curso == curso_id
         ).count()
-        print(f"   - Registros en estudiantes_cursos: {count_ec}")
         
         # Usar la tabla intermedia explícitamente
         query = db.query(Estudiante).join(
@@ -48,11 +51,6 @@ class CursoRepository:
         ).filter(
             estudiantes_cursos.c.id_curso == curso_id
         )
-        
-        # DEBUG: Ver SQL generado
-        from sqlalchemy.dialects import mysql
-        sql_str = str(query.statement.compile(dialect=mysql.dialect(), compile_kwargs={"literal_binds": True}))
-        print(f"   - SQL Query: {sql_str[:200]}...")
 
         # Filtro por nombre
         if name:
@@ -66,7 +64,6 @@ class CursoRepository:
 
         # Contar total
         total = query.count()
-        print(f"   - Total encontrado: {total}")
 
         # Paginación
         offset = (page - 1) * page_size
@@ -75,10 +72,6 @@ class CursoRepository:
             Estudiante.apellido_materno,
             Estudiante.nombres
         ).offset(offset).limit(page_size).all()
-        
-        print(f"   - Estudiantes retornados: {len(estudiantes)}")
-        if len(estudiantes) > 0:
-            print(f"   - Primer estudiante: {estudiantes[0].nombres} {estudiantes[0].apellido_paterno}")
 
         return {
             "total": total,
