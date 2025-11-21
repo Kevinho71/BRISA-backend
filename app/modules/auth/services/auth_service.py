@@ -248,6 +248,7 @@ class AuthService:
 
         return UsuarioActualDTO(
             id_usuario=usuario.id_usuario,
+            id_persona=usuario.id_persona,
             usuario=usuario.usuario,
             correo=usuario.correo,
             nombres=usuario.persona.nombres,

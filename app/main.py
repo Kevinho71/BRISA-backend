@@ -16,6 +16,7 @@ from app.modules.administracion.controllers import curso_controller, estudiante_
 from app.modules.administracion.controllers.persona_controller import (
     estudiantes_router, profesores_router, registradores_router
 )
+from app.modules.reportes.controllers import reporte_controller
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
 from sqlalchemy.orm import Session
@@ -58,6 +59,7 @@ app.include_router(estudiante_controller.router, prefix="/api")
 app.include_router(estudiantes_router, prefix="/api")
 app.include_router(profesores_router, prefix="/api")
 app.include_router(registradores_router, prefix="/api")
+app.include_router(reporte_controller.router, prefix="/api")
 
 @app.get("/")
 def read_root():

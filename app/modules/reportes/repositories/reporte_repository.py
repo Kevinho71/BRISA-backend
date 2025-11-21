@@ -15,7 +15,8 @@ class ReporteRepository:
         tipo: Optional[str] = None,
         limit: int = 10,
         fecha_desde: Optional[date] = None,
-        fecha_hasta: Optional[date] = None
+        fecha_hasta: Optional[date] = None,
+        id_registrador: Optional[int] = None
     ):
         """
         Obtiene ranking de estudiantes por cantidad de esquelas
@@ -50,6 +51,10 @@ class ReporteRepository:
         # Filtro por tipo
         if tipo:
             query = query.filter(CodigoEsquela.tipo == tipo)
+
+        # Filtro por registrador (quien asignó la esquela)
+        if id_registrador:
+            query = query.filter(Esquela.id_registrador == id_registrador)
 
         query = query.group_by(
             Estudiante.id_estudiante,

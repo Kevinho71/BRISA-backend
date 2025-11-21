@@ -14,7 +14,8 @@ class ReporteService:
         tipo: Optional[str] = None,
         limit: int = 10,
         fecha_desde: Optional[date] = None,
-        fecha_hasta: Optional[date] = None
+        fecha_hasta: Optional[date] = None,
+        id_registrador: Optional[int] = None
     ):
         """
         Obtiene ranking por estudiante o curso
@@ -25,10 +26,11 @@ class ReporteService:
             limit: Cantidad máxima de resultados
             fecha_desde: Fecha desde (opcional)
             fecha_hasta: Fecha hasta (opcional)
+            id_registrador: ID del usuario que registró la esquela (para filtrar "mis asignaciones")
         """
         if metric == "student":
             data = ReporteRepository.get_ranking_estudiantes(
-                db, tipo, limit, fecha_desde, fecha_hasta
+                db, tipo, limit, fecha_desde, fecha_hasta, id_registrador
             )
         elif metric == "course":
             data = ReporteRepository.get_ranking_cursos(
