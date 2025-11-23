@@ -20,6 +20,7 @@ from app.modules.usuarios.dto.usuario_dto import (
     PermisoCreateDTO, PermisoResponseDTO,PersonasStatsDTO,
     AsignarRolDTO
 )
+from app.modules.usuarios.repositories.usuario_repository import PersonaRepository
 from app.modules.usuarios.models.usuario_models import Bitacora
 from app.shared.services.base_services import BaseService
 from app.shared.exceptions.custom_exceptions import NotFound, Conflict, ValidationException, DatabaseException
@@ -45,424 +46,327 @@ def limpiar_texto(texto: str) -> str:
         texto = re.sub(r'[^a-zA-Z0-9]', '', texto)
         return texto.lower()
 
-class PersonaService(BaseService):
-    """Servicio de gestión de personas con generación automática de credenciales"""
-    model_class = Persona1
-    
-    @staticmethod
-    def limpiar_texto(texto: str) -> str:
-        """Limpiar texto para generar username"""
-        replacements = {
-            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-            'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
-            'ñ': 'n', 'Ñ': 'n', 'ü': 'u', 'Ü': 'u'
-        }
-        for old, new in replacements.items():
-            texto = texto.replace(old, new)
-        texto = texto.replace(' ', '').lower()
-        texto = re.sub(r'[^a-z]', '', texto)
-        return texto
-    
-    @staticmethod
-    def generar_username_base(nombres: str, apellido_paterno: str) -> str:
-        """Generar username: primera_letra_apellido + nombre"""
-        nombres_limpio = PersonaService.limpiar_texto(nombres)
-        apellido_limpio = PersonaService.limpiar_texto(apellido_paterno)
-        
-        if not nombres_limpio or not apellido_limpio:
-            raise ValueError("Nombres y apellidos deben contener al menos una letra válida")
-        
-        return apellido_limpio[0] + nombres_limpio
-    
-    @staticmethod
-    def validar_username_disponible(db: Session, username: str) -> str:
-        """Validar username disponible, agregar número si existe"""
-        username_final = username
-        contador = 1
-        
-        while db.query(Usuario).filter(Usuario.usuario == username_final).first():
-            username_final = f"{username}{contador}"
-            contador += 1
-            if contador > 100:
-                raise DatabaseException("No se pudo generar username único")
-        
-        return username_final
-    
-    @staticmethod
-    def generar_password_temporal() -> str:
-        """Generar contraseña temporal: Temporal{año}*{números}"""
-        año_actual = datetime.now().year
-        numeros = ''.join(random.choices(string.digits, k=3))
-        simbolo = random.choice('*#@!')
-        return f"Temporal{año_actual}{simbolo}{numeros}"
-    
 
-    @classmethod
-    def crear_persona_con_usuario(cls, db: Session, persona_dto: PersonaCreateDTO, user_id: Optional[int] = None) -> dict:
-        """Crear persona con generación automática de credenciales"""
+# =============PERSONA===================
+class PersonaService:
+    """Servicio de gestión de personas"""
+    
+    @staticmethod
+    def listar_todas(
+        db: Session,
+        skip: int = 0,
+        limit: int = 10000
+    ) -> Dict[str, Any]:
+        """
+        Listar TODAS las personas
+        
+        Args:
+            db: Sesión de base de datos
+            skip: Registros a saltar (para paginación)
+            limit: Límite de registros por página
+            
+        Returns:
+            Diccionario con datos y metadatos de paginación
+        """
         try:
-            # ✅ Validar CI único
-            if db.query(Persona1).filter(Persona1.ci == persona_dto.ci).first():
-                raise Conflict(f"CI {persona_dto.ci} ya está registrado")
+            # Obtener personas
+            personas = PersonaRepository.listar_todas(db, skip, limit)
             
-            # ✅ Validar correo único
-            if persona_dto.correo:
-                if db.query(Persona1).filter(Persona1.correo == persona_dto.correo).first():
-                    raise Conflict(f"Correo {persona_dto.correo} ya está registrado")
+            # Obtener total
+            total = PersonaRepository.contar_total(db)
             
-            # Crear persona
-            persona_data = persona_dto.dict(exclude={'tiene_acceso', 'id_rol'})
-            persona = Persona1(**persona_data)
-            db.add(persona)
-            db.flush()
+            # Construir respuesta
+            personas_list = []
+            for persona in personas:
+                persona_dict = _construir_persona_response(db, persona)
+                personas_list.append(persona_dict)
             
-            credenciales = None
-            usuario_creado = None
+            # Calcular paginación
+            import math
+            pages = math.ceil(total / limit) if limit > 0 else 1
+            current_page = (skip // limit) + 1 if limit > 0 else 1
             
-            # ¿Generar credenciales?
-            if persona_dto.tiene_acceso:
-                username_base = cls.generar_username_base(persona.nombres, persona.apellido_paterno)
-                username_final = cls.validar_username_disponible(db, username_base)
-                password_temporal = cls.generar_password_temporal()
-                
-                usuario_creado = Usuario(
-                    id_persona=persona.id_persona,
-                    usuario=username_final,
-                    correo=persona.correo,
-                    password=hash_password(password_temporal),
-                    is_active=True
-                )
-                db.add(usuario_creado)
-                db.flush()
-                
-                # Asignar rol
-                if persona_dto.id_rol:
-                    rol = db.query(Rol).filter(Rol.id_rol == persona_dto.id_rol, Rol.is_active == True).first()
-                    if rol:
-                        usuario_creado.roles.append(rol)
-                
-                credenciales = {
-                    "usuario": username_final,
-                    "password_temporal": password_temporal,
-                    "mensaje": "⚠ Guarde estas credenciales"
-                }
-            
-            # Bitácora
-            if user_id:
-                bitacora = Bitacora(
-                    id_usuario_admin=user_id,
-                    accion="CREAR_PERSONA",
-                    tipo_objetivo="Persona",
-                    id_objetivo=persona.id_persona,
-                    descripcion=f"Persona creada: {persona.nombre_completo}"
-                )
-                db.add(bitacora)
-            
-            db.commit()
-            db.refresh(persona)
-            
-            persona_response = PersonaResponseDTO.from_orm(persona)
-            if usuario_creado:
-                persona_response.usuario = credenciales['usuario']
-                persona_response.id_usuario = usuario_creado.id_usuario
-                persona_response.tiene_acceso = True
-            
-            return {"persona": persona_response.dict(), "credenciales": credenciales}
-        
-        # ✅ CRÍTICO: NO convertir Conflict en DatabaseException
-        except Conflict:
-            db.rollback()
-            raise  # ← Re-lanzar sin modificar
-        
-        except ValidationException:
-            db.rollback()
-            raise  # ← Re-lanzar sin modificar
-        
-        # ✅ Solo capturar errores de SQLAlchemy
-        except IntegrityError as e:
-            db.rollback()
-            error_msg = str(e.orig)
-            
-            # Detectar tipo de conflicto
-            if "Duplicate entry" in error_msg and "ci" in error_msg.lower():
-                raise Conflict(f"CI {persona_dto.ci} ya está registrado")
-            elif "Duplicate entry" in error_msg and "correo" in error_msg.lower():
-                raise Conflict(f"Correo {persona_dto.correo} ya está registrado")
-            else:
-                raise Conflict("Valor duplicado en la base de datos")
-        
-        except SQLAlchemyError as e:
-            db.rollback()
-            raise DatabaseException(f"Error de base de datos: {str(e)}")
+            return {
+                "items": personas_list,
+                "total": total,
+                "skip": skip,
+                "limit": limit,
+                "page": current_page,
+                "pages": pages,
+                "has_more": current_page < pages
+            }
         
         except Exception as e:
-            db.rollback()
-            raise DatabaseException(f"Error inesperado: {str(e)}")
+            logger.error(f"Error al listar personas: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error al listar personas: {str(e)}"
+            )
     
-    @classmethod
-    def listar_personas(
-        cls, 
-        db: Session, 
-        skip: int = 0, 
-        limit: int = 10000,  # ✅ AUMENTADO: Cargar todos por defecto
+    @staticmethod
+    def listar_con_filtros(
+        db: Session,
+        skip: int = 0,
+        limit: int = 10000,
         tipo_persona: Optional[str] = None,
-        busqueda: Optional[str] = None,  # ✅ NUEVO: Búsqueda general
-        estado: Optional[str] = None  # ✅ NUEVO: Filtro activo/inactivo
-    ) -> List[dict]:
+        busqueda: Optional[str] = None,
+        estado: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Listar personas con filtros opcionales
         
         Args:
             db: Sesión de base de datos
-            skip: Registros a saltar (paginación)
-            limit: Límite de registros (por defecto 10000 = todos)
+            skip: Registros a saltar
+            limit: Límite de registros
             tipo_persona: 'profesor' o 'administrativo'
-            busqueda: Texto para buscar en nombres, CI, correo
+            busqueda: Búsqueda en nombre, CI, correo, teléfono
             estado: 'activo' o 'inactivo'
+            
+        Returns:
+            Diccionario con personas filtradas y metadatos
         """
-        query = db.query(Persona1)
-        
-        # Filtro por tipo
-        if tipo_persona:
-            query = query.filter(Persona1.tipo_persona == tipo_persona)
-        
-        # Filtro por estado
-        if estado:
-            if estado == 'activo':
-                query = query.filter(Persona1.is_active == True)
-            elif estado == 'inactivo':
-                query = query.filter(Persona1.is_active == False)
-        else:
-            # Por defecto, mostrar activos e inactivos
-            pass
-        
-        # Búsqueda general
-        if busqueda:
-            busqueda_lower = f"%{busqueda.lower()}%"
-            query = query.filter(
-                db.or_(
-                    Persona1.nombres.ilike(busqueda_lower),
-                    Persona1.apellido_paterno.ilike(busqueda_lower),
-                    Persona1.apellido_materno.ilike(busqueda_lower),
-                    Persona1.ci.ilike(busqueda_lower),
-                    Persona1.correo.ilike(busqueda_lower)
-                )
-            )
-        
-        # Ordenar por nombre
-        query = query.order_by(Persona1.apellido_paterno, Persona1.nombres)
-        
-        # Aplicar paginación
-        personas = query.offset(skip).limit(limit).all()
-        
-        # Construir respuesta
-        resultado = []
-        for persona in personas:
-            usuario = db.query(Usuario).filter(
-                Usuario.id_persona == persona.id_persona
-            ).first()
-            
-            persona_dict = PersonaResponseDTO.from_orm(persona).dict()
-            persona_dict['tiene_acceso'] = usuario is not None
-            if usuario:
-                persona_dict['usuario'] = usuario.usuario
-                persona_dict['id_usuario'] = usuario.id_usuario
-            
-            resultado.append(persona_dict)
-        
-        return resultado
-    
-    @classmethod
-    def actualizar_persona(cls, db: Session, persona_id: int, persona_dto: PersonaUpdateDTO, user_id: Optional[int] = None) -> dict:
-        """Actualizar persona"""
-        persona = db.query(Persona1).filter(Persona1.id_persona == persona_id, Persona1.is_active == True).first()
-        if not persona:
-            raise NotFound("Persona", persona_id)
-        
         try:
-            data = persona_dto.dict(exclude_unset=True)
-            for key, value in data.items():
-                if value is not None:
-                    setattr(persona, key, value)
-            
-            if user_id:
-                bitacora = Bitacora(
-                    id_usuario_admin=user_id,
-                    accion="EDITAR_PERSONA",
-                    tipo_objetivo="Persona",
-                    id_objetivo=persona_id,
-                    descripcion=f"Persona editada: {persona.nombre_completo}"
+            # Validar parámetros
+            if tipo_persona and tipo_persona.lower() not in ['profesor', 'administrativo']:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="tipo_persona debe ser 'profesor' o 'administrativo'"
                 )
-                db.add(bitacora)
             
-            db.commit()
-            db.refresh(persona)
-            return PersonaResponseDTO.from_orm(persona).dict()
-        except Exception as e:
-            db.rollback()
-            raise DatabaseException(f"Error: {str(e)}")
-    
-    @classmethod
-    def eliminar_persona(cls, db: Session, persona_id: int, user_id: Optional[int] = None) -> dict:
-        """
-        Eliminar persona (borrado lógico)
-        ✅ CORREGIDO: Evita el error de UnmappedColumnError
-        """
-        # 1. Verificar que existe
-        persona = db.query(Persona1).filter(Persona1.id_persona == persona_id).first()
-        if not persona:
-            raise NotFound("Persona", persona_id)
-        
-        # 2. Guardar nombre antes de modificar
-        nombre_completo = persona.nombre_completo
-        
-        try:
-            # 3. Desactivar usuario asociado PRIMERO (query directa sin relación)
-            db.query(Usuario).filter(
-                Usuario.id_persona == persona_id
-            ).update(
-                {"is_active": False},
-                synchronize_session=False  # ✅ CRÍTICO: Evita sync de relaciones
+            if estado and estado.lower() not in ['activo', 'inactivo']:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="estado debe ser 'activo' o 'inactivo'"
+                )
+            
+            # Obtener personas filtradas
+            personas = PersonaRepository.listar_con_filtros(
+                db,
+                skip=skip,
+                limit=limit,
+                tipo_persona=tipo_persona,
+                busqueda=busqueda,
+                estado=estado
             )
             
-            # 4. Desactivar persona
-            persona.is_active = False
+            # Obtener total filtrado
+            total = PersonaRepository.contar_con_filtros(
+                db,
+                tipo_persona=tipo_persona,
+                busqueda=busqueda,
+                estado=estado
+            )
             
-            # 5. Registrar en bitácora
-            if user_id:
-                bitacora = Bitacora(
-                    id_usuario_admin=user_id,
-                    accion="ELIMINAR_PERSONA",
-                    tipo_objetivo="Persona",
-                    id_objetivo=persona_id,
-                    descripcion=f"Persona eliminada: {nombre_completo}"
-                )
-                db.add(bitacora)
+            # Construir respuesta
+            personas_list = []
+            for persona in personas:
+                persona_dict = _construir_persona_response(db, persona)
+                personas_list.append(persona_dict)
             
-            # 6. Commit
-            db.commit()
+            # Calcular paginación
+            import math
+            pages = math.ceil(total / limit) if limit > 0 else 1
+            current_page = (skip // limit) + 1 if limit > 0 else 1
             
             return {
-                "mensaje": "Persona eliminada exitosamente",
-                "id_persona": persona_id,
-                "nombre_completo": nombre_completo
+                "items": personas_list,
+                "total": total,
+                "skip": skip,
+                "limit": limit,
+                "page": current_page,
+                "pages": pages,
+                "has_more": current_page < pages,
+                "filtros": {
+                    "tipo_persona": tipo_persona,
+                    "busqueda": busqueda,
+                    "estado": estado
+                }
             }
-            
+        
+        except HTTPException:
+            raise
         except Exception as e:
-            db.rollback()
-            import traceback
-            print(f"❌ ERROR en eliminar_persona:")
-            print(traceback.format_exc())
-            raise DatabaseException(f"Error al eliminar persona: {str(e)}")
-        
-    @classmethod
-    def obtener_estadisticas(cls, db: Session) -> PersonasStatsDTO:
-        """
-        Obtener estadísticas de personas
-        
-        Args:
-            db: Sesión de base de datos
-            
-        Returns:
-            PersonasStatsDTO: Estadísticas generales
-        """
-        total_personas = db.query(Persona1).count()
-        total_profesores = db.query(Persona1).filter(
-            Persona1.tipo_persona == 'profesor'
-        ).count()
-        total_administrativos = db.query(Persona1).filter(
-            Persona1.tipo_persona == 'administrativo'
-        ).count()
-        personas_activas = db.query(Persona1).filter(
-            Persona1.is_active == True
-        ).count()
-        personas_inactivas = db.query(Persona1).filter(
-            Persona1.is_active == False
-        ).count()
-        
-        # Contar personas con usuario
-        personas_con_usuario = db.query(Persona1).join(
-            Usuario, Persona1.id_persona == Usuario.id_persona
-        ).count()
-        
-        personas_sin_usuario = total_personas - personas_con_usuario
-        
-        return PersonasStatsDTO(
-            total_personas=total_personas,
-            total_profesores=total_profesores,
-            total_administrativos=total_administrativos,
-            personas_activas=personas_activas,
-            personas_inactivas=personas_inactivas,
-            personas_con_usuario=personas_con_usuario,
-            personas_sin_usuario=personas_sin_usuario
-        )
+            logger.error(f"Error al listar personas con filtros: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error al listar personas: {str(e)}"
+            )
+    
+    # ==================== OBTENER ====================
     
     @staticmethod
-    def _build_persona_response(db: Session, persona: Persona1) -> PersonaResponseDTO:
-        """
-        Construir respuesta de persona con información adicional
-        
-        Args:
-            db: Sesión de base de datos
-            persona: Objeto Persona1
+    def obtener_por_id(db: Session, persona_id: int) -> Dict[str, Any]:
+        """Obtener persona por ID"""
+        try:
+            persona = PersonaRepository.obtener_por_id(db, persona_id)
             
-        Returns:
-            PersonaResponseDTO con información completa
-        """
-        # Verificar si tiene usuario asociado
-        usuario = db.query(Usuario).filter(
-            Usuario.id_persona == persona.id_persona
-        ).first()
+            if not persona:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Persona con ID {persona_id} no encontrada"
+                )
+            
+            return _construir_persona_response(db, persona)
         
-        usuario_info = None
-        tiene_usuario = False
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error al obtener persona: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error al obtener persona: {str(e)}"
+            )
+    
+    @staticmethod
+    def obtener_por_ci(db: Session, ci: str) -> Dict[str, Any]:
+        """Obtener persona por CI"""
+        try:
+            persona = PersonaRepository.obtener_por_ci(db, ci)
+            
+            if not persona:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Persona con CI {ci} no encontrada"
+                )
+            
+            return _construir_persona_response(db, persona)
         
-        if usuario:
-            tiene_usuario = True
-            usuario_info = {
-                "id_usuario": usuario.id_usuario,
-                "usuario": usuario.usuario,
-                "correo": usuario.correo,
-                "is_active": usuario.is_active
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error al obtener persona por CI: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error al obtener persona: {str(e)}"
+            )
+    
+    # ==================== CONTAR ====================
+    
+    @staticmethod
+    def obtener_estadisticas(db: Session) -> Dict[str, Any]:
+        """Obtener estadísticas de personas"""
+        try:
+            total = PersonaRepository.contar_total(db)
+            
+            profesores = db.query(Persona1).filter(
+                Persona1.tipo_persona == 'profesor'
+            ).count()
+            
+            administrativos = db.query(Persona1).filter(
+                Persona1.tipo_persona == 'administrativo'
+            ).count()
+            
+            activas = db.query(Persona1).filter(
+                Persona1.is_active == True
+            ).count()
+            
+            inactivas = db.query(Persona1).filter(
+                Persona1.is_active == False
+            ).count()
+            
+            # Contar personas con usuario
+            con_usuario = db.query(Persona1).join(
+                Usuario,
+                Persona1.id_persona == Usuario.id_persona
+            ).count()
+            
+            sin_usuario = total - con_usuario
+            
+            return {
+                "total_personas": total,
+                "total_profesores": profesores,
+                "total_administrativos": administrativos,
+                "personas_activas": activas,
+                "personas_inactivas": inactivas,
+                "personas_con_usuario": con_usuario,
+                "personas_sin_usuario": sin_usuario
             }
         
-        return PersonaResponseDTO(
-            id_persona=persona.id_persona,
-            ci=persona.ci,
-            nombres=persona.nombres,
-            apellido_paterno=persona.apellido_paterno,
-            apellido_materno=persona.apellido_materno,
-            nombre_completo=persona.nombre_completo,
-            direccion=persona.direccion,
-            telefono=persona.telefono,
-            correo=persona.correo,
-            tipo_persona=persona.tipo_persona,
-            is_active=persona.is_active,
-            tiene_usuario=tiene_usuario,
-            usuario_info=usuario_info
-        )
+        except Exception as e:
+            logger.error(f"Error al obtener estadísticas: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error al obtener estadísticas: {str(e)}"
+            )
 
-    def generar_username_base(nombres: str, apellido_paterno: str) -> str:
-        nombres_limpio = limpiar_texto(nombres.split()[0])
-        apellido_limpio = limpiar_texto(apellido_paterno)
-        return f"{nombres_limpio}.{apellido_limpio}"
 
-    def validar_username_disponible(db, username_base: str) -> str:
-        username = username_base
-        counter = 1
-        from app.modules.usuarios.models.usuario_models import Usuario
+# ==================== FUNCIÓN AUXILIAR ====================
 
-        while db.query(Usuario).filter(Usuario.username == username).first():
-            username = f"{username_base}{counter}"
-            counter += 1
+def _construir_persona_response(db: Session, persona: Persona1) -> Dict[str, Any]:
+    """
+    Construir respuesta de persona con información del usuario asociado
+    
+    Args:
+        db: Sesión de base de datos
+        persona: Objeto Persona1
+        
+    Returns:
+        Diccionario con datos de persona y usuario
+    """
+    # Buscar usuario asociado
+    usuario = db.query(Usuario).filter(
+        Usuario.id_persona == persona.id_persona
+    ).first()
+    
+    # Construir diccionario
+    persona_dict = {
+        "id_persona": persona.id_persona,
+        "ci": persona.ci,
+        "nombres": persona.nombres,
+        "apellido_paterno": persona.apellido_paterno,
+        "apellido_materno": persona.apellido_materno,
+        "nombre_completo": persona.nombre_completo,
+        "correo": persona.correo,
+        "telefono": persona.telefono,
+        "direccion": persona.direccion,
+        "tipo_persona": persona.tipo_persona,
+        "is_active": persona.is_active,
+        "tiene_usuario": usuario is not None,
+        "usuario": usuario.usuario if usuario else None,
+        "id_usuario": usuario.id_usuario if usuario else None
+    }
+    
+    return persona_dict
 
-        return username
 
-    def generar_password_temporal() -> str:
-        year = datetime.now().year
-        simbolo = random.choice(["@", "#", "$"])
-        numeros = ''.join(random.choices(string.digits, k=4))
-        return f"Temporal{year}{simbolo}{numeros}"
+# ==================== FUNCIÓN AUXILIAR ====================
+
+def _construir_persona_response(db: Session, persona: Persona1) -> Dict[str, Any]:
+    """
+    Construir respuesta de persona con información del usuario asociado
+    
+    Args:
+        db: Sesión de base de datos
+        persona: Objeto Persona1
+        
+    Returns:
+        Diccionario con datos de persona y usuario
+    """
+    # Buscar usuario asociado
+    usuario = db.query(Usuario).filter(
+        Usuario.id_persona == persona.id_persona
+    ).first()
+    
+    # Construir diccionario
+    persona_dict = {
+        "id_persona": persona.id_persona,
+        "ci": persona.ci,
+        "nombres": persona.nombres,
+        "apellido_paterno": persona.apellido_paterno,
+        "apellido_materno": persona.apellido_materno,
+        "nombre_completo": persona.nombre_completo,
+        "correo": persona.correo,
+        "telefono": persona.telefono,
+        "direccion": persona.direccion,
+        "tipo_persona": persona.tipo_persona,
+        "is_active": persona.is_active,
+        "tiene_usuario": usuario is not None,
+        "usuario": usuario.usuario if usuario else None,
+        "id_usuario": usuario.id_usuario if usuario else None
+    }
+    
+    return persona_dict
 
 class UsuarioService(BaseService):
     """Servicio de gestión de usuarios (RF-01, RF-06, RF-08)"""

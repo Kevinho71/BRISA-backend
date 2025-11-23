@@ -278,7 +278,7 @@ class UsuarioCreateDTO(BaseModel):
     id_persona: int
     usuario: str = Field(..., min_length=3, max_length=50)
     correo: str
-    password: str = Field(..., min_length=8)
+    password: Optional[str] = None  # ✅ HACER OPCIONAL (se genera automáticamente)
     is_active: bool = True
     
     @field_validator('correo')
@@ -287,6 +287,15 @@ class UsuarioCreateDTO(BaseModel):
         patron = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(patron, v):
             raise ValueError('Formato de correo electrónico inválido')
+        return v.lower()
+    
+    @field_validator('usuario')
+    @classmethod
+    def validar_usuario(cls, v: str) -> str:
+        """Validar formato del nombre de usuario"""
+        # Solo letras minúsculas, números y guiones
+        if not re.match(r'^[a-z0-9_-]+$', v.lower()):
+            raise ValueError('El usuario solo puede contener letras minúsculas, números, guiones y guiones bajos')
         return v.lower()
 
 

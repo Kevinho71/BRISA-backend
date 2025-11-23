@@ -135,24 +135,6 @@ async def obtener_usuario_actual(
     )
 
 
-@router.post("/registro", status_code=status.HTTP_201_CREATED)
-@requires_permission('crear_usuario') 
-async def registrar_usuario(
-    registro_dto: RegistroDTO,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-):
-    """
-    Registrar nuevo usuario
-    ✅ PROTEGIDO - Solo usuarios autenticados con permiso 'crear_usuario'
-    """
-    resultado = AuthService.registrar_usuario(db, registro_dto)
-    
-    return success_response(
-        data=resultado,
-        message="Usuario registrado exitosamente"
-    )
-
 @router.post("/refresh", response_model=dict)
 async def refresh_token(
     db: Session = Depends(get_db),
@@ -180,6 +162,208 @@ async def refresh_token(
 
 # ==================== USUARIOS ====================
 
+@router.post("/usuarios", status_code=status.HTTP_201_CREATED)
+@requires_permission('crear_usuario')
+async def crear_usuario_para_persona(
+    usuario_dto: UsuarioCreateDTO,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    ✅ Crear usuario para una persona existente
+    Genera contraseña temporal automáticamente
+    
+    ⚠️ SEGURIDAD: Requiere permiso 'crear_usuario'
+    """
+    try:
+        from app.shared.security import hash_password
+        import random
+        import string
+        
+        # Verificar que la persona existe
+        persona = db.query(Persona1).filter(
+            Persona1.id_persona == usuario_dto.id_persona,
+            Persona1.is_active == True
+        ).first()
+        
+        if not persona:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Persona con ID {usuario_dto.id_persona} no encontrada"
+            )
+        
+        # Verificar que la persona NO tenga usuario ya
+        usuario_existente = db.query(Usuario).filter(
+            Usuario.id_persona == usuario_dto.id_persona
+        ).first()
+        
+        if usuario_existente:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"La persona {persona.nombre_completo} ya tiene un usuario asignado"
+            )
+        
+        # Verificar duplicados de usuario o correo
+        duplicado = db.query(Usuario).filter(
+            (Usuario.usuario == usuario_dto.usuario) | 
+            (Usuario.correo == usuario_dto.correo)
+        ).first()
+        
+        if duplicado:
+            if duplicado.usuario == usuario_dto.usuario:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El nombre de usuario '{usuario_dto.usuario}' ya está en uso"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El correo '{usuario_dto.correo}' ya está en uso"
+                )
+        
+        # ✅ Generar contraseña temporal automáticamente
+        caracteres = string.ascii_letters + string.digits + "!@#$%"
+        password_temporal = ''.join(random.choice(caracteres) for _ in range(12))
+        
+        # Crear usuario
+        nuevo_usuario = Usuario(
+            id_persona=usuario_dto.id_persona,
+            usuario=usuario_dto.usuario.lower().strip(),
+            correo=usuario_dto.correo.lower().strip(),
+            password=hash_password(password_temporal),
+            is_active=True
+        )
+        
+        db.add(nuevo_usuario)
+        db.flush()
+        
+        # ✅ Registrar en bitácora
+        AuthService.registrar_bitacora(
+            db,
+            usuario_id=current_user.id_usuario,
+            accion='CREAR_USUARIO',
+            tipo_objetivo='Usuario',
+            id_objetivo=nuevo_usuario.id_usuario,
+            descripcion=f"Usuario '{nuevo_usuario.usuario}' creado para persona '{persona.nombre_completo}'"
+        )
+        
+        db.commit()
+        db.refresh(nuevo_usuario)
+        
+        logger.info(f"✅ Usuario creado: {nuevo_usuario.usuario} para persona {persona.nombre_completo}")
+        
+        # ✅ Retornar credenciales (SOLO SE MUESTRAN UNA VEZ)
+        return ResponseModel.success(
+            message=f"Usuario creado exitosamente para {persona.nombre_completo}",
+            data={
+                "usuario": {
+                    "id_usuario": nuevo_usuario.id_usuario,
+                    "id_persona": nuevo_usuario.id_persona,
+                    "usuario": nuevo_usuario.usuario,
+                    "correo": nuevo_usuario.correo,
+                    "is_active": nuevo_usuario.is_active
+                },
+                "password_temporal": password_temporal,
+                "mensaje": "⚠️ IMPORTANTE: Guarde esta contraseña. No se volverá a mostrar."
+            },
+            status_code=status.HTTP_201_CREATED
+        )
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error al crear usuario: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear usuario: {str(e)}"
+        )
+
+@router.post("/usuarios/{id_usuario}/restablecer-password", status_code=status.HTTP_200_OK)
+@requires_permission('editar_usuario')
+async def restablecer_password(
+    id_usuario: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    ✅ Restablecer contraseña de un usuario
+    Genera una nueva contraseña temporal automáticamente (misma lógica que crear usuario)
+    
+    ⚠️ SEGURIDAD: Requiere permiso 'editar_usuario'
+    ⚠️ Solo administradores pueden hacer esto
+    """
+    try:
+        from app.shared.security import hash_password
+        import random
+        import string
+        
+        # Obtener usuario
+        usuario = db.query(Usuario).filter(
+            Usuario.id_usuario == id_usuario,
+            Usuario.is_active == True
+        ).first()
+        
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario con ID {id_usuario} no encontrado"
+            )
+        
+        # Obtener persona asociada
+        persona = db.query(Persona1).filter(
+            Persona1.id_persona == usuario.id_persona
+        ).first()
+        
+        # ✅ Generar nueva contraseña temporal (misma lógica que crear usuario)
+        caracteres = string.ascii_letters + string.digits + "!@#$%"
+        nueva_password_temporal = ''.join(random.choice(caracteres) for _ in range(12))
+        
+        # Actualizar contraseña
+        usuario.password = hash_password(nueva_password_temporal)
+        
+        db.flush()  # Mantienes tu flush
+        
+        # Registrar en bitácora
+        AuthService.registrar_bitacora(
+            db,
+            usuario_id=current_user.id_usuario,
+            accion='RESTABLECER_PASSWORD',
+            tipo_objetivo='Usuario',
+            id_objetivo=usuario.id_usuario,
+            descripcion=f"Contraseña restablecida para usuario '{usuario.usuario}' "
+                        f"({persona.nombre_completo if persona else 'N/A'})"
+        )
+        
+        db.commit()
+        
+        logger.info(f"✅ Contraseña restablecida para usuario: {usuario.usuario}")
+        
+        # Retornar nueva contraseña temporal (SOLO UNA VEZ)
+        return ResponseModel.success(
+            message=f"Contraseña restablecida para {usuario.usuario}",
+            data={
+                "usuario": usuario.usuario,
+                "nueva_password_temporal": nueva_password_temporal,
+                "mensaje": "⚠️ IMPORTANTE: Esta contraseña solo se mostrará una vez. "
+                           "El usuario deberá cambiarla en su próximo inicio de sesión."
+            },
+            status_code=status.HTTP_200_OK
+        )
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error al restablecer contraseña: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al restablecer contraseña: {str(e)}"
+        )
+
+    
 @router.get("/usuarios", response_model=dict)
 @requires_permission('ver_usuario')
 async def listar_usuarios(
@@ -250,24 +434,132 @@ async def actualizar_usuario(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
-    """Actualizar usuario"""
-    usuario_actualizado = UsuarioService.actualizar_usuario(
-        db, 
-        id_usuario, 
-        usuario_update, 
-        current_user=current_user
-    )
+    """
+    ✅ Actualizar usuario
+    ⚠️ SEGURIDAD: Requiere permiso 'editar_usuario'
     
-    if not usuario_actualizado:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado"
+    Puede cambiar:
+    - Usuario (nombre de usuario)
+    - Correo
+    - Contraseña (opcional)
+    - Estado activo/inactivo
+    """
+    try:
+        from app.shared.security import hash_password
+        from app.shared.permissions import check_permission
+        
+        # Validación adicional: usuarios solo pueden editar su propio perfil
+        # a menos que tengan el permiso específico
+        if id_usuario != current_user.id_usuario:
+            if not check_permission(current_user, "editar_usuario"):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permiso para editar otros usuarios"
+                )
+        
+        # Obtener usuario a actualizar
+        usuario = db.query(Usuario).filter(
+            Usuario.id_usuario == id_usuario
+        ).first()
+        
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario con ID {id_usuario} no encontrado"
+            )
+        
+        # Guardar estado anterior para auditoría
+        estado_anterior = {
+            'usuario': usuario.usuario,
+            'correo': usuario.correo
+        }
+        
+        # Verificar duplicados si se cambia usuario o correo
+        if usuario_update.usuario and usuario_update.usuario != usuario.usuario:
+            duplicado = db.query(Usuario).filter(
+                Usuario.usuario == usuario_update.usuario,
+                Usuario.id_usuario != id_usuario
+            ).first()
+            
+            if duplicado:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El nombre de usuario '{usuario_update.usuario}' ya está en uso"
+                )
+            
+            usuario.usuario = usuario_update.usuario.lower().strip()
+        
+        if usuario_update.correo and usuario_update.correo != usuario.correo:
+            duplicado = db.query(Usuario).filter(
+                Usuario.correo == usuario_update.correo,
+                Usuario.id_usuario != id_usuario
+            ).first()
+            
+            if duplicado:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El correo '{usuario_update.correo}' ya está en uso"
+                )
+            
+            usuario.correo = usuario_update.correo.lower().strip()
+        
+        # Actualizar contraseña solo si se envía
+        if usuario_update.password:
+            usuario.password = hash_password(usuario_update.password)
+        
+        # Actualizar estado si se envía
+        if usuario_update.is_active is not None:
+            usuario.is_active = usuario_update.is_active
+        
+        db.flush()
+        
+        # ✅ Registrar en bitácora
+        cambios = []
+        if usuario_update.usuario:
+            cambios.append(f"usuario: '{estado_anterior['usuario']}' → '{usuario.usuario}'")
+        if usuario_update.correo:
+            cambios.append(f"correo: '{estado_anterior['correo']}' → '{usuario.correo}'")
+        if usuario_update.password:
+            cambios.append("contraseña actualizada")
+        if usuario_update.is_active is not None:
+            cambios.append(f"estado: {usuario.is_active}")
+        
+        AuthService.registrar_bitacora(
+            db,
+            usuario_id=current_user.id_usuario,
+            accion='EDITAR_USUARIO',
+            tipo_objetivo='Usuario',
+            id_objetivo=usuario.id_usuario,
+            descripcion=f"Usuario '{usuario.usuario}' actualizado. Cambios: {', '.join(cambios)}"
         )
-    
-    return ResponseModel.success(
-        message="Usuario actualizado exitosamente",
-        data=usuario_actualizado.dict()
-    )
+        
+        db.commit()
+        db.refresh(usuario)
+        
+        logger.info(f"✅ Usuario actualizado: {usuario.usuario}")
+        
+        return ResponseModel.success(
+            message="Usuario actualizado exitosamente",
+            data={
+                "id_usuario": usuario.id_usuario,
+                "id_persona": usuario.id_persona,
+                "usuario": usuario.usuario,
+                "correo": usuario.correo,
+                "is_active": usuario.is_active
+            },
+            status_code=status.HTTP_200_OK
+        )
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error al actualizar usuario: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al actualizar usuario: {str(e)}"
+        )
 
 
 @router.delete("/usuarios/{id_usuario}", response_model=dict)
@@ -568,275 +860,186 @@ async def listar_logs_acceso(
     
 # ==================== ENDPOINTS DE PERSONAS ====================
 
-# 1️ Estadísticas (específica)
-@router.get("/personas/estadisticas")
-async def obtener_estadisticas(
+# 1. LISTAR PERSONAS 
+
+@router.get("/personas")
+@requires_permission("ver_personas")
+async def listar_personas(
+    # Paginación
+    skip: int = Query(0, ge=0, description="Registros a saltar"),
+    limit: int = Query(50, ge=1, le=1000, description="Límite de registros"),  # ✅ Cambiado de 10000 a 50
+    
+    # Filtros
+    tipo_persona: Optional[str] = Query(
+        None,
+        description="Filtrar por tipo: 'profesor' o 'administrativo'"
+    ),
+    busqueda: Optional[str] = Query(
+        None,
+        description="Buscar en: nombre, CI, correo, teléfono"
+    ),
+    estado: Optional[str] = Query(
+        None,
+        description="Filtrar por estado: 'activo' o 'inactivo'"
+    ),
+    
+    # Autenticación
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
+    """
+    📋 Listar todas las personas con filtros opcionales
+    
+    **Parámetros de paginación:**
+    - `skip`: Registros a saltar (para paginación)
+    - `limit`: Límite de registros por página (máx 1000, por defecto 50)
+    
+    **Parámetros de filtro (opcionales):**
+    - `tipo_persona`: 'profesor' o 'administrativo'
+    - `busqueda`: Búsqueda en nombres, CI, correo o teléfono
+    - `estado`: 'activo' o 'inactivo'
+    
+    **Ejemplo de uso:**
+```
+    GET /api/personas?tipo_persona=profesor&busqueda=juan&estado=activo
+    GET /api/personas?busqueda=12345678&skip=0&limit=50
+    GET /api/personas?skip=50&limit=50  # Segunda página
+```
+    """
     try:
-        stats = PersonaService.obtener_estadisticas(db=db)
+        # Si hay filtros, usar listar_con_filtros
+        if tipo_persona or busqueda or estado:
+            resultado = PersonaService.listar_con_filtros(
+                db=db,
+                skip=skip,
+                limit=limit,
+                tipo_persona=tipo_persona,
+                busqueda=busqueda,
+                estado=estado
+            )
+        else:
+            # Si no hay filtros, listar todas
+            resultado = PersonaService.listar_todas(
+                db=db,
+                skip=skip,
+                limit=limit
+            )
+        
+        # ✅ ASEGURAR que la respuesta tenga la estructura correcta
         return ResponseModel.success(
-            message="Estadísticas obtenidas",
-            data=stats.dict() if hasattr(stats, 'dict') else stats,
+            message=f"Personas listadas exitosamente ({resultado['total']} total, mostrando {len(resultado['items'])})",
+            data={
+                "items": resultado["items"],
+                "total": resultado["total"],
+                "page": resultado["page"],
+                "pages": resultado["pages"],
+                "skip": resultado["skip"],
+                "limit": resultado["limit"],
+                "has_more": resultado["has_more"]
+            },
             status_code=status.HTTP_200_OK
         )
+    
+    except HTTPException as e:
+        raise e
     except Exception as e:
+        logger.error(f"Error al listar personas: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener estadísticas: {str(e)}"
+            detail=f"Error al listar personas: {str(e)}"
         )
 
-# 2️ Buscar por CI (específica)
-@router.get("/personas/buscar/ci/{ci}")
-async def buscar_por_ci(
+
+
+# 2 OBTENER PERSONA 
+
+@router.get("/id/{persona_id}", response_model=dict, status_code=status.HTTP_200_OK)
+async def obtener_persona_por_id(
+    persona_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """
+    🔍 Obtener una persona específica por ID
+    """
+    try:
+        persona = PersonaService.obtener_por_id(db, persona_id)
+        
+        return ResponseModel.success(
+            message="Persona obtenida",
+            data=persona,
+            status_code=status.HTTP_200_OK
+        )
+    
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error al obtener persona: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener persona: {str(e)}"
+        )
+
+
+@router.get("/ci/{ci}", response_model=dict, status_code=status.HTTP_200_OK)
+async def obtener_persona_por_ci(
     ci: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
+    """
+    🔍 Obtener una persona específica por CI
+    """
     try:
-        from app.modules.usuarios.models.usuario_models import Persona1
-        persona = db.query(Persona1).filter(
-            Persona1.ci == ci,
-            Persona1.is_active == True
-        ).first()
-        if not persona:
-            raise HTTPException(status_code=404, detail=f"No se encontró persona con CI {ci}")
-        persona_response = PersonaService._build_persona_response(db, persona)
-        return ResponseModel.success(
-            message="Persona encontrada",
-            data=persona_response.dict() if hasattr(persona_response, 'dict') else persona_response,
-            status_code=status.HTTP_200_OK
-        )
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al buscar persona: {str(e)}")
-
-# 3️ Listar por tipo (específica)
-@router.get("/personas/tipo/{tipo_persona}")
-async def listar_por_tipo(
-    tipo_persona: str,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-) -> dict:
-    try:
-        if tipo_persona not in ["profesor", "administrativo"]:
-            raise HTTPException(status_code=400, detail="tipo_persona debe ser 'profesor' o 'administrativo'")
-        from app.modules.usuarios.dto.usuario_dto import PersonaFiltrosDTO
-        filtros = PersonaFiltrosDTO(tipo_persona=tipo_persona, is_active=True, skip=0, limit=1000)
-        resultado = PersonaService.listar_personas(db=db, filtros=filtros)
-        return ResponseModel.success(
-            message=f"Personas tipo {tipo_persona} obtenidas",
-            data=resultado["items"],
-            status_code=200
-        )
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al listar personas por tipo: {str(e)}")
-
-# 4️ Listar personas con filtros opcionales
-@router.get("/personas")
-async def listar_personas(
-    tipo_persona: Optional[str] = Query(None, description="Filtrar por tipo: profesor o administrativo"),
-    busqueda: Optional[str] = Query(None, description="Buscar por nombre, CI o correo"),
-    estado: Optional[str] = Query(None, description="Filtrar por estado: activo o inactivo"),
-    skip: int = Query(0, ge=0, description="Número de registros a saltar"),
-    limit: int = Query(10000, ge=1, le=10000, description="Límite de registros"),
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-) -> dict:
-    try:
-        if tipo_persona and tipo_persona not in ["profesor", "administrativo"]:
-            raise HTTPException(status_code=400, detail="tipo_persona debe ser 'profesor' o 'administrativo'")
-        if estado and estado not in ["activo", "inactivo"]:
-            raise HTTPException(status_code=400, detail="estado debe ser 'activo' o 'inactivo'")
-
-        # Llamada al servicio con filtros
-        personas_list = PersonaService.listar_personas(
-            db=db,
-            skip=skip,
-            limit=limit,
-            tipo_persona=tipo_persona,
-            busqueda=busqueda,
-            estado=estado
-        )
-
-        # Contar total con filtros
-        from app.modules.usuarios.models.usuario_models import Persona1
-        query = db.query(Persona1)
-        if tipo_persona:
-            query = query.filter(Persona1.tipo_persona == tipo_persona)
-        if estado:
-            query = query.filter(Persona1.is_active == (estado == "activo"))
-        if busqueda:
-            busqueda_lower = f"%{busqueda.lower()}%"
-            query = query.filter(
-                db.or_(
-                    Persona1.nombres.ilike(busqueda_lower),
-                    Persona1.apellido_paterno.ilike(busqueda_lower),
-                    Persona1.apellido_materno.ilike(busqueda_lower),
-                    Persona1.ci.ilike(busqueda_lower),
-                    Persona1.correo.ilike(busqueda_lower)
-                )
-            )
-        total = query.count()
-        import math
-        pages = math.ceil(total / limit) if limit > 0 else 1
-        resultado = {
-            "items": personas_list,
-            "total": total,
-            "page": (skip // limit) + 1 if limit > 0 else 1,
-            "per_page": limit,
-            "pages": pages
-        }
-
-        return ResponseModel.success(message="Personas obtenidas", data=resultado, status_code=200)
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al listar personas: {str(e)}")
-
-# 5️ Crear persona
-@router.post("/personas", status_code=status.HTTP_201_CREATED)
-@requires_permission("crear_usuario")
-async def crear_persona(
-    request: Request,
-    persona_create: PersonaCreateDTO,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-) -> dict:
-    try:
-        body = await request.json()
-        resultado = PersonaService.crear_persona_con_usuario(db, persona_create, user_id=current_user.id_usuario)
-        return ResponseModel.success(message="Persona creada", data=resultado, status_code=201)
-
-    # Manejo de errores específicos
-    except RequestValidationError as e:
-        raise
-    except Conflict as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    except DatabaseException as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except ValidationException as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="CI o correo duplicado")
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Error de base de datos")
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
-
-# 6️ Obtener persona por ID
-@router.get("/personas/{persona_id}")
-async def obtener_persona(
-    persona_id: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-) -> dict:
-    try:
-        persona = PersonaService.obtener_persona(db=db, persona_id=persona_id)
+        persona = PersonaService.obtener_por_ci(db, ci)
+        
         return ResponseModel.success(
             message="Persona obtenida",
-            data=persona.dict() if hasattr(persona, 'dict') else persona,
-            status_code=200
+            data=persona,
+            status_code=status.HTTP_200_OK
         )
+    
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Error al obtener persona: {str(e)}")
-
-# 7️ Actualizar persona
-@router.put("/personas/{persona_id}")
-@requires_permission("editar_persona")
-async def actualizar_persona(
-    persona_id: int,
-    persona_update: PersonaUpdateDTO,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-) -> dict:
-    try:
-        persona_actualizada = PersonaService.actualizar_persona(
-            db=db,
-            persona_id=persona_id,
-            persona_dto=persona_update,
-            user_id=current_user.id_usuario
+        logger.error(f"Error al obtener persona por CI: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener persona: {str(e)}"
         )
-        return ResponseModel.success(message="Persona actualizada exitosamente", data=persona_actualizada, status_code=200)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al actualizar persona: {str(e)}")
 
-# 8️ Eliminar persona
-@router.delete("/personas/{persona_id}")
-@requires_permission("eliminar_persona")
-async def eliminar_persona(
-    persona_id: int,
+
+# 3 ESTADÍSTICAS 
+
+@router.get("/personas/estadisticas")
+@requires_permission("ver_personas")
+async def obtener_estadisticas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
+    """
+    📊 Obtener estadísticas de personas
+    
+    Retorna:
+    - Total de personas
+    - Contador por tipo (profesor/administrativo)
+    - Contador por estado (activo/inactivo)
+    - Personas con/sin usuario
+    """
     try:
-        resultado = PersonaService.eliminar_persona(db=db, persona_id=persona_id, user_id=current_user.id_usuario)
-        return ResponseModel.success(message="Persona eliminada exitosamente", data=resultado, status_code=200)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al eliminar persona: {str(e)}")
-
-# 9️ Reactivar persona
-@router.patch("/personas/{persona_id}/activar")
-@requires_permission("editar_persona")
-async def reactivar_persona(
-    persona_id: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-) -> dict:
-    try:
-        from app.modules.usuarios.models.usuario_models import Persona1
-        persona = db.query(Persona1).filter(Persona1.id_persona == persona_id).first()
-        if not persona:
-            raise HTTPException(status_code=404, detail=f"Persona con ID {persona_id} no encontrada")
-        if persona.is_active:
-            raise HTTPException(status_code=400, detail="La persona ya está activa")
-        persona.is_active = True
-        db.commit()
-        db.refresh(persona)
-        persona_response = PersonaService._build_persona_response(db, persona)
+        stats = PersonaService.obtener_estadisticas(db)
+        
         return ResponseModel.success(
-            message="Persona reactivada exitosamente",
-            data=persona_response.dict() if hasattr(persona_response, 'dict') else persona_response,
-            status_code=200
+            message="Estadísticas obtenidas",
+            data=stats,
+            status_code=status.HTTP_200_OK
         )
+    
     except HTTPException as e:
         raise e
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al reactivar persona: {str(e)}")
-
-# 10️ Desactivar persona
-@router.patch("/personas/{id_persona}/desactivar")
-async def desactivar_persona(
-    id_persona: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user_dependency)
-):
-    from app.modules.usuarios.models.usuario_models import Persona1
-    persona = db.query(Persona1).filter(Persona1.id_persona == id_persona).first()
-    if not persona:
-        raise HTTPException(status_code=404, detail="Persona no encontrada")
-    if not persona.is_active:
-        raise HTTPException(status_code=400, detail="La persona ya está inactiva")
-    # Verificar si tiene usuario asociado
-    if persona.tiene_usuario:
-        raise HTTPException(status_code=409, detail="No se puede desactivar una persona con usuario asociado")
-    persona.is_active = False
-    db.commit()
-    db.refresh(persona)
-    return persona
+        logger.error(f"Error al obtener estadísticas: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener estadísticas: {str(e)}"
+        )
