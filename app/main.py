@@ -1,3 +1,4 @@
+# app\__init__.py
 from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -14,6 +15,7 @@ from app.modules.bitacora.controllers import bitacora_controller
 #from app.modules.reportes.controllers import reportes_controller
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
+from app.modules.incidentes.controllers import controllers_incidentes
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 
@@ -48,6 +50,7 @@ register_exception_handlers(app)
 app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
+app.include_router(controllers_incidentes.router, prefix="/api/incidentes", tags=["Incidentes"])
 #app.include_router(reportes_controller.router, prefix="/api/reportes", tags=["Reportes"])
 
 @app.get("/")

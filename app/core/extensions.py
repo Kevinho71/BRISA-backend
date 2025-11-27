@@ -1,20 +1,16 @@
-
+# app\core\extensions.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import Dict
-from flask_sqlalchemy import SQLAlchemy
 
 from app.core.database import get_db
 from app.shared.response import ResponseModel
 from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
 from app.modules.auth.services.auth_service import AuthService
 from app.shared.security import verify_token
-
-# Instancia de SQLAlchemy para compatibilidad con tests Flask
-db = SQLAlchemy()
+from app.shared.security import verify_token
 
 router = APIRouter()
-
 @router.post("/register", response_model=dict)
 async def registrar(
     registro: RegistroDTO,

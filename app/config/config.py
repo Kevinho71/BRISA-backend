@@ -1,3 +1,4 @@
+# app/config/config.py
 import os
 from dotenv import load_dotenv
 
@@ -11,23 +12,23 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 3600))
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
 
-    # 🔧 Conexión a tu base real (sin contraseña)
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@localhost/bienestar_estudiantil'
+    # 🔧 Conexión a tu base real
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo"""
     DEBUG = True
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@localhost/bienestar_estudiantil'
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
 
 class ProductionConfig(Config):
     """Configuración para producción"""
     DEBUG = False
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@localhost/bienestar_estudiantil'
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
 
 class TestingConfig(Config):
     """Configuración para testing"""
     TESTING = True
-    DATABASE_URL = os.environ.get('TEST_DATABASE_URL') or 'mysql+pymysql://root:@localhost/bienestar_estudiantil'
+    DATABASE_URL = os.environ.get('TEST_DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
 
 # 🔁 Diccionario de configuraciones disponibles
 config = {
