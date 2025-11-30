@@ -35,23 +35,85 @@ INSERT INTO roles (nombre, descripcion) VALUES
 -- ========================================
 -- 3. PERMISOS
 -- ========================================
-INSERT INTO permisos (nombre, descripcion) VALUES
-('Lectura','Puede ver información'),
-('Agregar','Puede agregar información'),
-('Modificar','Puede modificar información'),
-('Eliminar','Puede eliminar información');
+INSERT INTO permisos (nombre, descripcion, modulo) VALUES
+-- Módulo de Usuarios
+('Lectura', 'Puede ver información', 'usuarios'),
+('Agregar', 'Puede agregar información', 'usuarios'),
+('Modificar', 'Puede modificar información', 'usuarios'),
+('Eliminar', 'Puede eliminar información', 'usuarios'),
+
+-- Módulo de Esquelas
+('Lectura', 'Puede ver información', 'esquelas'),
+('Agregar', 'Puede agregar información', 'esquelas'),
+('Modificar', 'Puede modificar información', 'esquelas'),
+('Eliminar', 'Puede eliminar información', 'esquelas'),
+
+-- Módulo de Incidentes
+('Lectura', 'Puede ver información', 'incidentes'),
+('Agregar', 'Puede agregar información', 'incidentes'),
+('Modificar', 'Puede modificar información', 'incidentes'),
+('Eliminar', 'Puede eliminar información', 'incidentes'),
+
+-- Módulo de Retiros Tempranos
+('Lectura', 'Puede ver información', 'retiros_tempranos'),
+('Agregar', 'Puede agregar información', 'retiros_tempranos'),
+('Modificar', 'Puede modificar información', 'retiros_tempranos'),
+('Eliminar', 'Puede eliminar información', 'retiros_tempranos'),
+
+-- Módulo de Reportes
+('Lectura', 'Puede ver información', 'reportes'),
+('Agregar', 'Puede agregar información', 'reportes'),
+('Modificar', 'Puede modificar información', 'reportes'),
+('Eliminar', 'Puede eliminar información', 'reportes'),
+
+-- Módulo de Profesores
+('Lectura', 'Puede ver información', 'profesores'),
+('Agregar', 'Puede agregar información', 'profesores'),
+('Modificar', 'Puede modificar información', 'profesores'),
+('Eliminar', 'Puede eliminar información', 'profesores'),
+
+-- Módulo Administración
+('Lectura', 'Puede ver información', 'administracion'),
+('Agregar', 'Puede agregar información', 'administracion'),
+('Modificar', 'Puede modificar información', 'administracion'),
+('Eliminar', 'Puede eliminar información', 'administracion');
 
 -- ========================================
 -- 4. ROL_PERMISOS
 -- ========================================
 INSERT INTO rol_permisos (id_rol,id_permiso) VALUES
+-- Director
 (1,1),(1,2),(1,3),(1,4),
-(2,1),(2,2),(2,3),
-(3,1),(3,2),
-(4,1),(4,2),(4,3),
-(5,1),(5,2),
+(1,5),(1,6),(1,7),(1,8),
+(1,9),(1,10),(1,11),(1,12),
+(1,13),(1,14),(1,15),(1,16),
+(1,17),(1,18),(1,19),(1,20),
+(1,21),(1,22),(1,23),(1,24),
+(1,25),(1,26),(1,27),(1,28),
+
+-- Profesor
+(2,5),(2,6),(2,7),
+(2,9),(2,10),(2,11),
+(2,21),(2,22),(2,23),
+
+-- Regente
+(3,5),(3,6),
+(3,9),(3,10),
+
+-- Gabinete Psicopedagógico
+(4,9),(4,10),(4,11),
+
+-- Gabinete Psicología
+
+(5,9),(5,10),
+
+-- Administrativo
 (6,1),(6,2),(6,3),
-(7,1),(7,2);
+(6,13),(6,14),(6,15),
+
+-- Recepción
+(7,13),(7,14);
+
 
 -- ========================================
 -- 5. USUARIOS

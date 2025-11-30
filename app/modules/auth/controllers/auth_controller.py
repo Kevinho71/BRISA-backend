@@ -20,7 +20,7 @@ from typing import List, Optional
 import logging
 
 from app.modules.usuarios.models.usuario_models import Persona1, Usuario
-from app.modules.auth.dto.auth_dto import LoginDTO, RegistroDTO
+from app.modules.auth.dto.auth_dto import LoginDTO, RegistroDTO, CambiarPasswordDTO
 from app.modules.auth.services.auth_service import AuthService, get_current_user_dependency
 from app.core.utils import success_response
 from app.modules.usuarios.services.usuario_service import PersonaService
@@ -363,7 +363,75 @@ async def restablecer_password(
             detail=f"Error al restablecer contraseña: {str(e)}"
         )
 
+@router.post("/cambiar-password", status_code=status.HTTP_200_OK)
+async def cambiar_password(
+    password_dto: CambiarPasswordDTO,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    🔐 Cambiar contraseña del usuario autenticado
     
+    **Requisitos de seguridad:**
+    - Usuario debe estar autenticado (requiere token JWT válido)
+    - Debe proporcionar su contraseña actual correcta
+    - La nueva contraseña debe cumplir requisitos de complejidad:
+      * Mínimo 8 caracteres
+      * Al menos 1 mayúscula
+      * Al menos 1 minúscula
+      * Al menos 1 número
+      * Al menos 1 carácter especial
+    - La nueva contraseña debe ser diferente a la actual
+    - Las contraseñas nueva y confirmación deben coincidir
+    
+    **Auditoría:**
+    - Se registra en Bitácora el cambio exitoso
+    - Se registra en LoginLog los intentos fallidos (contraseña actual incorrecta)
+    
+    **Ejemplo de uso:**
+    ```json
+    POST /api/auth/cambiar-password
+    Headers: {
+        "Authorization": "Bearer <tu_token>"
+    }
+    Body: {
+        "password_actual": "Password123!",
+        "password_nueva": "NuevaPassword456!",
+        "confirmar_password_nueva": "NuevaPassword456!"
+    }
+    ```
+    
+    ⚠️ **IMPORTANTE:** Después de cambiar la contraseña, el token actual sigue siendo válido.
+    Se recomienda cerrar sesión y volver a iniciar con la nueva contraseña.
+    """
+    try:
+        # Extraer IP para auditoría
+        ip_address = get_client_ip(request)
+        
+        # Cambiar contraseña
+        resultado = AuthService.cambiar_password(
+            db=db,
+            usuario_id=current_user.id_usuario,
+            password_actual=password_dto.password_actual,
+            password_nueva=password_dto.password_nueva,
+            ip_address=ip_address
+        )
+        
+        return success_response(
+            data=resultado,
+            message="Contraseña cambiada exitosamente. Se recomienda cerrar sesión y volver a iniciar."
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error inesperado al cambiar contraseña: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al cambiar contraseña"
+        )
+      
 @router.get("/usuarios", response_model=dict)
 @requires_permission('ver_usuario')
 async def listar_usuarios(
@@ -793,6 +861,7 @@ async def obtener_permiso(
         data=permiso.dict()
     )
 
+
 @router.get("/permisos/{id_permiso}/roles", response_model=dict)
 @requires_permission('ver_rol')
 async def obtener_roles_con_permiso(
@@ -814,6 +883,155 @@ async def obtener_roles_con_permiso(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
+        )
+    
+
+# ---------------- ENDPOINTS DE PERMISOS con nivel de acceso--------------------
+
+@router.get("/me/permisos", response_model=dict, status_code=status.HTTP_200_OK)
+async def obtener_mis_permisos(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    📋 Obtener permisos detallados del usuario actual
+    
+    Retorna:
+    - Lista de permisos con módulo
+    - Permisos agrupados por módulo
+    - Lista de módulos accesibles
+    - Lista de acciones específicas disponibles
+    - Información si es administrador
+    
+    Ejemplo de respuesta:
+    ```json
+    {
+        "permisos": [
+            {"permiso": "Lectura", "modulo": "usuarios"},
+            {"permiso": "Agregar", "modulo": "incidentes"}
+        ],
+        "permisos_por_modulo": {
+            "usuarios": ["Lectura", "Agregar"],
+            "incidentes": ["Lectura", "Agregar", "Modificar"]
+        },
+        "modulos_accesibles": ["usuarios", "incidentes"],
+        "acciones_disponibles": ["ver_usuario", "crear_incidente"],
+        "es_administrador": false
+    }
+    ```
+    """
+    try:
+        from app.shared.permission_mapper import (
+            obtener_permisos_usuario,
+            obtener_permisos_por_modulo,
+            obtener_modulos_permitidos,
+            obtener_acciones_usuario,
+            es_administrador
+        )
+        
+        permisos_detallados = obtener_permisos_usuario(current_user)
+        permisos_agrupados = obtener_permisos_por_modulo(current_user)
+        modulos = obtener_modulos_permitidos(current_user)
+        acciones = obtener_acciones_usuario(current_user)
+        is_admin = es_administrador(current_user)
+        
+        return ResponseModel.success(
+            message="Permisos obtenidos exitosamente",
+            data={
+                "usuario": current_user.usuario,
+                "permisos": permisos_detallados,
+                "permisos_por_modulo": permisos_agrupados,
+                "modulos_accesibles": modulos,
+                "acciones_disponibles": acciones,
+                "es_administrador": is_admin,
+                "roles": [r.nombre for r in current_user.roles if r.is_active]
+            },
+            status_code=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        logger.error(f"Error al obtener permisos: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener permisos: {str(e)}"
+        )
+
+
+@router.get("/me/puede-acceder/{modulo}", response_model=dict, status_code=status.HTTP_200_OK)
+async def verificar_acceso_modulo(
+    modulo: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    🔍 Verificar si el usuario puede acceder a un módulo específico
+    
+    Parámetros:
+    - modulo: Nombre del módulo (usuarios, incidentes, esquelas, etc)
+    
+    Ejemplo: GET /api/auth/me/puede-acceder/incidentes
+    """
+    try:
+        from app.shared.permission_mapper import puede_acceder_modulo
+        
+        puede_acceder = puede_acceder_modulo(current_user, modulo)
+        
+        return ResponseModel.success(
+            message=f"Verificación de acceso para módulo {modulo}",
+            data={
+                "modulo": modulo,
+                "puede_acceder": puede_acceder,
+                "usuario": current_user.usuario
+            },
+            status_code=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        logger.error(f"Error al verificar acceso: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al verificar acceso: {str(e)}"
+        )
+
+
+@router.post("/me/verificar-permiso", response_model=dict, status_code=status.HTTP_200_OK)
+async def verificar_permiso_especifico(
+    accion: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    ✅ Verificar si el usuario tiene permiso para una acción específica
+    
+    Body:
+    ```json
+    {
+        "accion": "editar_usuario"
+    }
+    ```
+    
+    Útil para el frontend antes de mostrar botones o permitir acciones
+    """
+    try:
+        from app.shared.permission_mapper import tiene_permiso
+        
+        tiene_perm = tiene_permiso(current_user, accion)
+        
+        return ResponseModel.success(
+            message=f"Verificación de permiso: {accion}",
+            data={
+                "accion": accion,
+                "tiene_permiso": tiene_perm,
+                "usuario": current_user.usuario
+            },
+            status_code=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        logger.error(f"Error al verificar permiso: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al verificar permiso: {str(e)}"
         )
 
 # ==================== LOGS DE ACCESO ====================
@@ -1043,3 +1261,6 @@ async def obtener_estadisticas(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al obtener estadísticas: {str(e)}"
         )
+    
+
+  

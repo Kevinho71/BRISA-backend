@@ -99,7 +99,7 @@ class AuthService:
                 fecha_hora=datetime.now()
             )
             db.add(login_log)
-            db.flush()  # ✅ CRÍTICO: flush en lugar de commit
+            db.flush() 
             logger.info(f"LoginLog registrado para usuario {id_usuario}: {estado}")
             return login_log
         except Exception as e:
@@ -129,7 +129,7 @@ class AuthService:
                 fecha_hora=datetime.now()
             )
             db.add(bitacora)
-            db.flush()  # ✅ CRÍTICO: flush en lugar de commit
+            db.flush() 
             logger.info(f"Bitácora registrada: {accion} por usuario {usuario_id}")
             return bitacora
         except Exception as e:
@@ -418,6 +418,107 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al registrar usuario"
+            )
+        
+    @staticmethod
+    def cambiar_password(
+        db: Session,
+        usuario_id: int,
+        password_actual: str,
+        password_nueva: str,
+        ip_address: Optional[str] = None
+    ) -> dict:
+        """
+        🔐 Cambiar contraseña del usuario autenticado
+        
+        Validaciones:
+        - Verifica que la contraseña actual sea correcta
+        - Valida que la nueva contraseña cumpla requisitos de seguridad
+        - Registra el cambio en Bitácora
+        - Registra intentos fallidos en LoginLog
+        
+        ✅ USA FLUSH + COMMIT explícito para persistencia
+        
+        Args:
+            db: Sesión de base de datos
+            usuario_id: ID del usuario que cambia su contraseña
+            password_actual: Contraseña actual del usuario
+            password_nueva: Nueva contraseña
+            ip_address: IP desde donde se hace el cambio (para auditoría)
+        
+        Returns:
+            dict con mensaje de éxito
+            
+        Raises:
+            HTTPException 401: Si la contraseña actual es incorrecta
+            HTTPException 404: Si el usuario no existe
+        """
+        try:
+            # Obtener usuario
+            usuario = db.query(Usuario).filter(
+                Usuario.id_usuario == usuario_id,
+                Usuario.is_active == True
+            ).first()
+            
+            if not usuario:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado"
+                )
+            
+            # ✅ CRÍTICO: Verificar contraseña actual
+            if not AuthService.verify_password(password_actual, usuario.password):
+                # Registrar intento fallido
+                AuthService.registrar_login_log(
+                    db=db,
+                    id_usuario=usuario_id,
+                    ip_address=ip_address,
+                    user_agent="Cambio de contraseña",
+                    estado='fallido'
+                )
+                db.commit()  # Persistir el intento fallido
+                
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="La contraseña actual es incorrecta"
+                )
+            
+            # ✅ Hashear nueva contraseña
+            nuevo_hash = AuthService.hash_password(password_nueva)
+            
+            # Actualizar contraseña
+            usuario.password = nuevo_hash
+            db.flush()
+            
+            # ✅ Registrar en Bitácora
+            AuthService.registrar_bitacora(
+                db=db,
+                usuario_id=usuario_id,
+                accion='CAMBIAR_PASSWORD',
+                tipo_objetivo='Usuario',
+                id_objetivo=usuario_id,
+                descripcion=f"Usuario '{usuario.usuario}' cambió su contraseña desde IP {ip_address}"
+            )
+            
+            # ✅ CRÍTICO: Commit explícito para persistir
+            db.commit()
+            
+            logger.info(f"✅ Contraseña cambiada exitosamente para usuario {usuario.usuario}")
+            
+            return {
+                "mensaje": "Contraseña cambiada exitosamente",
+                "usuario": usuario.usuario
+            }
+            
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"❌ Error al cambiar contraseña: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al cambiar contraseña"
             )
 
 
