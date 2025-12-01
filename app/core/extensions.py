@@ -37,7 +37,7 @@ async def registrar(
     - usuario: Nombre de usuario único
     - correo: Email único
     - password: Contraseña (mín. 8 caracteres, mayúsculas, minúsculas, números)
-    - tipo_persona: 'profesor' o 'administrativo'
+    - tipo_persona: 'profesor', 'administrativo' o 'regente'
     """
     try:
         resultado = AuthService.registrar_usuario(db, registro)
