@@ -1,10 +1,10 @@
 # app/modules/reportes/repositories/reporte_repository.py
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_, and_
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela, EsquelaCodigo
 from app.modules.administracion.models.persona_models import Estudiante, Curso, estudiantes_cursos
-from datetime import date
-from typing import Optional, Literal
+from datetime import date, datetime
+from typing import Optional, Literal, List
 
 
 class ReporteRepository:
@@ -145,4 +145,311 @@ class ReporteRepository:
             })
 
         return ranking
+
+
+    # ================================
+    # Métodos para Reportes de Estudiantes
+    # ================================
+
+    @staticmethod
+    def get_estudiantes_por_filtros(
+        db: Session,
+        id_curso: Optional[int] = None,
+        nivel: Optional[str] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene listado de estudiantes filtrado por curso, nivel y/o gestión
+        """
+        query = db.query(Estudiante).join(
+            estudiantes_cursos, Estudiante.id_estudiante == estudiantes_cursos.c.id_estudiante
+        ).join(
+            Curso, Curso.id_curso == estudiantes_cursos.c.id_curso
+        )
+
+        if id_curso:
+            query = query.filter(Curso.id_curso == id_curso)
+        if nivel:
+            query = query.filter(Curso.nivel == nivel)
+        if gestion:
+            query = query.filter(Curso.gestion == gestion)
+
+        # Obtener estudiantes únicos
+        estudiantes = query.distinct().all()
+
+        # Formatear resultados con sus cursos
+        resultado = []
+        for est in estudiantes:
+            # Calcular edad si hay fecha de nacimiento
+            edad = None
+            if est.fecha_nacimiento:
+                hoy = date.today()
+                edad = hoy.year - est.fecha_nacimiento.year
+                if hoy.month < est.fecha_nacimiento.month or (
+                    hoy.month == est.fecha_nacimiento.month and hoy.day < est.fecha_nacimiento.day
+                ):
+                    edad -= 1
+
+            # Obtener cursos del estudiante (filtrados si aplica)
+            cursos_query = db.query(Curso).join(
+                estudiantes_cursos, Curso.id_curso == estudiantes_cursos.c.id_curso
+            ).filter(estudiantes_cursos.c.id_estudiante == est.id_estudiante)
+            
+            if nivel:
+                cursos_query = cursos_query.filter(Curso.nivel == nivel)
+            if gestion:
+                cursos_query = cursos_query.filter(Curso.gestion == gestion)
+            
+            cursos = cursos_query.all()
+            cursos_nombres = [f"{c.nombre_curso} ({c.gestion})" for c in cursos]
+
+            resultado.append({
+                "id_estudiante": est.id_estudiante,
+                "ci": est.ci,
+                "nombre_completo": est.nombre_completo,
+                "fecha_nacimiento": est.fecha_nacimiento,
+                "edad": edad,
+                "cursos": cursos_nombres
+            })
+
+        return resultado
+
+    @staticmethod
+    def get_estudiantes_por_apoderados(
+        db: Session,
+        con_apoderados: Optional[bool] = None
+    ):
+        """
+        Obtiene estudiantes con o sin apoderados registrados
+        con_apoderados: True (con apoderados), False (sin apoderados), None (todos)
+        """
+        query = db.query(Estudiante)
+
+        estudiantes = query.all()
+        resultado = []
+
+        for est in estudiantes:
+            # Verificar si tiene apoderados
+            tiene_padre = bool(est.nombre_padre and est.nombre_padre.strip())
+            tiene_madre = bool(est.nombre_madre and est.nombre_madre.strip())
+            tiene_apoderados = tiene_padre or tiene_madre
+
+            # Aplicar filtro si se especificó
+            if con_apoderados is not None and tiene_apoderados != con_apoderados:
+                continue
+
+            # Construir lista de apoderados
+            apoderados = []
+            
+            if tiene_padre:
+                nombre_padre = f"{est.nombre_padre or ''} {est.apellido_paterno_padre or ''} {est.apellido_materno_padre or ''}".strip()
+                apoderados.append({
+                    "tipo": "padre",
+                    "nombre_completo": nombre_padre if nombre_padre else None,
+                    "telefono": est.telefono_padre
+                })
+            
+            if tiene_madre:
+                nombre_madre = f"{est.nombre_madre or ''} {est.apellido_paterno_madre or ''} {est.apellido_materno_madre or ''}".strip()
+                apoderados.append({
+                    "tipo": "madre",
+                    "nombre_completo": nombre_madre if nombre_madre else None,
+                    "telefono": est.telefono_madre
+                })
+
+            resultado.append({
+                "id_estudiante": est.id_estudiante,
+                "ci": est.ci,
+                "nombre_completo": est.nombre_completo,
+                "apoderados": apoderados,
+                "tiene_apoderados": tiene_apoderados
+            })
+
+        return resultado
+
+    @staticmethod
+    def get_contactos_apoderados(
+        db: Session,
+        id_curso: Optional[int] = None,
+        nivel: Optional[str] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene datos de contacto de apoderados con filtros opcionales
+        """
+        query = db.query(Estudiante)
+
+        # Aplicar filtros si se especifican
+        if id_curso or nivel or gestion:
+            query = query.join(
+                estudiantes_cursos, Estudiante.id_estudiante == estudiantes_cursos.c.id_estudiante
+            ).join(
+                Curso, Curso.id_curso == estudiantes_cursos.c.id_curso
+            )
+            
+            if id_curso:
+                query = query.filter(Curso.id_curso == id_curso)
+            if nivel:
+                query = query.filter(Curso.nivel == nivel)
+            if gestion:
+                query = query.filter(Curso.gestion == gestion)
+            
+            query = query.distinct()
+
+        estudiantes = query.all()
+        contactos = []
+
+        for est in estudiantes:
+            # Agregar contacto del padre si existe
+            if est.nombre_padre and est.telefono_padre:
+                nombre_padre = f"{est.nombre_padre or ''} {est.apellido_paterno_padre or ''} {est.apellido_materno_padre or ''}".strip()
+                contactos.append({
+                    "id_estudiante": est.id_estudiante,
+                    "estudiante_nombre": est.nombre_completo,
+                    "estudiante_ci": est.ci,
+                    "tipo_apoderado": "padre",
+                    "apoderado_nombre": nombre_padre,
+                    "telefono": est.telefono_padre
+                })
+
+            # Agregar contacto de la madre si existe
+            if est.nombre_madre and est.telefono_madre:
+                nombre_madre = f"{est.nombre_madre or ''} {est.apellido_paterno_madre or ''} {est.apellido_materno_madre or ''}".strip()
+                contactos.append({
+                    "id_estudiante": est.id_estudiante,
+                    "estudiante_nombre": est.nombre_completo,
+                    "estudiante_ci": est.ci,
+                    "tipo_apoderado": "madre",
+                    "apoderado_nombre": nombre_madre,
+                    "telefono": est.telefono_madre
+                })
+
+        return contactos
+
+    @staticmethod
+    def get_distribucion_por_edad(
+        db: Session,
+        id_curso: Optional[int] = None,
+        nivel: Optional[str] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene distribución de estudiantes por rangos de edad
+        """
+        query = db.query(Estudiante)
+
+        # Aplicar filtros si se especifican
+        if id_curso or nivel or gestion:
+            query = query.join(
+                estudiantes_cursos, Estudiante.id_estudiante == estudiantes_cursos.c.id_estudiante
+            ).join(
+                Curso, Curso.id_curso == estudiantes_cursos.c.id_curso
+            )
+            
+            if id_curso:
+                query = query.filter(Curso.id_curso == id_curso)
+            if nivel:
+                query = query.filter(Curso.nivel == nivel)
+            if gestion:
+                query = query.filter(Curso.gestion == gestion)
+            
+            query = query.distinct()
+
+        estudiantes = query.all()
+
+        # Calcular edades y agrupar por rangos
+        rangos = {
+            "0-4 años": 0,
+            "5-7 años": 0,
+            "8-10 años": 0,
+            "11-13 años": 0,
+            "14-16 años": 0,
+            "17+ años": 0,
+            "Sin fecha": 0
+        }
+
+        for est in estudiantes:
+            if est.fecha_nacimiento:
+                hoy = date.today()
+                edad = hoy.year - est.fecha_nacimiento.year
+                if hoy.month < est.fecha_nacimiento.month or (
+                    hoy.month == est.fecha_nacimiento.month and hoy.day < est.fecha_nacimiento.day
+                ):
+                    edad -= 1
+
+                if edad < 5:
+                    rangos["0-4 años"] += 1
+                elif edad <= 7:
+                    rangos["5-7 años"] += 1
+                elif edad <= 10:
+                    rangos["8-10 años"] += 1
+                elif edad <= 13:
+                    rangos["11-13 años"] += 1
+                elif edad <= 16:
+                    rangos["14-16 años"] += 1
+                else:
+                    rangos["17+ años"] += 1
+            else:
+                rangos["Sin fecha"] += 1
+
+        total = len(estudiantes)
+        distribucion = []
+        
+        for rango, cantidad in rangos.items():
+            if cantidad > 0:  # Solo incluir rangos con estudiantes
+                porcentaje = (cantidad / total * 100) if total > 0 else 0
+                distribucion.append({
+                    "rango_edad": rango,
+                    "cantidad": cantidad,
+                    "porcentaje": round(porcentaje, 2)
+                })
+
+        return {
+            "distribucion": distribucion,
+            "total_estudiantes": total
+        }
+
+    @staticmethod
+    def get_historial_cursos_estudiante(
+        db: Session,
+        id_estudiante: Optional[int] = None
+    ):
+        """
+        Obtiene historial de cursos por estudiante
+        Si no se especifica id_estudiante, retorna historial de todos
+        """
+        query = db.query(Estudiante)
+        
+        if id_estudiante:
+            query = query.filter(Estudiante.id_estudiante == id_estudiante)
+
+        estudiantes = query.all()
+        historiales = []
+
+        for est in estudiantes:
+            # Obtener cursos del estudiante ordenados por gestión
+            cursos = db.query(Curso).join(
+                estudiantes_cursos, Curso.id_curso == estudiantes_cursos.c.id_curso
+            ).filter(
+                estudiantes_cursos.c.id_estudiante == est.id_estudiante
+            ).order_by(Curso.gestion.desc(), Curso.nivel).all()
+
+            cursos_lista = []
+            for curso in cursos:
+                cursos_lista.append({
+                    "id_curso": curso.id_curso,
+                    "nombre_curso": curso.nombre_curso,
+                    "nivel": curso.nivel,
+                    "gestion": curso.gestion
+                })
+
+            historiales.append({
+                "id_estudiante": est.id_estudiante,
+                "nombre_completo": est.nombre_completo,
+                "ci": est.ci,
+                "cursos": cursos_lista,
+                "total_cursos": len(cursos_lista)
+            })
+
+        return historiales
 
