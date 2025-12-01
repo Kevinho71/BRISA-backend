@@ -13,7 +13,11 @@ from app.modules.reportes.dto.reporte_dto import (
     EstudiantesApoderadosResponseDTO,
     ContactosApoderadosResponseDTO,
     DistribucionEdadResponseDTO,
-    HistorialCursosResponseDTO
+    HistorialCursosResponseDTO,
+    ProfesoresAsignadosResponseDTO,
+    MateriasPorNivelResponseDTO,
+    CargaAcademicaResponseDTO,
+    CursosPorGestionResponseDTO
 )
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import get_current_user_dependency
@@ -264,4 +268,230 @@ def obtener_historial_cursos(
     return ReporteService.obtener_historial_cursos(
         db=db,
         id_estudiante=estudiante_id
+    )
+
+
+# ================================
+# Endpoints para Reportes Académicos
+# ================================
+
+@router.get("/academic/professors", response_model=ProfesoresAsignadosResponseDTO)
+def obtener_profesores_asignados(
+    curso_id: Optional[int] = Query(None, description="ID del curso"),
+    materia_id: Optional[int] = Query(None, description="ID de la materia"),
+    nivel: Optional[Literal["inicial", "primaria", "secundaria"]] = Query(None, description="Nivel educativo"),
+    gestion: Optional[str] = Query(None, description="Año de gestión (ej: '2024')"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene profesores asignados por curso y materia.
+    
+    **Parámetros:**
+    - **curso_id**: ID específico del curso (opcional)
+    - **materia_id**: ID específico de la materia (opcional)
+    - **nivel**: Nivel educativo ('inicial', 'primaria', 'secundaria') (opcional)
+    - **gestion**: Año de gestión, ej: '2024' (opcional)
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/academic/professors?curso_id=5
+    GET /api/reports/academic/professors?materia_id=3&gestion=2024
+    GET /api/reports/academic/professors?nivel=primaria
+    GET /api/reports/academic/professors
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "profesores": [
+            {
+                "id_profesor": 10,
+                "ci": "12345678",
+                "nombre_completo": "Carlos Pérez López",
+                "telefono": "70123456",
+                "correo": "carlos@ejemplo.com",
+                "curso": "5to A (2024)",
+                "materia": "Matemáticas"
+            }
+        ],
+        "total": 1,
+        "curso": "5to A (2024)",
+        "materia": "Matemáticas"
+    }
+    ```
+    """
+
+    return ReporteService.obtener_profesores_asignados(
+        db=db,
+        id_curso=curso_id,
+        id_materia=materia_id,
+        nivel=nivel,
+        gestion=gestion
+    )
+
+
+@router.get("/academic/subjects", response_model=MateriasPorNivelResponseDTO)
+def obtener_materias_por_nivel(
+    nivel: Optional[Literal["inicial", "primaria", "secundaria"]] = Query(None, description="Nivel educativo"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene materias por nivel educativo.
+    
+    **Parámetros:**
+    - **nivel**: Nivel educativo ('inicial', 'primaria', 'secundaria') (opcional)
+        - Si se especifica: retorna solo materias de ese nivel
+        - Si se omite: retorna todas las materias
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/academic/subjects?nivel=primaria
+    GET /api/reports/academic/subjects
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "materias": [
+            {
+                "id_materia": 1,
+                "nombre_materia": "Matemáticas",
+                "nivel": "primaria"
+            },
+            {
+                "id_materia": 2,
+                "nombre_materia": "Lenguaje",
+                "nivel": "primaria"
+            }
+        ],
+        "total": 2,
+        "nivel": "primaria"
+    }
+    ```
+    """
+
+    return ReporteService.obtener_materias_por_nivel(
+        db=db,
+        nivel=nivel
+    )
+
+
+@router.get("/academic/workload", response_model=CargaAcademicaResponseDTO)
+def obtener_carga_academica(
+    profesor_id: Optional[int] = Query(None, description="ID del profesor (opcional)"),
+    gestion: Optional[str] = Query(None, description="Año de gestión (ej: '2024')"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene carga académica de profesores.
+    
+    Muestra las asignaciones de cada profesor (cursos y materias),
+    con totales de asignaciones, cursos distintos y materias distintas.
+    
+    **Parámetros:**
+    - **profesor_id**: ID específico del profesor (opcional)
+        - Si se especifica: retorna solo la carga de ese profesor
+        - Si se omite: retorna carga de todos los profesores
+    - **gestion**: Año de gestión para filtrar asignaciones (opcional)
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/academic/workload?profesor_id=10
+    GET /api/reports/academic/workload?gestion=2024
+    GET /api/reports/academic/workload
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "profesores": [
+            {
+                "id_profesor": 10,
+                "ci": "12345678",
+                "nombre_completo": "Carlos Pérez López",
+                "telefono": "70123456",
+                "correo": "carlos@ejemplo.com",
+                "asignaciones": [
+                    {
+                        "curso": "5to A",
+                        "nivel": "primaria",
+                        "gestion": "2024",
+                        "materia": "Matemáticas"
+                    },
+                    {
+                        "curso": "5to B",
+                        "nivel": "primaria",
+                        "gestion": "2024",
+                        "materia": "Matemáticas"
+                    }
+                ],
+                "total_asignaciones": 2,
+                "cursos_distintos": 2,
+                "materias_distintas": 1
+            }
+        ],
+        "total_profesores": 1
+    }
+    ```
+    """
+    return ReporteService.obtener_carga_academica(
+        db=db,
+        id_profesor=profesor_id,
+        gestion=gestion
+    )
+
+
+@router.get("/academic/courses", response_model=CursosPorGestionResponseDTO)
+def obtener_cursos_por_gestion(
+    gestion: Optional[str] = Query(None, description="Año de gestión (ej: '2024')"),
+    nivel: Optional[Literal["inicial", "primaria", "secundaria"]] = Query(None, description="Nivel educativo"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene cursos por gestión con cantidad de estudiantes.
+    
+    **Parámetros:**
+    - **gestion**: Año de gestión, ej: '2024' (opcional)
+    - **nivel**: Nivel educativo ('inicial', 'primaria', 'secundaria') (opcional)
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/academic/courses?gestion=2024
+    GET /api/reports/academic/courses?nivel=primaria&gestion=2024
+    GET /api/reports/academic/courses
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "cursos": [
+            {
+                "id_curso": 5,
+                "nombre_curso": "5to A",
+                "nivel": "primaria",
+                "gestion": "2024",
+                "total_estudiantes": 25
+            },
+            {
+                "id_curso": 6,
+                "nombre_curso": "5to B",
+                "nivel": "primaria",
+                "gestion": "2024",
+                "total_estudiantes": 23
+            }
+        ],
+        "total": 2,
+        "gestion": "2024",
+        "nivel": "primaria"
+    }
+    ```
+    """
+    return ReporteService.obtener_cursos_por_gestion(
+        db=db,
+        gestion=gestion,
+        nivel=nivel
     )

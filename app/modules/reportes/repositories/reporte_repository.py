@@ -2,7 +2,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, or_, and_
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela, EsquelaCodigo
-from app.modules.administracion.models.persona_models import Estudiante, Curso, estudiantes_cursos
+from app.modules.administracion.models.persona_models import (
+    Estudiante, Curso, estudiantes_cursos, Persona, Materia, profesores_cursos_materias
+)
 from datetime import date, datetime
 from typing import Optional, Literal, List
 
@@ -452,4 +454,211 @@ class ReporteRepository:
             })
 
         return historiales
+
+
+    # ================================
+    # Métodos para Reportes Académicos
+    # ================================
+
+    @staticmethod
+    def get_profesores_asignados(
+        db: Session,
+        id_curso: Optional[int] = None,
+        id_materia: Optional[int] = None,
+        nivel: Optional[str] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene profesores asignados por curso y materia
+        """
+        query = db.query(
+            Persona.id_persona,
+            Persona.ci,
+            Persona.nombres,
+            Persona.apellido_paterno,
+            Persona.apellido_materno,
+            Persona.telefono,
+            Persona.correo,
+            Curso.nombre_curso,
+            Curso.gestion,
+            Materia.nombre_materia
+        ).join(
+            profesores_cursos_materias, 
+            Persona.id_persona == profesores_cursos_materias.c.id_profesor
+        ).join(
+            Curso, 
+            Curso.id_curso == profesores_cursos_materias.c.id_curso
+        ).join(
+            Materia, 
+            Materia.id_materia == profesores_cursos_materias.c.id_materia
+        ).filter(
+            Persona.tipo_persona == 'profesor'
+        )
+
+        # Aplicar filtros
+        if id_curso:
+            query = query.filter(Curso.id_curso == id_curso)
+        if id_materia:
+            query = query.filter(Materia.id_materia == id_materia)
+        if nivel:
+            query = query.filter(Curso.nivel == nivel)
+        if gestion:
+            query = query.filter(Curso.gestion == gestion)
+
+        resultados = query.all()
+        
+        profesores = []
+        for id_p, ci, nombres, ap_pat, ap_mat, tel, correo, nom_curso, gest, nom_mat in resultados:
+            nombre_completo = f"{nombres} {ap_pat} {ap_mat or ''}".strip()
+            profesores.append({
+                "id_profesor": id_p,
+                "ci": ci,
+                "nombre_completo": nombre_completo,
+                "telefono": tel,
+                "correo": correo,
+                "curso": f"{nom_curso} ({gest})",
+                "materia": nom_mat
+            })
+
+        return profesores
+
+    @staticmethod
+    def get_materias_por_nivel(
+        db: Session,
+        nivel: Optional[str] = None
+    ):
+        """
+        Obtiene materias filtradas por nivel educativo
+        """
+        query = db.query(Materia)
+
+        if nivel:
+            query = query.filter(Materia.nivel == nivel)
+
+        materias = query.order_by(Materia.nivel, Materia.nombre_materia).all()
+
+        resultado = []
+        for mat in materias:
+            resultado.append({
+                "id_materia": mat.id_materia,
+                "nombre_materia": mat.nombre_materia,
+                "nivel": mat.nivel
+            })
+
+        return resultado
+
+    @staticmethod
+    def get_carga_academica_profesores(
+        db: Session,
+        id_profesor: Optional[int] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene carga académica de profesores
+        """
+        query = db.query(Persona).filter(Persona.tipo_persona == 'profesor')
+
+        if id_profesor:
+            query = query.filter(Persona.id_persona == id_profesor)
+
+        profesores = query.all()
+        resultado = []
+
+        for prof in profesores:
+            # Obtener asignaciones del profesor
+            asig_query = db.query(
+                Curso.nombre_curso,
+                Curso.nivel,
+                Curso.gestion,
+                Materia.nombre_materia
+            ).join(
+                profesores_cursos_materias,
+                Curso.id_curso == profesores_cursos_materias.c.id_curso
+            ).join(
+                Materia,
+                Materia.id_materia == profesores_cursos_materias.c.id_materia
+            ).filter(
+                profesores_cursos_materias.c.id_profesor == prof.id_persona
+            )
+
+            if gestion:
+                asig_query = asig_query.filter(Curso.gestion == gestion)
+
+            asignaciones = asig_query.all()
+
+            asignaciones_lista = []
+            cursos_set = set()
+            materias_set = set()
+
+            for nom_curso, nivel, gest, nom_mat in asignaciones:
+                asignaciones_lista.append({
+                    "curso": nom_curso,
+                    "nivel": nivel,
+                    "gestion": gest,
+                    "materia": nom_mat
+                })
+                cursos_set.add(f"{nom_curso}-{gest}")
+                materias_set.add(nom_mat)
+
+            nombre_completo = f"{prof.nombres} {prof.apellido_paterno} {prof.apellido_materno or ''}".strip()
+
+            resultado.append({
+                "id_profesor": prof.id_persona,
+                "ci": prof.ci,
+                "nombre_completo": nombre_completo,
+                "telefono": prof.telefono,
+                "correo": prof.correo,
+                "asignaciones": asignaciones_lista,
+                "total_asignaciones": len(asignaciones_lista),
+                "cursos_distintos": len(cursos_set),
+                "materias_distintas": len(materias_set)
+            })
+
+        return resultado
+
+    @staticmethod
+    def get_cursos_por_gestion(
+        db: Session,
+        gestion: Optional[str] = None,
+        nivel: Optional[str] = None
+    ):
+        """
+        Obtiene cursos por gestión con conteo de estudiantes
+        """
+        query = db.query(
+            Curso.id_curso,
+            Curso.nombre_curso,
+            Curso.nivel,
+            Curso.gestion,
+            func.count(estudiantes_cursos.c.id_estudiante).label('total_estudiantes')
+        ).outerjoin(
+            estudiantes_cursos,
+            Curso.id_curso == estudiantes_cursos.c.id_curso
+        )
+
+        if gestion:
+            query = query.filter(Curso.gestion == gestion)
+        if nivel:
+            query = query.filter(Curso.nivel == nivel)
+
+        query = query.group_by(
+            Curso.id_curso,
+            Curso.nombre_curso,
+            Curso.nivel,
+            Curso.gestion
+        ).order_by(Curso.gestion.desc(), Curso.nivel, Curso.nombre_curso)
+
+        resultados = query.all()
+
+        cursos = []
+        for id_c, nom_c, niv, gest, total_est in resultados:
+            cursos.append({
+                "id_curso": id_c,
+                "nombre_curso": nom_c,
+                "nivel": niv,
+                "gestion": gest,
+                "total_estudiantes": int(total_est or 0)
+            })
+
+        return cursos
 

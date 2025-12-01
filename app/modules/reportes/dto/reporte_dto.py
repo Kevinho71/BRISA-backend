@@ -118,3 +118,99 @@ class HistorialCursosResponseDTO(BaseModel):
     """DTO para respuesta de historial de cursos"""
     historiales: List[HistorialCursoEstudianteDTO]
     total_estudiantes: int
+
+
+# ================================
+# DTOs para Reportes Académicos
+# ================================
+
+class MateriaDTO(BaseModel):
+    """DTO para información de materia"""
+    id_materia: int
+    nombre_materia: str
+    nivel: str
+
+
+class CursoAcademicoDTO(BaseModel):
+    """DTO para información de curso"""
+    id_curso: int
+    nombre_curso: str
+    nivel: str
+    gestion: str
+
+
+class ProfesorAsignadoDTO(BaseModel):
+    """DTO para profesor con sus asignaciones"""
+    id_profesor: int
+    ci: str
+    nombre_completo: str
+    telefono: Optional[str]
+    correo: Optional[str]
+    curso: str
+    materia: str
+
+
+class ProfesoresAsignadosResponseDTO(BaseModel):
+    """DTO para respuesta de profesores asignados"""
+    profesores: List[ProfesorAsignadoDTO]
+    total: int
+    curso: Optional[str]
+    materia: Optional[str]
+
+
+class MateriaPorNivelDTO(BaseModel):
+    """DTO para materia por nivel educativo"""
+    id_materia: int
+    nombre_materia: str
+    nivel: str
+
+
+class MateriasPorNivelResponseDTO(BaseModel):
+    """DTO para respuesta de materias por nivel"""
+    materias: List[MateriaPorNivelDTO]
+    total: int
+    nivel: Optional[str]
+
+
+class AsignacionProfesorDTO(BaseModel):
+    """DTO para una asignación de profesor"""
+    curso: str
+    nivel: str
+    gestion: str
+    materia: str
+
+
+class CargaAcademicaProfesorDTO(BaseModel):
+    """DTO para carga académica de un profesor"""
+    id_profesor: int
+    ci: str
+    nombre_completo: str
+    telefono: Optional[str]
+    correo: Optional[str]
+    asignaciones: List[AsignacionProfesorDTO]
+    total_asignaciones: int
+    cursos_distintos: int
+    materias_distintas: int
+
+
+class CargaAcademicaResponseDTO(BaseModel):
+    """DTO para respuesta de carga académica"""
+    profesores: List[CargaAcademicaProfesorDTO]
+    total_profesores: int
+
+
+class CursoPorGestionDTO(BaseModel):
+    """DTO para curso por gestión"""
+    id_curso: int
+    nombre_curso: str
+    nivel: str
+    gestion: str
+    total_estudiantes: int
+
+
+class CursosPorGestionResponseDTO(BaseModel):
+    """DTO para respuesta de cursos por gestión"""
+    cursos: List[CursoPorGestionDTO]
+    total: int
+    gestion: Optional[str]
+    nivel: Optional[str]

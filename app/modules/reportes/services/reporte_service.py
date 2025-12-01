@@ -147,3 +147,97 @@ class ReporteService:
             "historiales": historiales,
             "total_estudiantes": len(historiales)
         }
+
+    # ================================
+    # Servicios para Reportes Académicos
+    # ================================
+
+    @staticmethod
+    def obtener_profesores_asignados(
+        db: Session,
+        id_curso: Optional[int] = None,
+        id_materia: Optional[int] = None,
+        nivel: Optional[str] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene profesores asignados por curso y materia
+        """
+        profesores = ReporteRepository.get_profesores_asignados(
+            db, id_curso, id_materia, nivel, gestion
+        )
+
+        # Obtener información de filtros aplicados
+        curso_info = None
+        materia_info = None
+
+        if id_curso:
+            from app.modules.administracion.models.persona_models import Curso
+            curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
+            if curso:
+                curso_info = f"{curso.nombre_curso} ({curso.gestion})"
+
+        if id_materia:
+            from app.modules.administracion.models.persona_models import Materia
+            materia = db.query(Materia).filter(Materia.id_materia == id_materia).first()
+            if materia:
+                materia_info = materia.nombre_materia
+
+        return {
+            "profesores": profesores,
+            "total": len(profesores),
+            "curso": curso_info,
+            "materia": materia_info
+        }
+
+    @staticmethod
+    def obtener_materias_por_nivel(
+        db: Session,
+        nivel: Optional[str] = None
+    ):
+        """
+        Obtiene materias filtradas por nivel educativo
+        """
+        materias = ReporteRepository.get_materias_por_nivel(db, nivel)
+
+        return {
+            "materias": materias,
+            "total": len(materias),
+            "nivel": nivel
+        }
+
+    @staticmethod
+    def obtener_carga_academica(
+        db: Session,
+        id_profesor: Optional[int] = None,
+        gestion: Optional[str] = None
+    ):
+        """
+        Obtiene carga académica de profesores
+        """
+        profesores = ReporteRepository.get_carga_academica_profesores(
+            db, id_profesor, gestion
+        )
+
+        return {
+            "profesores": profesores,
+            "total_profesores": len(profesores)
+        }
+
+    @staticmethod
+    def obtener_cursos_por_gestion(
+        db: Session,
+        gestion: Optional[str] = None,
+        nivel: Optional[str] = None
+    ):
+        """
+        Obtiene cursos por gestión
+        """
+        cursos = ReporteRepository.get_cursos_por_gestion(db, gestion, nivel)
+
+        return {
+            "cursos": cursos,
+            "total": len(cursos),
+            "gestion": gestion,
+            "nivel": nivel
+        }
