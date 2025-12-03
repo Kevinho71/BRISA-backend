@@ -120,6 +120,7 @@ class TokenDTO(BaseModel):
 class UsuarioActualDTO(BaseModel):
     """DTO para información del usuario actual"""
     id_usuario: int
+    id_persona: int
     usuario: str
     correo: EmailStr
     nombres: str
@@ -134,6 +135,7 @@ class UsuarioActualDTO(BaseModel):
         "json_schema_extra": {
             "example": {
                 "id_usuario": 1,
+                "id_persona": 10,
                 "usuario": "jperez",
                 "correo": "jperez@example.com",
                 "nombres": "Juan",

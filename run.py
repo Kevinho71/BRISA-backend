@@ -1,20 +1,15 @@
 """
 Punto de entrada principal para la aplicación BRISA Backend
 """
-
 import os
 import uvicorn
-from app import create_app
+from app.main import app  
 
 # Obtener configuración del entorno
 config_name = os.environ.get('ENV', 'development')
 
-# Crear aplicación
-app = create_app(config_name)
 
 if __name__ == '__main__':
-    # Configuración para desarrollo
-    # Obtener configuración del .env
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 8000))
     reload = os.getenv("ENV", "development") == "development"

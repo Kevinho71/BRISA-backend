@@ -2,6 +2,8 @@
 """Modelos para estudiantes y personas (profesores/registradores)"""
 
 from sqlalchemy import Column, Integer, String, Date, Text
+from sqlalchemy import Table, ForeignKey
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, Date, Text, Table, ForeignKey
