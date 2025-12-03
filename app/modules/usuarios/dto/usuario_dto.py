@@ -18,7 +18,7 @@ class PersonaCreateDTO(BaseModel):
     direccion: Optional[str] = None
     telefono: Optional[str] = Field(None, max_length=20)
     correo: Optional[EmailStr] = None
-    tipo_persona: str = Field(..., pattern="^(profesor|administrativo)$")
+    tipo_persona: str = Field(..., pattern="^(profesor|administrativo|regente)$")
 
 
 class PersonaUpdateDTO(BaseModel):
@@ -30,7 +30,7 @@ class PersonaUpdateDTO(BaseModel):
     direccion: Optional[str] = None
     telefono: Optional[str] = Field(None, max_length=20)
     correo: Optional[EmailStr] = None
-    tipo_persona: Optional[str] = Field(None, pattern="^(profesor|administrativo)$")
+    tipo_persona: Optional[str] = Field(None, pattern="^(profesor|administrativo|regente)$")
 
 
 class PersonaResponseDTO(BaseModel):

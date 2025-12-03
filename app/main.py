@@ -17,6 +17,7 @@ from app.modules.administracion.controllers.persona_controller import (
     estudiantes_router, profesores_router, registradores_router
 )
 from app.modules.reportes.controllers import reporte_controller
+from app.core import extensions
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import AuthService
 from sqlalchemy.orm import Session
@@ -49,6 +50,8 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Incluir routers
+# Inicializar router de extensions (agrega /register, /login, /me, /validate-token)
+extensions.init_extensions(app)
 app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
