@@ -1,3 +1,6 @@
+"""
+app/modules/bitacora/services/bitacora_service.py
+"""
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from fastapi import HTTPException, status
@@ -5,6 +8,7 @@ from typing import List, Optional
 from datetime import datetime
 import logging
 
+# ✅ IMPORTAR DESDE USUARIO_MODELS
 from app.modules.usuarios.models.usuario_models import Bitacora, Usuario
 
 logger = logging.getLogger(__name__)

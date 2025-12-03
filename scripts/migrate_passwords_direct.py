@@ -25,8 +25,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def hash_password(password: str) -> str:
-    """Hashear contraseña con bcrypt"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    """Hashear contraseña con bcrypt, truncando a 72 bytes si es necesario"""
+    if not password:
+        password = "default1234"  # O lanzar un error controlado
+    password_bytes = password.encode('utf-8')[:72]
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 
 def es_hash_bcrypt(password: str) -> bool:
@@ -44,7 +47,7 @@ def crear_tabla_backup(db):
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 id_usuario INT NOT NULL,
                 usuario VARCHAR(50),
-                -- password_original VARCHAR(255),
+                password_original VARCHAR(255),
                 password_hasheada VARCHAR(255),
                 fecha_migracion DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)

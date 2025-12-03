@@ -1,8 +1,7 @@
 """
 tests/test_integration.py  
 Pruebas de integración end-to-end
-✅ Flujos completos de casos de uso reales
-✅ Adaptado para ResponseModel con "success": True
+
 """
 import pytest
 from fastapi import status

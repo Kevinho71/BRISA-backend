@@ -1,8 +1,7 @@
 """
 tests/test_auth_endpoints.py -
 Pruebas de integración para endpoints de autenticación
-✅ Adaptado para usar ResponseModel con "success": True
-✅ Todos los fixtures necesarios
+
 """
 import pytest
 from fastapi import status
