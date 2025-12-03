@@ -1,10 +1,12 @@
 """
 tests/test_security.py 
-Tests de seguridad y validaciones
+
 """
 import pytest
 from fastapi import status
 from datetime import timedelta
+from pydantic import ValidationError
+import time
 
 from app.modules.auth.services.auth_service import AuthService
 from app.modules.auth.dto.auth_dto import RegistroDTO
@@ -15,7 +17,7 @@ class TestPasswordSecurity:
     
     def test_password_debe_tener_minimo_8_caracteres(self):
         """Contraseña debe tener mínimo 8 caracteres"""
-        with pytest.raises(ValueError, match="mínimo 8 caracteres"):
+        with pytest.raises(ValidationError) as exc_info:
             RegistroDTO(
                 ci="123",
                 nombres="Test",
@@ -26,10 +28,13 @@ class TestPasswordSecurity:
                 password="Short1!",
                 tipo_persona="administrativo"
             )
+        
+        error_msg = str(exc_info.value)
+        assert "al menos 8 caracteres" in error_msg or "mínimo 8 caracteres" in error_msg
     
     def test_password_debe_tener_mayuscula(self):
         """Contraseña debe contener al menos una mayúscula"""
-        with pytest.raises(ValueError, match="mayúsculas"):
+        with pytest.raises(ValidationError) as exc_info:
             RegistroDTO(
                 ci="123",
                 nombres="Test",
@@ -40,10 +45,13 @@ class TestPasswordSecurity:
                 password="password123!",
                 tipo_persona="administrativo"
             )
+        
+        error_msg = str(exc_info.value)
+        assert "mayúscula" in error_msg
     
     def test_password_debe_tener_minuscula(self):
         """Contraseña debe contener al menos una minúscula"""
-        with pytest.raises(ValueError, match="minúsculas"):
+        with pytest.raises(ValidationError) as exc_info:
             RegistroDTO(
                 ci="123",
                 nombres="Test",
@@ -54,10 +62,13 @@ class TestPasswordSecurity:
                 password="PASSWORD123!",
                 tipo_persona="administrativo"
             )
+        
+        error_msg = str(exc_info.value)
+        assert "minúscula" in error_msg
     
     def test_password_debe_tener_numero(self):
         """Contraseña debe contener al menos un número"""
-        with pytest.raises(ValueError, match="números"):
+        with pytest.raises(ValidationError) as exc_info:
             RegistroDTO(
                 ci="123",
                 nombres="Test",
@@ -68,6 +79,9 @@ class TestPasswordSecurity:
                 password="Password!",
                 tipo_persona="administrativo"
             )
+        
+        error_msg = str(exc_info.value)
+        assert "número" in error_msg
     
     def test_password_valida_cumple_requisitos(self):
         """Contraseña válida debe pasar todas las validaciones"""
@@ -137,7 +151,7 @@ class TestInputValidation:
     
     def test_email_invalido_es_rechazado(self):
         """Email inválido debe ser rechazado"""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             RegistroDTO(
                 ci="123",
                 nombres="Test",
@@ -167,7 +181,8 @@ class TestAuthorizationSecurity:
     
     def test_usuario_no_puede_modificar_otros_usuarios(self, client, usuario_simple_autenticado, crear_usuario_base, db_session):
         """Usuario sin permisos no puede modificar otros usuarios"""
-        otro_usuario = crear_usuario_base("otro_usuario", "pass123")
+        timestamp = int(time.time() * 1000)
+        otro_usuario = crear_usuario_base(f"otro_usuario_{timestamp}", "pass123")
         db_session.flush()
         
         headers = usuario_simple_autenticado["headers"]
@@ -178,19 +193,15 @@ class TestAuthorizationSecurity:
             headers=headers
         )
         
-        # Si retorna 200, significa que NO hay validación de permisos
-        # Este es un problema de seguridad que debe corregirse
         if response.status_code == status.HTTP_200_OK:
             pytest.fail(
                 "⚠️ FALLA DE SEGURIDAD: El endpoint permite modificar usuarios sin validar permisos. "
                 "Implementar decorador @requires_permission('editar_usuario')"
             )
         
-        # Si el endpoint no existe (404), skip
         if response.status_code == status.HTTP_404_NOT_FOUND:
             pytest.skip("Endpoint de actualización de usuarios no implementado aún")
         
-        # Si está implementado correctamente, debe rechazar sin permisos
         assert response.status_code in [
             status.HTTP_403_FORBIDDEN, 
             status.HTTP_401_UNAUTHORIZED
@@ -198,7 +209,8 @@ class TestAuthorizationSecurity:
     
     def test_usuario_no_puede_eliminar_otros_usuarios(self, client, usuario_simple_autenticado, crear_usuario_base, db_session):
         """Usuario sin permisos no puede eliminar otros usuarios"""
-        otro_usuario = crear_usuario_base("otro_usuario_del", "pass123")
+        timestamp = int(time.time() * 1000)
+        otro_usuario = crear_usuario_base(f"otro_usuario_del_{timestamp}", "pass123")
         db_session.flush()
         
         headers = usuario_simple_autenticado["headers"]
@@ -208,14 +220,12 @@ class TestAuthorizationSecurity:
             headers=headers
         )
         
-        # Si retorna 200, es una falla de seguridad
         if response.status_code == status.HTTP_200_OK:
             pytest.fail(
                 "⚠️ FALLA DE SEGURIDAD: El endpoint permite eliminar usuarios sin validar permisos. "
                 "Implementar decorador @requires_permission('eliminar_usuario')"
             )
         
-        # Si el endpoint no existe (404), skip
         if response.status_code == status.HTTP_404_NOT_FOUND:
             pytest.skip("Endpoint de eliminación de usuarios no implementado aún")
         
@@ -229,8 +239,14 @@ class TestDataLeakage:
     """Tests de fuga de información"""
     
     def test_error_login_no_revela_si_usuario_existe(self, client, crear_usuario_base, db_session):
-        """Los mensajes de error no deben revelar si un usuario existe"""
-        usuario_existente = crear_usuario_base("existente", "pass123")
+        """
+        Los mensajes de error no deben revelar si un usuario existe
+        Usar timestamp único para evitar colisiones
+        """
+        timestamp = int(time.time() * 1000)
+        username = f"existente_{timestamp}"  # ✅ Nombre único
+        
+        usuario_existente = crear_usuario_base(username, "pass123", mantener_nombre=True)
         db_session.flush()
         
         # Intento 1: Usuario que existe, password incorrecta
@@ -241,7 +257,7 @@ class TestDataLeakage:
         
         # Intento 2: Usuario que NO existe
         response2 = client.post("/api/auth/login", json={
-            "usuario": "usuario_que_no_existe_12345",
+            "usuario": f"usuario_que_no_existe_{timestamp}",
             "password": "cualquier_password"
         })
         
@@ -254,11 +270,10 @@ class TestDataLeakage:
         # Los mensajes deben ser idénticos
         assert msg1 == msg2, f"Mensajes diferentes: '{msg1}' vs '{msg2}'"
         
-        #  Normalizar texto para manejar caracteres especiales
-        # Convertir a minúsculas y verificar palabras clave
+        # Normalizar texto para manejar caracteres especiales
         msg_lower = msg1.lower()
         
-        # Verificar que es un mensaje genérico (contiene "usuario" y alguna referencia a contraseña)
+        # Verificar que es un mensaje genérico
         tiene_usuario = "usuario" in msg_lower
         tiene_password = any(palabra in msg_lower for palabra in ["password", "contrasena", "contraseña", "credenciales"])
         
@@ -266,7 +281,8 @@ class TestDataLeakage:
     
     def test_endpoint_no_expone_passwords(self, client, usuario_admin_autenticado, crear_usuario_base, db_session):
         """Los endpoints NO deben exponer passwords hasheadas"""
-        usuario = crear_usuario_base("usuario_test", "pass123")
+        timestamp = int(time.time() * 1000)
+        usuario = crear_usuario_base(f"usuario_test_{timestamp}", "pass123")
         db_session.flush()
         
         headers = usuario_admin_autenticado["headers"]
@@ -275,14 +291,13 @@ class TestDataLeakage:
         endpoints_to_test = [
             f"/api/usuarios/{usuario.id_usuario}",
             f"/api/auth/usuarios/{usuario.id_usuario}",
-            "/api/auth/me"  # Endpoint del usuario actual
+            "/api/auth/me"
         ]
         
         for endpoint in endpoints_to_test:
             response = client.get(endpoint, headers=headers)
             
             if response.status_code == status.HTTP_200_OK:
-                # Obtener datos del response
                 json_response = response.json()
                 
                 # Manejar diferentes estructuras de respuesta
@@ -296,20 +311,29 @@ class TestDataLeakage:
                 assert "password_hash" not in data, f"Endpoint {endpoint} expone 'password_hash'"
                 assert "hashed_password" not in data, f"Endpoint {endpoint} expone 'hashed_password'"
                 
-                # Si encontramos un endpoint que funciona, salir
                 break
         else:
-            # Si ningún endpoint funciona, skip el test
             pytest.skip("Endpoints de consulta de usuarios no implementados aún")
 
 
 class TestSessionSecurity:
     """Tests de seguridad de sesiones"""
     
-    def test_diferentes_usuarios_tienen_diferentes_tokens(self, client, crear_usuario_base, db_session):
-        """Cada usuario debe tener un token único"""
-        user1 = crear_usuario_base("user1sec", "pass1")
-        user2 = crear_usuario_base("user2sec", "pass2")
+    def test_diferentes_usuarios_tienen_diferentes_tokens(self, client, crear_usuario_base, crear_rol_base, db_session):
+        """
+        Cada usuario debe tener un token único
+        Usar timestamps únicos para evitar colisiones
+        """
+        timestamp = int(time.time() * 1000)
+        
+        # ✅ Crear usuarios con nombres únicos
+        user1_name = f"user1sec_{timestamp}"
+        user2_name = f"user2sec_{timestamp}"
+        
+        rol = crear_rol_base(f"Rol_{timestamp}", "Test")
+        
+        user1 = crear_usuario_base(user1_name, "pass1", [rol], mantener_nombre=True)
+        user2 = crear_usuario_base(user2_name, "pass2", [rol], mantener_nombre=True)
         db_session.flush()
         
         # Login user1
