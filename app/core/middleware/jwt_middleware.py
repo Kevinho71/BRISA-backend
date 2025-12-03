@@ -1,6 +1,6 @@
 """
 app/core/middleware/jwt_middleware.py
-✅ FIX: Permitir peticiones OPTIONS (CORS preflight) sin autenticación
+
 """
 
 from fastapi import Request, HTTPException, status
@@ -31,7 +31,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
     Middleware para validar JWT en todas las rutas protegidas
     
     - Intercepta TODAS las requests
-    - ✅ Permite peticiones OPTIONS (CORS preflight) sin validación
+    -  Permite peticiones OPTIONS (CORS preflight) sin validación
     - Valida token JWT si la ruta NO es pública
     - Inyecta usuario autenticado en request.state
     - Registra IP del cliente
@@ -40,7 +40,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         """Procesar request y validar JWT"""
         
-        # ✅ CRÍTICO: Permitir peticiones OPTIONS sin autenticación (CORS preflight)
+        # CRÍTICO: Permitir peticiones OPTIONS sin autenticación (CORS preflight)
         if request.method == "OPTIONS":
             return await call_next(request)
         

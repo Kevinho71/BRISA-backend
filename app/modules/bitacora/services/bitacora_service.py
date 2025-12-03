@@ -1,6 +1,5 @@
 """
 app/modules/bitacora/services/bitacora_service.py
-✅ FIX: Importar Bitacora desde usuario_models
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_

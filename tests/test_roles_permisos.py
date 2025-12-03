@@ -1,7 +1,6 @@
 """
 tests/test_roles_permisos.py 
 Pruebas de integración para roles y permisos
-- Adaptado para usar ResponseModel con "success": True
 """
 import pytest
 from fastapi import status

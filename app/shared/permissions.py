@@ -1,7 +1,6 @@
 """
 app/shared/permissions.py
 Decorador para validar permisos en endpoints
-Adaptado para trabajar con permisos genéricos de la BD
 """
 from functools import wraps
 from fastapi import HTTPException, status

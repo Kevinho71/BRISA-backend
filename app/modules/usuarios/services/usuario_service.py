@@ -324,7 +324,8 @@ def _construir_persona_response(db: Session, persona: Persona1) -> Dict[str, Any
         "is_active": persona.is_active,
         "tiene_usuario": usuario is not None,
         "usuario": usuario.usuario if usuario else None,
-        "id_usuario": usuario.id_usuario if usuario else None
+        "id_usuario": usuario.id_usuario if usuario else None,
+        "usuario_activo": usuario.is_active if usuario else None
     }
     
     return persona_dict
@@ -511,7 +512,6 @@ class UsuarioService(BaseService):
         current_user: Usuario
     ) -> dict:
         """
-        ✅ CORREGIDO: Ahora registra en bitácora
         Eliminar usuario (borrado lógico) con validación de permisos
         """
         from app.shared.decorators.auth_decorators import verificar_permiso

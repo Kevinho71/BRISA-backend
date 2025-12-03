@@ -77,7 +77,7 @@ class AuthRepository:
     ) -> LoginLog:
         """
         Registrar intento de login en LoginLog
-        ✅ USA FLUSH, NO COMMIT (commit lo hace el servicio)
+        USA FLUSH, NO COMMIT (commit lo hace el servicio)
         """
         if estado not in ['exitoso', 'fallido']:
             estado = 'fallido'
@@ -105,7 +105,7 @@ class AuthRepository:
     ) -> Bitacora:
         """
         Registrar acción en Bitácora
-        ✅ USA FLUSH, NO COMMIT
+        USA FLUSH, NO COMMIT
         """
         bitacora = Bitacora(
             id_usuario_admin=usuario_id,

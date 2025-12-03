@@ -1,6 +1,6 @@
 """
 app/modules/usuarios/dto/usuario_dto.py
-✅ DTOs completos para CRUD de Personas - SINTAXIS CORREGIDA
+DTOs completos para CRUD de Personas
 """
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
@@ -53,7 +53,6 @@ class PersonaCreateDTO(BaseModel):
     @classmethod
     def validar_nombres(cls, v: Optional[str]) -> Optional[str]:
         """
-        ✅ CORREGIDO: Validar y limpiar nombres
         Permite: letras (con acentos), espacios, guiones, apóstrofes
         NO permite: números, caracteres especiales raros
         """
@@ -63,7 +62,7 @@ class PersonaCreateDTO(BaseModel):
         # Eliminar espacios múltiples y trimear
         v = re.sub(r'\s+', ' ', v.strip())
         
-        # ✅ PATRÓN CORREGIDO: Incluye acentos españoles
+        # Incluye acentos españoles
         patron = r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'\-]+$"
         
         if not re.match(patron, v):
@@ -75,7 +74,7 @@ class PersonaCreateDTO(BaseModel):
     @classmethod
     def validar_ci(cls, v: str) -> str:
         """
-        ✅ CORREGIDO: Validar y limpiar CI
+         Validar y limpiar CI
         Permite alfanuméricos y algunos caracteres especiales
         """
         # Eliminar espacios extras
@@ -85,7 +84,7 @@ class PersonaCreateDTO(BaseModel):
         if len(v) > 20:
             raise ValueError('CI no puede exceder 20 caracteres')
         
-        # ✅ Permitir letras, números y guiones
+        #  Permitir letras, números y guiones
         if not re.match(r'^[A-Za-z0-9\-]+$', v):
             raise ValueError('CI solo puede contener letras, números y guiones')
         
@@ -125,13 +124,13 @@ class PersonaUpdateDTO(BaseModel):
     @field_validator('nombres', 'apellido_paterno', 'apellido_materno')
     @classmethod
     def validar_nombres(cls, v: Optional[str]) -> Optional[str]:
-        """✅ CORREGIDO: Misma validación que en Create"""
+        """Misma validación que en Create"""
         if v is None:
             return v
         
         v = re.sub(r'\s+', ' ', v.strip())
         
-        # ✅ Incluye acentos y caracteres especiales válidos
+        # Incluye acentos y caracteres especiales válidos
         patron = r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'\-]+$"
         
         if not re.match(patron, v):

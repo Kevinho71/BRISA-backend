@@ -1,6 +1,6 @@
 """
 auth_service.py - SOLUCIÓN DEFINITIVA
-✅ FIX: Usar flush() SIEMPRE, nunca commit() dentro del servicio
+
 El commit lo hace el controlador o el test
 """
 
@@ -87,7 +87,7 @@ class AuthService:
     ) -> LoginLog:
         """
         Registrar intento de login en LoginLog
-        ✅ USA FLUSH, NO COMMIT
+        USA FLUSH, NO COMMIT
         """
         try:
             if estado not in ['exitoso', 'fallido']:
@@ -349,7 +349,6 @@ class AuthService:
     ) -> dict:
         """
         HU-02: Cierre de sesión
-        ✅ CORREGIDO: Usa flush + commit explícito para persistencia
         """
         try:
             # Invalidar token
@@ -365,10 +364,10 @@ class AuthService:
                 descripcion=f"Cierre de sesión desde IP {ip_address}"
             )
             
-            # ✅ CRÍTICO: Commit explícito para persistir
+            # Commit explícito para persistir
             db.commit()
             
-            # ✅ Refrescar el objeto para que tenga el ID asignado
+            # Refrescar el objeto para que tenga el ID asignado
             db.refresh(bitacora)
             
             logger.info(f"Logout exitoso para usuario {usuario_id}")
@@ -570,7 +569,7 @@ class AuthService:
                     detail="Usuario no encontrado"
                 )
             
-            # ✅ CRÍTICO: Verificar contraseña actual
+            # Verificar contraseña actual
             if not AuthService.verify_password(password_actual, usuario.password):
                 # Registrar intento fallido
                 AuthService.registrar_login_log(
@@ -587,14 +586,14 @@ class AuthService:
                     detail="La contraseña actual es incorrecta"
                 )
             
-            # ✅ Hashear nueva contraseña
+            # Hashear nueva contraseña
             nuevo_hash = AuthService.hash_password(password_nueva)
             
             # Actualizar contraseña
             usuario.password = nuevo_hash
             db.flush()
             
-            # ✅ Registrar en Bitácora
+            # Registrar en Bitácora
             AuthService.registrar_bitacora(
                 db=db,
                 usuario_id=usuario_id,
@@ -604,7 +603,7 @@ class AuthService:
                 descripcion=f"Usuario '{usuario.usuario}' cambió su contraseña desde IP {ip_address}"
             )
             
-            # ✅ CRÍTICO: Commit explícito para persistir
+            # Commit explícito para persistir
             db.commit()
             
             logger.info(f"✅ Contraseña cambiada exitosamente para usuario {usuario.usuario}")

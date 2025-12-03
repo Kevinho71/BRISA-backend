@@ -1,7 +1,6 @@
 """
 tests/conftest.py 
 Configuración global de pytest con soporte completo para permisos
-✅ CÓDIGO CORREGIDO - Manejo de transacciones para tests de Bitacora
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -141,7 +140,7 @@ def crear_persona_base(db_session):
 @pytest.fixture
 def crear_usuario_base(db_session, crear_persona_base):
     """
-    ✅ Fixture CORREGIDA para crear usuarios
+    
     - Genera CI único siempre
     - Retorna el usuario CON EL NOMBRE EXACTO solicitado (sin sufijos)
     - Hace flush automático
@@ -150,16 +149,16 @@ def crear_usuario_base(db_session, crear_persona_base):
         timestamp_ms = int(time.time() * 1000)
         rand_suffix = random.randint(1000, 9999)
 
-        # ✅ CI siempre único
+        #  CI siempre único
         ci_unico = f"TEST_{timestamp_ms}_{rand_suffix}"
         
-        # ✅ Nombre de usuario: SIEMPRE el que se pide (sin modificar)
+        #  Nombre de usuario: SIEMPRE el que se pide (sin modificar)
         usuario_final = usuario
         
         # Crear persona
         persona = crear_persona_base(ci=ci_unico, nombres=f"Usuario {usuario}")
 
-        # ✅ Correo único
+        #  Correo único
         correo_unico = f"{usuario}_{timestamp_ms}@test.com"
         
         # Hashear password
@@ -168,7 +167,7 @@ def crear_usuario_base(db_session, crear_persona_base):
         # Crear usuario con el nombre EXACTO
         usuario_obj = Usuario(
             id_persona=persona.id_persona,
-            usuario=usuario_final,  # ✅ Nombre exacto
+            usuario=usuario_final,  
             correo=correo_unico,
             password=password_hasheado,
             is_active=True

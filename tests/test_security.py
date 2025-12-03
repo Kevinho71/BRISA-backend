@@ -1,6 +1,6 @@
 """
 tests/test_security.py 
-✅ FIX DEFINITIVO: Usar timestamps únicos en TODOS los tests para evitar colisiones
+
 """
 import pytest
 from fastapi import status
@@ -241,7 +241,7 @@ class TestDataLeakage:
     def test_error_login_no_revela_si_usuario_existe(self, client, crear_usuario_base, db_session):
         """
         Los mensajes de error no deben revelar si un usuario existe
-        ✅ FIX: Usar timestamp único para evitar colisiones
+        Usar timestamp único para evitar colisiones
         """
         timestamp = int(time.time() * 1000)
         username = f"existente_{timestamp}"  # ✅ Nombre único
@@ -322,7 +322,7 @@ class TestSessionSecurity:
     def test_diferentes_usuarios_tienen_diferentes_tokens(self, client, crear_usuario_base, crear_rol_base, db_session):
         """
         Cada usuario debe tener un token único
-        ✅ FIX: Usar timestamps únicos para evitar colisiones
+        Usar timestamps únicos para evitar colisiones
         """
         timestamp = int(time.time() * 1000)
         

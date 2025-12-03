@@ -100,7 +100,7 @@ def require_permissions(*required_permissions: str):
     """
     Decorador para validar que el usuario tenga los permisos requeridos.
     
-    ✅ CAMBIO CRÍTICO: Ahora usa permission_mapper para traducir
+    Ahora usa permission_mapper para traducir
     acciones específicas (ej: "editar_usuario") a permisos genéricos (ej: "Modificar")
     
     Uso en endpoints:

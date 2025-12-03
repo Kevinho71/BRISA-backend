@@ -1,6 +1,6 @@
 """
 test_auth.py - Tests completos para HU-01 y HU-02
-✅ CORREGIDO: Refresca sesión después de operaciones para ver cambios en BD
+Refresca sesión después de operaciones para ver cambios en BD
 """
 
 import pytest
@@ -178,7 +178,7 @@ class TestLogout:
         data = response.json()
         assert data["data"]["token_invalidado"] == True
         
-        # ✅ CAMBIO PRINCIPAL: Usar fresh_db_session en lugar de db_session
+        # Usar fresh_db_session en lugar de db_session
         bitacora = fresh_db_session.query(Bitacora).filter(
             Bitacora.id_usuario_admin == user.id_usuario,
             Bitacora.accion == "LOGOUT"
@@ -418,7 +418,7 @@ class TestIntegracion:
         )
         assert response.status_code == 200
         
-        # ✅ 6. CAMBIO PRINCIPAL: Usar fresh_db_session para ver LOGOUT en Bitacora
+        # Usar fresh_db_session para ver LOGOUT en Bitacora
         bitacora_logout = fresh_db_session.query(Bitacora).filter(
             Bitacora.id_usuario_admin == usuario.id_usuario,
             Bitacora.accion == "LOGOUT"

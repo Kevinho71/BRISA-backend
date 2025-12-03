@@ -1,7 +1,6 @@
 """
 auth_controller.py - CÓDIGO COMPLETO Y FUNCIONAL
 Controlador de autenticación y usuarios
-✅ CORREGIDO: Request como dependencia para evitar error 422 en tests
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -90,11 +89,10 @@ async def login(
 async def logout(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency),
-    request: Request = None  # ✅ Opcional para evitar error 422 en tests
+    request: Request = None  #  Opcional para evitar error 422 en tests
 ):
     """
     HU-02: Endpoint de cierre de sesión
-    ✅ CORRECCIÓN: Request opcional para compatibilidad con tests
     """
     # Intentar extraer información del request si está disponible
     ip_address = "unknown"
@@ -125,7 +123,7 @@ async def obtener_usuario_actual(
 ):
     """
     Obtener información del usuario autenticado
-    ✅ CORRECCIÓN: Sin Request para evitar error 422
+
     """
     usuario_dto = AuthService.obtener_usuario_actual(db, current_user.id_usuario)
     
@@ -237,7 +235,7 @@ async def crear_usuario_para_persona(
         db.add(nuevo_usuario)
         db.flush()
         
-        # ✅ Registrar en bitácora
+        #  Registrar en bitácora
         AuthService.registrar_bitacora(
             db,
             usuario_id=current_user.id_usuario,
@@ -252,7 +250,7 @@ async def crear_usuario_para_persona(
         
         logger.info(f"✅ Usuario creado: {nuevo_usuario.usuario} para persona {persona.nombre_completo}")
         
-        # ✅ Retornar credenciales (SOLO SE MUESTRAN UNA VEZ)
+        # Retornar credenciales (SOLO SE MUESTRAN UNA VEZ)
         return ResponseModel.success(
             message=f"Usuario creado exitosamente para {persona.nombre_completo}",
             data={
@@ -316,7 +314,7 @@ async def restablecer_password(
             Persona1.id_persona == usuario.id_persona
         ).first()
         
-        # ✅ Generar nueva contraseña temporal (misma lógica que crear usuario)
+        #  Generar nueva contraseña temporal (misma lógica que crear usuario)
         caracteres = string.ascii_letters + string.digits + "!@#$%"
         nueva_password_temporal = ''.join(random.choice(caracteres) for _ in range(12))
         
@@ -442,14 +440,14 @@ async def listar_usuarios(
 ) -> dict:
     """Listar todos los usuarios con información de persona"""
     try:
-        # ✅ Query con join a personas
+        # Query con join a personas
         usuarios = db.query(Usuario).join(
             Persona1, Usuario.id_persona == Persona1.id_persona
         ).filter(
             Usuario.is_active == True
         ).offset(skip).limit(limit).all()
         
-        # ✅ Construir respuesta con nombre de persona
+        #  Construir respuesta con nombre de persona
         usuarios_list = []
         for u in usuarios:
             usuario_dict = {
@@ -736,7 +734,7 @@ async def actualizar_rol(
 ):
     """Actualizar rol"""
     try:
-        # ✅ CORRECCIÓN: Parámetro debe ser rol_id, no id_rol
+        # Parámetro debe ser rol_id, no id_rol
         rol_actualizado = RolService.actualizar_rol(
             db=db,
             rol_id=id_rol,  # ← Cambiar de id_rol a rol_id
@@ -771,7 +769,7 @@ async def eliminar_rol(
     ⚠ SEGURIDAD: Requiere permiso 'eliminar_rol'
     """
     try:
-        # ✅ Parámetros CORRECTOS según la firma del método
+        #  Parámetros CORRECTOS según la firma del método
         resultado = RolService.eliminar_rol(
             db=db,
             rol_id=id_rol,  # ← Correcto nombre del parámetro
@@ -1085,7 +1083,7 @@ async def listar_logs_acceso(
 async def listar_personas(
     # Paginación
     skip: int = Query(0, ge=0, description="Registros a saltar"),
-    limit: int = Query(50, ge=1, le=1000, description="Límite de registros"),  # ✅ Cambiado de 10000 a 50
+    limit: int = Query(50, ge=1, le=1000, description="Límite de registros"),  
     
     # Filtros
     tipo_persona: Optional[str] = Query(
@@ -1143,7 +1141,7 @@ async def listar_personas(
                 limit=limit
             )
         
-        # ✅ ASEGURAR que la respuesta tenga la estructura correcta
+        #  ASEGURAR que la respuesta tenga la estructura correcta
         return ResponseModel.success(
             message=f"Personas listadas exitosamente ({resultado['total']} total, mostrando {len(resultado['items'])})",
             data={
