@@ -214,3 +214,65 @@ class CursosPorGestionResponseDTO(BaseModel):
     total: int
     gestion: Optional[str]
     nivel: Optional[str]
+
+
+# ================================
+# DTOs para Reportes de Esquelas
+# ================================
+
+class EsquelaReporteDTO(BaseModel):
+    """DTO para información de esquela en reportes"""
+    id_esquela: int
+    fecha: date
+    estudiante_nombre: str
+    estudiante_ci: Optional[str]
+    profesor_nombre: str
+    registrador_nombre: str
+    codigos: List[str]  # Lista de códigos aplicados
+    observaciones: Optional[str]
+
+
+class EsquelasPorProfesorDTO(BaseModel):
+    """DTO para esquelas agrupadas por profesor"""
+    id_profesor: int
+    profesor_nombre: str
+    profesor_ci: str
+    total_esquelas: int
+    reconocimientos: int
+    orientaciones: int
+    esquelas: List[EsquelaReporteDTO]
+
+
+class EsquelasPorProfesorResponseDTO(BaseModel):
+    """DTO para respuesta de esquelas por profesor"""
+    profesores: List[EsquelasPorProfesorDTO]
+    total_profesores: int
+    total_esquelas: int
+
+
+class EsquelasPorFechaResponseDTO(BaseModel):
+    """DTO para respuesta de esquelas por rango de fechas"""
+    esquelas: List[EsquelaReporteDTO]
+    total: int
+    fecha_desde: Optional[date]
+    fecha_hasta: Optional[date]
+    reconocimientos: int
+    orientaciones: int
+
+
+class CodigoFrecuenteDTO(BaseModel):
+    """DTO para código frecuente"""
+    id_codigo: int
+    codigo: str
+    descripcion: str
+    tipo: str  # 'reconocimiento' o 'orientacion'
+    total_aplicaciones: int
+    porcentaje: float
+
+
+class CodigosFrecuentesResponseDTO(BaseModel):
+    """DTO para respuesta de códigos más frecuentes"""
+    codigos: List[CodigoFrecuenteDTO]
+    total_codigos: int
+    total_aplicaciones: int
+    tipo: Optional[str]  # Filtro aplicado

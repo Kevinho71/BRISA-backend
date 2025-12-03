@@ -662,3 +662,248 @@ class ReporteRepository:
 
         return cursos
 
+
+    # ================================
+    # Métodos para Reportes de Esquelas
+    # ================================
+
+    @staticmethod
+    def get_esquelas_por_profesor(
+        db: Session,
+        id_profesor: Optional[int] = None, # en realidad es por emisor, falta refactorizar los nombres
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None
+    ):
+        """
+        Obtiene esquelas agrupadas por profesor emisor
+        """
+        query = db.query(Persona).filter((Persona.tipo_persona == 'profesor') | (Persona.tipo_persona == 'regente') | (Persona.tipo_persona == 'administrativo'))
+
+        if id_profesor:
+            query = query.filter(Persona.ci == id_profesor)
+
+        profesores = query.all()
+        resultado = []
+
+        for prof in profesores:
+            # Obtener esquelas del profesor
+            esq_query = db.query(Esquela).filter(
+                Esquela.id_profesor == prof.id_persona
+            )
+
+            if fecha_desde:
+                esq_query = esq_query.filter(Esquela.fecha >= fecha_desde)
+            if fecha_hasta:
+                esq_query = esq_query.filter(Esquela.fecha <= fecha_hasta)
+
+            esquelas = esq_query.all()
+
+            if not esquelas:  # Solo incluir profesores con esquelas
+                continue
+
+            esquelas_lista = []
+            reconocimientos = 0
+            orientaciones = 0
+
+            for esq in esquelas:
+                # Obtener estudiante
+                estudiante = esq.estudiante
+                est_nombre = f"{estudiante.nombres} {estudiante.apellido_paterno} {estudiante.apellido_materno or ''}".strip()
+
+                # Obtener registrador
+                registrador = esq.registrador
+                reg_nombre = f"{registrador.nombres} {registrador.apellido_paterno} {registrador.apellido_materno or ''}".strip()
+
+                # Obtener códigos
+                codigos_query = db.query(CodigoEsquela).join(
+                    EsquelaCodigo,
+                    CodigoEsquela.id_codigo == EsquelaCodigo.id_codigo
+                ).filter(EsquelaCodigo.id_esquela == esq.id_esquela)
+
+                codigos_objs = codigos_query.all()
+                codigos = []
+                
+                for cod in codigos_objs:
+                    codigos.append(f"{cod.codigo} - {cod.descripcion}")
+                    if cod.tipo == 'reconocimiento':
+                        reconocimientos += 1
+                    else:
+                        orientaciones += 1
+
+                esquelas_lista.append({
+                    "id_esquela": esq.id_esquela,
+                    "fecha": esq.fecha,
+                    "estudiante_nombre": est_nombre,
+                    "estudiante_ci": estudiante.ci,
+                    "profesor_nombre": f"{prof.nombres} {prof.apellido_paterno} {prof.apellido_materno or ''}".strip(),
+                    "registrador_nombre": reg_nombre,
+                    "codigos": codigos,
+                    "observaciones": esq.observaciones
+                })
+
+            prof_nombre = f"{prof.nombres} {prof.apellido_paterno} {prof.apellido_materno or ''}".strip()
+
+            resultado.append({
+                "id_profesor": prof.id_persona,
+                "profesor_nombre": prof_nombre,
+                "profesor_ci": prof.ci,
+                "total_esquelas": len(esquelas_lista),
+                "reconocimientos": reconocimientos,
+                "orientaciones": orientaciones,
+                "esquelas": esquelas_lista
+            })
+
+        return resultado
+
+    @staticmethod
+    def get_esquelas_por_fecha(
+        db: Session,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+        tipo: Optional[str] = None
+    ):
+        """
+        Obtiene esquelas por rango de fechas
+        """
+        query = db.query(Esquela)
+
+        if fecha_desde:
+            query = query.filter(Esquela.fecha >= fecha_desde)
+        if fecha_hasta:
+            query = query.filter(Esquela.fecha <= fecha_hasta)
+
+        esquelas = query.order_by(Esquela.fecha.desc()).all()
+
+        resultado = []
+        reconocimientos = 0
+        orientaciones = 0
+
+        for esq in esquelas:
+            # Obtener estudiante
+            estudiante = esq.estudiante
+            est_nombre = f"{estudiante.nombres} {estudiante.apellido_paterno} {estudiante.apellido_materno or ''}".strip()
+
+            # Obtener profesor
+            profesor = esq.profesor
+            prof_nombre = f"{profesor.nombres} {profesor.apellido_paterno} {profesor.apellido_materno or ''}".strip()
+
+            # Obtener registrador
+            registrador = esq.registrador
+            reg_nombre = f"{registrador.nombres} {registrador.apellido_paterno} {registrador.apellido_materno or ''}".strip()
+
+            # Obtener códigos
+            codigos_query = db.query(CodigoEsquela).join(
+                EsquelaCodigo,
+                CodigoEsquela.id_codigo == EsquelaCodigo.id_codigo
+            ).filter(EsquelaCodigo.id_esquela == esq.id_esquela)
+
+            # Filtrar por tipo si se especifica
+            if tipo:
+                codigos_query = codigos_query.filter(CodigoEsquela.tipo == tipo)
+
+            codigos_objs = codigos_query.all()
+            
+            # Si se filtró por tipo y no hay códigos de ese tipo, saltar esta esquela
+            if tipo and not codigos_objs:
+                continue
+
+            codigos = []
+            tiene_reconocimiento = False
+            tiene_orientacion = False
+
+            for cod in codigos_objs:
+                codigos.append(f"{cod.codigo} - {cod.descripcion}")
+                if cod.tipo == 'reconocimiento':
+                    tiene_reconocimiento = True
+                else:
+                    tiene_orientacion = True
+
+            if tiene_reconocimiento:
+                reconocimientos += 1
+            if tiene_orientacion:
+                orientaciones += 1
+
+            resultado.append({
+                "id_esquela": esq.id_esquela,
+                "fecha": esq.fecha,
+                "estudiante_nombre": est_nombre,
+                "estudiante_ci": estudiante.ci,
+                "profesor_nombre": prof_nombre,
+                "registrador_nombre": reg_nombre,
+                "codigos": codigos,
+                "observaciones": esq.observaciones
+            })
+
+        return {
+            "esquelas": resultado,
+            "total": len(resultado),
+            "reconocimientos": reconocimientos,
+            "orientaciones": orientaciones
+        }
+
+    @staticmethod
+    def get_codigos_frecuentes(
+        db: Session,
+        tipo: Optional[str] = None,
+        limit: int = 10,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None
+    ):
+        """
+        Obtiene los códigos más frecuentemente aplicados
+        """
+        query = db.query(
+            CodigoEsquela.id_codigo,
+            CodigoEsquela.codigo,
+            CodigoEsquela.descripcion,
+            CodigoEsquela.tipo,
+            func.count(EsquelaCodigo.id_esquela).label('total_aplicaciones')
+        ).join(
+            EsquelaCodigo,
+            CodigoEsquela.id_codigo == EsquelaCodigo.id_codigo
+        )
+
+        # Aplicar filtros de fecha si se especifican
+        if fecha_desde or fecha_hasta:
+            query = query.join(
+                Esquela,
+                Esquela.id_esquela == EsquelaCodigo.id_esquela
+            )
+            if fecha_desde:
+                query = query.filter(Esquela.fecha >= fecha_desde)
+            if fecha_hasta:
+                query = query.filter(Esquela.fecha <= fecha_hasta)
+
+        # Filtrar por tipo si se especifica
+        if tipo:
+            query = query.filter(CodigoEsquela.tipo == tipo)
+
+        query = query.group_by(
+            CodigoEsquela.id_codigo,
+            CodigoEsquela.codigo,
+            CodigoEsquela.descripcion,
+            CodigoEsquela.tipo
+        ).order_by(func.count(EsquelaCodigo.id_esquela).desc()).limit(limit)
+
+        resultados = query.all()
+
+        # Calcular total de aplicaciones para porcentajes
+        total_aplicaciones = sum(r[4] for r in resultados)
+
+        codigos = []
+        for id_cod, cod, desc, tip, total in resultados:
+            porcentaje = (total / total_aplicaciones * 100) if total_aplicaciones > 0 else 0
+            codigos.append({
+                "id_codigo": id_cod,
+                "codigo": cod,
+                "descripcion": desc,
+                "tipo": tip,
+                "total_aplicaciones": int(total),
+                "porcentaje": round(porcentaje, 2)
+            })
+
+        return {
+            "codigos": codigos,
+            "total_aplicaciones": total_aplicaciones
+        }
+

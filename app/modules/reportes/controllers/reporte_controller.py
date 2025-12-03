@@ -17,7 +17,10 @@ from app.modules.reportes.dto.reporte_dto import (
     ProfesoresAsignadosResponseDTO,
     MateriasPorNivelResponseDTO,
     CargaAcademicaResponseDTO,
-    CursosPorGestionResponseDTO
+    CursosPorGestionResponseDTO,
+    EsquelasPorProfesorResponseDTO,
+    EsquelasPorFechaResponseDTO,
+    CodigosFrecuentesResponseDTO
 )
 from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.auth.services.auth_service import get_current_user_dependency
@@ -494,4 +497,189 @@ def obtener_cursos_por_gestion(
         db=db,
         gestion=gestion,
         nivel=nivel
+    )
+
+
+# ================================
+# Endpoints para Reportes de Esquelas
+# ================================
+
+@router.get("/esquelas/by-professor", response_model=EsquelasPorProfesorResponseDTO)
+def obtener_esquelas_por_profesor(
+    profesor_id: Optional[int] = Query(None, description="ID del profesor (opcional)"),
+    fecha_desde: Optional[date] = Query(None, alias="from", description="Fecha desde (YYYY-MM-DD)"),
+    fecha_hasta: Optional[date] = Query(None, alias="to", description="Fecha hasta (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene esquelas agrupadas por profesor emisor.
+    
+    Muestra todas las esquelas emitidas por cada profesor, con totales
+    de reconocimientos y orientaciones.
+    
+    **Parámetros:**
+    - **profesor_id**: ID específico del profesor (opcional)
+        - Si se especifica: retorna solo esquelas de ese profesor
+        - Si se omite: retorna esquelas de todos los profesores
+    - **from**: Fecha desde (opcional, formato: YYYY-MM-DD)
+    - **to**: Fecha hasta (opcional, formato: YYYY-MM-DD)
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/esquelas/by-professor?profesor_id=10
+    GET /api/reports/esquelas/by-professor?from=2024-01-01&to=2024-12-31
+    GET /api/reports/esquelas/by-professor
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "profesores": [
+            {
+                "id_profesor": 10,
+                "profesor_nombre": "Carlos Pérez López",
+                "profesor_ci": "12345678",
+                "total_esquelas": 25,
+                "reconocimientos": 15,
+                "orientaciones": 10,
+                "esquelas": [
+                    {
+                        "id_esquela": 1,
+                        "fecha": "2024-11-15",
+                        "estudiante_nombre": "Juan García",
+                        "estudiante_ci": "87654321",
+                        "profesor_nombre": "Carlos Pérez López",
+                        "registrador_nombre": "Ana Martínez",
+                        "codigos": ["R01 - Buen comportamiento"],
+                        "observaciones": "Excelente participación"
+                    }
+                ]
+            }
+        ],
+        "total_profesores": 1,
+        "total_esquelas": 25
+    }
+    ```
+    """
+    return ReporteService.obtener_esquelas_por_profesor(
+        db=db,
+        id_profesor=profesor_id,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta
+    )
+
+
+@router.get("/esquelas/by-date", response_model=EsquelasPorFechaResponseDTO)
+def obtener_esquelas_por_fecha(
+    fecha_desde: Optional[date] = Query(None, alias="from", description="Fecha desde (YYYY-MM-DD)"),
+    fecha_hasta: Optional[date] = Query(None, alias="to", description="Fecha hasta (YYYY-MM-DD)"),
+    tipo: Optional[Literal["reconocimiento", "orientacion"]] = Query(None, description="Tipo de esquela (opcional)"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene esquelas por rango de fechas.
+    
+    **Parámetros:**
+    - **from**: Fecha desde (opcional, formato: YYYY-MM-DD)
+    - **to**: Fecha hasta (opcional, formato: YYYY-MM-DD)
+    - **tipo**: Tipo de esquela ('reconocimiento', 'orientacion') (opcional)
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/esquelas/by-date?from=2024-01-01&to=2024-12-31
+    GET /api/reports/esquelas/by-date?tipo=reconocimiento
+    GET /api/reports/esquelas/by-date
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "esquelas": [
+            {
+                "id_esquela": 1,
+                "fecha": "2024-11-15",
+                "estudiante_nombre": "Juan García Pérez",
+                "estudiante_ci": "87654321",
+                "profesor_nombre": "Carlos Pérez López",
+                "registrador_nombre": "Ana Martínez",
+                "codigos": ["R01 - Buen comportamiento"],
+                "observaciones": "Excelente participación"
+            }
+        ],
+        "total": 1,
+        "fecha_desde": "2024-01-01",
+        "fecha_hasta": "2024-12-31",
+        "reconocimientos": 1,
+        "orientaciones": 0
+    }
+    ```
+    """
+    return ReporteService.obtener_esquelas_por_fecha(
+        db=db,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        tipo=tipo
+    )
+
+
+@router.get("/esquelas/frequent-codes", response_model=CodigosFrecuentesResponseDTO)
+def obtener_codigos_frecuentes(
+    tipo: Optional[Literal["reconocimiento", "orientacion"]] = Query(None, description="Tipo de código (opcional)"),
+    limit: int = Query(10, ge=1, le=50, description="Cantidad máxima de códigos a retornar"),
+    fecha_desde: Optional[date] = Query(None, alias="from", description="Fecha desde (YYYY-MM-DD)"),
+    fecha_hasta: Optional[date] = Query(None, alias="to", description="Fecha hasta (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+):
+    """
+    Obtiene los códigos de esquelas más frecuentemente aplicados.
+    
+    **Parámetros:**
+    - **tipo**: Tipo de código ('reconocimiento', 'orientacion') (opcional)
+    - **limit**: Cantidad máxima de códigos a retornar (por defecto 10, máximo 50)
+    - **from**: Fecha desde para filtrar aplicaciones (opcional, formato: YYYY-MM-DD)
+    - **to**: Fecha hasta para filtrar aplicaciones (opcional, formato: YYYY-MM-DD)
+    
+    **Ejemplo de uso:**
+    ```
+    GET /api/reports/esquelas/frequent-codes?limit=5
+    GET /api/reports/esquelas/frequent-codes?tipo=reconocimiento
+    GET /api/reports/esquelas/frequent-codes?from=2024-01-01&to=2024-12-31
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+        "codigos": [
+            {
+                "id_codigo": 1,
+                "codigo": "R01",
+                "descripcion": "Buen comportamiento",
+                "tipo": "reconocimiento",
+                "total_aplicaciones": 150,
+                "porcentaje": 35.5
+            },
+            {
+                "id_codigo": 5,
+                "codigo": "O02",
+                "descripcion": "Falta de tarea",
+                "tipo": "orientacion",
+                "total_aplicaciones": 120,
+                "porcentaje": 28.4
+            }
+        ],
+        "total_codigos": 2,
+        "total_aplicaciones": 270,
+        "tipo": null
+    }
+    ```
+    """
+    return ReporteService.obtener_codigos_frecuentes(
+        db=db,
+        tipo=tipo,
+        limit=limit,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta
     )

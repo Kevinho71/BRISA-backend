@@ -241,3 +241,74 @@ class ReporteService:
             "gestion": gestion,
             "nivel": nivel
         }
+
+    # ================================
+    # Servicios para Reportes de Esquelas
+    # ================================
+
+    @staticmethod
+    def obtener_esquelas_por_profesor(
+        db: Session,
+        id_profesor: Optional[int] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None
+    ):
+        """
+        Obtiene esquelas agrupadas por profesor emisor
+        """
+        profesores = ReporteRepository.get_esquelas_por_profesor(
+            db, id_profesor, fecha_desde, fecha_hasta
+        )
+
+        total_esquelas = sum(p["total_esquelas"] for p in profesores)
+
+        return {
+            "profesores": profesores,
+            "total_profesores": len(profesores),
+            "total_esquelas": total_esquelas
+        }
+
+    @staticmethod
+    def obtener_esquelas_por_fecha(
+        db: Session,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+        tipo: Optional[str] = None
+    ):
+        """
+        Obtiene esquelas por rango de fechas
+        """
+        resultado = ReporteRepository.get_esquelas_por_fecha(
+            db, fecha_desde, fecha_hasta, tipo
+        )
+
+        return {
+            "esquelas": resultado["esquelas"],
+            "total": resultado["total"],
+            "fecha_desde": fecha_desde,
+            "fecha_hasta": fecha_hasta,
+            "reconocimientos": resultado["reconocimientos"],
+            "orientaciones": resultado["orientaciones"]
+        }
+
+    @staticmethod
+    def obtener_codigos_frecuentes(
+        db: Session,
+        tipo: Optional[str] = None,
+        limit: int = 10,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None
+    ):
+        """
+        Obtiene códigos más frecuentemente aplicados
+        """
+        resultado = ReporteRepository.get_codigos_frecuentes(
+            db, tipo, limit, fecha_desde, fecha_hasta
+        )
+
+        return {
+            "codigos": resultado["codigos"],
+            "total_codigos": len(resultado["codigos"]),
+            "total_aplicaciones": resultado["total_aplicaciones"],
+            "tipo": tipo
+        }
