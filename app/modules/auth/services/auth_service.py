@@ -22,6 +22,8 @@ from app.config.config import config
 from app.core.database import get_db
 import os
 
+from app.modules.auth.repositories.auth_repository import AuthRepository, MAX_INTENTOS_FALLIDOS, TIEMPO_BLOQUEO_MINUTOS
+
 logger = logging.getLogger(__name__)
 
 # Configuración JWT
@@ -144,57 +146,142 @@ class AuthService:
         user_agent: Optional[str] = None
     ) -> TokenDTO:
         """
-        HU-01: Autenticación de usuario
-        ✅ NO HACE COMMIT - lo hace el controlador
+        HU-01: Autenticación de usuario con bloqueo por intentos fallidos
+        
+        Flujo según CU-04:
+        1. Buscar usuario
+        2. Verificar si está bloqueado (≥3 intentos fallidos en últimos 10 min)
+        3. Validar contraseña
+        4. Validar estado activo
+        5. Registrar login exitoso
+        6. Limpiar intentos fallidos anteriores
+        7. Registrar en bitácora
+        8. Generar y retornar token
+        
+        ⚠️ Si falla: Incrementa contador de intentos fallidos
+        ⚠️ Si intentos ≥ 3: Bloquea cuenta por 10 minutos
         """
         MENSAJE_ERROR_GENERICO = "Usuario o contraseña incorrectos"
         
         try:
-            # Buscar usuario
-            usuario = db.query(Usuario).filter(
-                Usuario.usuario == login_dto.usuario
-            ).first()
+           
+            # 1 BUSCAR USUARIO
+            
+            usuario = AuthRepository.buscar_usuario_por_nombre(db, login_dto.usuario)
             
             # Usuario no encontrado
             if not usuario:
-                logger.warning(f"Intento de login con usuario inexistente: {login_dto.usuario}")
+                logger.warning(f"❌ Intento de login con usuario inexistente: {login_dto.usuario}")
                 raise Unauthorized(MENSAJE_ERROR_GENERICO)
             
-            # Contraseña incorrecta
-            if not AuthService.verify_password(login_dto.password, usuario.password):
-                AuthService.registrar_login_log(
+        
+            # 2️ VERIFICAR SI CUENTA ESTÁ BLOQUEADA
+   
+            bloqueada, fecha_desbloqueo = AuthRepository.verificar_cuenta_bloqueada(
+                db, 
+                usuario.id_usuario,
+                max_intentos=MAX_INTENTOS_FALLIDOS,
+                minutos_bloqueo=TIEMPO_BLOQUEO_MINUTOS
+            )
+            
+            if bloqueada:
+                # Registrar intento de login en cuenta bloqueada
+                AuthRepository.registrar_login_log(
                     db, 
                     usuario.id_usuario, 
                     ip_address=ip_address,
                     user_agent=user_agent,
                     estado='fallido'
                 )
-                db.commit()  # ✅ Commit aquí para intentos fallidos
-                raise Unauthorized(MENSAJE_ERROR_GENERICO)
-            
-            # Cuenta desactivada
-            if usuario.is_active is False:
-                AuthService.registrar_login_log(
-                    db, 
-                    usuario.id_usuario, 
-                    ip_address=ip_address,
-                    user_agent=user_agent,
-                    estado='fallido'
+                db.commit()
+                
+                tiempo_restante = (fecha_desbloqueo - datetime.now()).total_seconds() / 60
+                logger.warning(
+                    f"⚠️ Intento de login en cuenta bloqueada: {usuario.usuario} "
+                    f"(desbloqueará en {tiempo_restante:.1f} minutos)"
                 )
-                db.commit()  # ✅ Commit aquí
-                raise Unauthorized("Cuenta desactivada")
+                
+                raise Unauthorized(
+                    f"Cuenta bloqueada por múltiples intentos fallidos. "
+                    f"Intente nuevamente a las {fecha_desbloqueo.strftime('%H:%M:%S')}"
+                )
+            
+            # 3️ VERIFICAR CONTRASEÑA
 
-            # ✅ LOGIN EXITOSO
-            AuthService.registrar_login_log(
+            if not verify_password(login_dto.password, usuario.password):
+                # ❌ Contraseña incorrecta → Registrar intento fallido
+                AuthRepository.registrar_login_log(
+                    db, 
+                    usuario.id_usuario, 
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    estado='fallido'
+                )
+                db.commit()
+                
+                # Contar intentos fallidos
+                intentos_fallidos = AuthRepository.contar_intentos_fallidos(
+                    db, 
+                    usuario.id_usuario,
+                    minutos=TIEMPO_BLOQUEO_MINUTOS
+                )
+                
+                logger.warning(
+                    f"❌ Contraseña incorrecta para usuario '{usuario.usuario}' "
+                    f"(intento {intentos_fallidos}/{MAX_INTENTOS_FALLIDOS})"
+                )
+                
+                # ⚠️ Advertir si está cerca del bloqueo
+                if intentos_fallidos >= MAX_INTENTOS_FALLIDOS:
+                    raise Unauthorized(
+                        f"Demasiados intentos fallidos. Cuenta bloqueada por {TIEMPO_BLOQUEO_MINUTOS} minutos"
+                    )
+                elif intentos_fallidos == MAX_INTENTOS_FALLIDOS - 1:
+                    raise Unauthorized(
+                        f"{MENSAJE_ERROR_GENERICO}. "
+                        f"⚠️ Un intento más y su cuenta será bloqueada por {TIEMPO_BLOQUEO_MINUTOS} minutos"
+                    )
+                else:
+                    raise Unauthorized(MENSAJE_ERROR_GENERICO)
+            
+
+            # 4️ VERIFICAR ESTADO ACTIVO
+
+            if usuario.is_active is False:
+                AuthRepository.registrar_login_log(
+                    db, 
+                    usuario.id_usuario, 
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    estado='fallido'
+                )
+                db.commit()
+                
+                logger.warning(f"❌ Intento de login con cuenta desactivada: {usuario.usuario}")
+                raise Unauthorized(
+                    "Cuenta desactivada. Contacte al administrador"
+                )
+            
+
+            # 5️ LOGIN EXITOSO - Registrar en LoginLog
+
+            AuthRepository.registrar_login_log(
                 db, 
                 usuario.id_usuario,
                 ip_address=ip_address,
                 user_agent=user_agent,
                 estado='exitoso'
             )
+            
 
-            # ✅ Registrar en Bitácora
-            AuthService.registrar_bitacora(
+            # 6️ LIMPIAR INTENTOS FALLIDOS ANTERIORES
+
+            # (Los intentos antiguos se ignoran automáticamente por la ventana de tiempo)
+            AuthRepository.limpiar_intentos_fallidos(db, usuario.id_usuario)
+            
+            # 7️ REGISTRAR EN BITÁCORA
+
+            AuthRepository.registrar_bitacora(
                 db,
                 usuario_id=usuario.id_usuario,
                 accion='LOGIN',
@@ -202,12 +289,16 @@ class AuthService:
                 id_objetivo=usuario.id_usuario,
                 descripcion=f"Inicio de sesión exitoso: {usuario.usuario} desde IP {ip_address}"
             )
-
-            # ✅ COMMIT AL FINAL (el controlador también puede hacerlo)
+            
+            # ✅ COMMIT FINAL
             db.commit()
+            
 
-            # Crear token
-            access_token = AuthService.create_access_token(
+            # 8️ GENERAR TOKEN JWT
+
+            from app.shared.security import create_access_token
+            
+            access_token = create_access_token(
                 data={
                     "sub": usuario.id_usuario, 
                     "usuario_id": usuario.id_usuario,  
@@ -215,7 +306,11 @@ class AuthService:
                 }
             )
             
-            # Retornar TokenDTO
+            logger.info(f"✅ Login exitoso: {usuario.usuario} desde IP {ip_address}")
+            
+ 
+            # 9️ RETORNAR TOKEN DTO
+
             return TokenDTO(
                 access_token=access_token,
                 token_type="bearer",
@@ -223,14 +318,23 @@ class AuthService:
                 usuario=usuario.usuario,
                 nombres=f"{usuario.persona.nombres} {usuario.persona.apellido_paterno}",
                 rol=usuario.roles[0].nombre if usuario.roles else "Sin rol",
-                permisos=[p.nombre for r in usuario.roles for p in r.permisos if r.is_active and p.is_active],
+                permisos=[
+                    p.nombre 
+                    for r in usuario.roles 
+                    for p in r.permisos 
+                    if r.is_active and p.is_active
+                ],
                 expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
             )
+            
         except Unauthorized:
+            # Re-lanzar errores de autenticación sin modificar
             raise
+            
         except Exception as e:
+            # Rollback en caso de error inesperado
             db.rollback()
-            logger.error(f"Error en login: {str(e)}")
+            logger.error(f"❌ Error inesperado en login: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error en el proceso de login"

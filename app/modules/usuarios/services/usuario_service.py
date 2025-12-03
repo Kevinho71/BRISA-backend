@@ -510,7 +510,10 @@ class UsuarioService(BaseService):
         usuario_id: int, 
         current_user: Usuario
     ) -> dict:
-        """Eliminar usuario (borrado lógico) con validación de permisos"""
+        """
+        ✅ CORREGIDO: Ahora registra en bitácora
+        Eliminar usuario (borrado lógico) con validación de permisos
+        """
         from app.shared.decorators.auth_decorators import verificar_permiso
         
         verificar_permiso(current_user, 'eliminar_usuario')
@@ -530,8 +533,24 @@ class UsuarioService(BaseService):
             raise NotFound("Usuario", usuario_id)
         
         try:
+            # Guardar info antes de eliminar
+            usuario_nombre = usuario.usuario
+            persona_nombre = usuario.persona.nombre_completo if usuario.persona else "N/A"
+            
             usuario.is_active = False
             usuario.updated_by = current_user.id_usuario
+            
+            db.flush()
+            
+            #  REGISTRAR EN BITÁCORA
+            AuthService.registrar_bitacora(
+                db,
+                usuario_id=current_user.id_usuario,
+                accion='ELIMINAR_USUARIO',
+                tipo_objetivo='Usuario',
+                id_objetivo=usuario_id,
+                descripcion=f"Usuario '{usuario_nombre}' ({persona_nombre}) eliminado (borrado lógico)"
+            )
             
             db.commit()
             
@@ -540,7 +559,7 @@ class UsuarioService(BaseService):
             return {
                 "mensaje": "Usuario eliminado exitosamente",
                 "id_usuario": usuario_id,
-                "usuario": usuario.usuario
+                "usuario": usuario_nombre
             }
             
         except Exception as e:
@@ -549,8 +568,17 @@ class UsuarioService(BaseService):
             raise DatabaseException(f"Error al eliminar usuario: {str(e)}")            
     
     @classmethod
-    def asignar_rol(cls, db: Session, usuario_id: int, rol_id: int, razon: Optional[str] = None, user_id: Optional[int] = None) -> dict:
-        """Asignar rol a usuario (RF-02) con historial"""
+    def asignar_rol(
+        cls, 
+        db: Session, 
+        usuario_id: int, 
+        rol_id: int, 
+        razon: Optional[str] = None, 
+        user_id: Optional[int] = None
+    ) -> dict:
+        """
+         Asignar rol a usuario (RF-02) con historial
+        """
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -578,6 +606,19 @@ class UsuarioService(BaseService):
                 razon=razon
             )
             db.add(historial)
+            
+            db.flush()
+            
+            # REGISTRAR EN BITÁCORA
+            AuthService.registrar_bitacora(
+                db,
+                usuario_id=user_id if user_id else usuario_id,
+                accion='ASIGNAR_ROL',
+                tipo_objetivo='Usuario',
+                id_objetivo=usuario_id,
+                descripcion=f"Rol '{rol.nombre}' asignado a usuario '{usuario.usuario}'"
+            )
+            
             db.commit()
             
             logger.info(f"Rol {rol.nombre} asignado a usuario {usuario_id}")
@@ -585,11 +626,20 @@ class UsuarioService(BaseService):
         except Exception as e:
             db.rollback()
             logger.error(f"Error al asignar rol: {str(e)}")
-            raise DatabaseException(f"Error al asignar rol: {str(e)}")
-    
+            raise DatabaseException(f"Error al asignar rol: {str(e)}")    
+        
     @classmethod
-    def revocar_rol(cls, db: Session, usuario_id: int, rol_id: int, razon: Optional[str] = None, user_id: Optional[int] = None) -> dict:
-        """Revocar rol de usuario (RF-02)"""
+    def revocar_rol(
+        cls, 
+        db: Session, 
+        usuario_id: int, 
+        rol_id: int, 
+        razon: Optional[str] = None, 
+        user_id: Optional[int] = None
+    ) -> dict:
+        """
+        Revocar rol de usuario (RF-02)
+        """
         usuario = db.query(Usuario).filter(
             Usuario.id_usuario == usuario_id, 
             Usuario.is_active == True
@@ -612,6 +662,19 @@ class UsuarioService(BaseService):
                     razon=razon
                 )
                 db.add(historial)
+                
+                db.flush()
+                
+                #  REGISTRAR EN BITÁCORA
+                AuthService.registrar_bitacora(
+                    db,
+                    usuario_id=user_id if user_id else usuario_id,
+                    accion='REVOCAR_ROL',
+                    tipo_objetivo='Usuario',
+                    id_objetivo=usuario_id,
+                    descripcion=f"Rol '{rol.nombre}' revocado de usuario '{usuario.usuario}'"
+                )
+                
                 db.commit()
             
             logger.info(f"Rol {rol.nombre} revocado de usuario {usuario_id}")
@@ -654,7 +717,7 @@ class RolService:
             db.add(rol)
             db.flush()
             
-            # ✅ Registrar en bitácora
+            # Registrar en bitácora
             from app.modules.auth.services.auth_service import AuthService
             if current_user:
                 AuthService.registrar_bitacora(
@@ -685,16 +748,16 @@ class RolService:
         if not rol:
             raise NotFound("Rol", rol_id)
         
-        # ✅ Construir respuesta con permisos incluidos
+        # Construir respuesta con permisos incluidos
         rol_dto = RolResponseDTO.from_orm(rol)
         
-        # ✅ Contar permisos activos
+        # Contar permisos activos
         rol_dto.permisosCount = len([p for p in rol.permisos if p.is_active])
         
-        # ✅ Contar usuarios activos
+        #  Contar usuarios activos
         rol_dto.usuariosCount = len([u for u in rol.usuarios if u.is_active])
         
-        # ✅ AGREGAR LISTA DE PERMISOS (esto faltaba)
+        # AGREGAR LISTA DE PERMISOS (esto faltaba)
         rol_dto.permisos = [
             {
                 "id_permiso": p.id_permiso,
@@ -715,7 +778,7 @@ class RolService:
         roles_dto = []
         for rol in roles:
             rol_dto = RolResponseDTO.from_orm(rol)
-            # ✅ Agregar contadores
+            # Agregar contadores
             rol_dto.permisosCount = len([p for p in rol.permisos if p.is_active])
             rol_dto.usuariosCount = len([u for u in rol.usuarios if u.is_active])
             roles_dto.append(rol_dto)
@@ -764,7 +827,7 @@ class RolService:
             
             db.flush()
             
-            # ✅ Registrar en bitácora
+            # Registrar en bitácora
             from app.modules.auth.services.auth_service import AuthService
             if current_user:
                 cambios = []
@@ -803,7 +866,7 @@ class RolService:
         rol_id: int, 
         current_user: Usuario = None
     ) -> dict:
-        """✅ Eliminar rol (borrado lógico) con registro en bitácora"""
+        """ Eliminar rol (borrado lógico) con registro en bitácora"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'eliminar_rol'):
@@ -819,7 +882,7 @@ class RolService:
         if not rol:
             raise NotFound("Rol", rol_id)
         
-        # ✅ Verificar si tiene usuarios asignados
+        #  Verificar si tiene usuarios asignados
         usuarios_activos = [u for u in rol.usuarios if u.is_active]
         if usuarios_activos:
             raise HTTPException(
@@ -836,7 +899,7 @@ class RolService:
             
             db.flush()
             
-            # ✅ Registrar en bitácora
+            # Registrar en bitácora
             from app.modules.auth.services.auth_service import AuthService
             if current_user:
                 AuthService.registrar_bitacora(
@@ -871,7 +934,7 @@ class RolService:
         permisos_ids: List[int], 
         current_user: Usuario = None
     ) -> RolResponseDTO:
-        """✅ Asignar permisos a rol (RF-04) con bitácora"""
+        """ Asignar permisos a rol (RF-04) con bitácora"""
         if current_user:
             from app.shared.permissions import check_permission
             if not check_permission(current_user, 'asignar_permisos'):
@@ -911,7 +974,7 @@ class RolService:
             
             db.flush()
             
-            # ✅ Registrar en bitácora
+            # Registrar en bitácora
             from app.modules.auth.services.auth_service import AuthService
             if current_user:
                 permisos_nuevos = {p.id_permiso: p.nombre for p in permisos}
