@@ -436,6 +436,7 @@ class AuthService:
             apellido_paterno=usuario.persona.apellido_paterno,
             apellido_materno=usuario.persona.apellido_materno,
             ci=usuario.persona.ci,
+            id_persona=usuario.persona.id_persona,
             roles=roles,
             permisos=permisos,
             estado=estado
