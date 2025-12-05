@@ -1101,6 +1101,9 @@ class RolService:
             db.rollback()
             logger.error(f"Error al remover rol: {str(e)}")
             raise DatabaseException(f"Error al remover rol: {str(e)}")
+        
+        
+
 
 class PermisoService(BaseService):
     """Servicio de gestión de permisos (RF-04)"""

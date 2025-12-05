@@ -2,9 +2,6 @@
 app/shared/permission_mapper.py - VERSIÓN CON MÓDULOS
 Mapeo de acciones específicas a permisos genéricos + módulos
 
-CAMBIO CLAVE: 
-- Antes: solo validaba permisos genéricos (Lectura, Agregar, etc)
-- Ahora: valida permiso genérico + módulo específico
 """
 from typing import Dict, List, Set, Tuple
 from app.modules.usuarios.models.usuario_models import Usuario
@@ -16,8 +13,7 @@ logger = logging.getLogger(__name__)
 # ================ MAPEO: ACCIÓN → (PERMISO_GENÉRICO, MÓDULO) ================ 
 
 PERMISSION_MAP: Dict[str, Tuple[List[str], str]] = {
-    # Formato: "accion": (["permisos_genericos"], "modulo")
-    
+        
     # ============ MÓDULO USUARIOS ============
     "crear_usuario": (["Agregar"], "usuarios"),
     "ver_usuario": (["Lectura"], "usuarios"),
@@ -77,7 +73,8 @@ PERMISSION_MAP: Dict[str, Tuple[List[str], str]] = {
 # ================ ROLES CON ACCESO TOTAL ================ 
 
 ADMIN_ROLES = ["Director", "Admin"]
-
+ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo", "Administrador"]
+ROLES_VER_PROPIAS_ESQUELAS = ["Profesor"]
 
 def tiene_permiso(usuario: Usuario, accion: str) -> bool:
     """
@@ -412,3 +409,44 @@ def tiene_permiso_completo_modulo(usuario: Usuario, modulo: str) -> bool:
                 permisos_usuario.add(permiso.nombre)
     
     return permisos_completos.issubset(permisos_usuario)
+
+
+def puede_ver_esquela(usuario: Usuario, id_profesor: int = None) -> bool:
+    """
+    Determina si el usuario puede ver una esquela específica.
+    
+    Args:
+        usuario: Usuario autenticado
+        id_profesor: ID del profesor que asignó la esquela (opcional)
+    
+    Returns:
+        bool: True si puede ver la esquela
+    """
+    if not usuario or not usuario.is_active:
+        return False
+    
+    # Administradores y roles especiales ven todo
+    for rol in usuario.roles:
+        if rol.is_active and rol.nombre in ROLES_VER_TODAS_ESQUELAS:
+            return True
+    
+    # Profesores solo ven sus propias esquelas
+    if id_profesor:
+        for rol in usuario.roles:
+            if rol.is_active and rol.nombre in ROLES_VER_PROPIAS_ESQUELAS:
+                # Verificar que el usuario corresponda al profesor
+                return usuario.id_persona == id_profesor
+    
+    return False
+
+
+def puede_ver_todas_esquelas(usuario: Usuario) -> bool:
+    """Verifica si el usuario puede ver todas las esquelas"""
+    if not usuario or not usuario.is_active:
+        return False
+    
+    for rol in usuario.roles:
+        if rol.is_active and rol.nombre in ROLES_VER_TODAS_ESQUELAS:
+            return True
+    
+    return False

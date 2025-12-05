@@ -18,7 +18,7 @@ from app.shared.exceptions.custom_exceptions import (
 from typing import List, Optional
 import logging
 
-from app.modules.usuarios.models.usuario_models import Persona1, Usuario
+from app.modules.usuarios.models.usuario_models import Persona1, Rol, Usuario
 from app.modules.auth.dto.auth_dto import LoginDTO, RegistroDTO, CambiarPasswordDTO
 from app.modules.auth.services.auth_service import AuthService, get_current_user_dependency
 from app.core.utils import success_response
@@ -824,6 +824,73 @@ async def asignar_permisos_rol(
         data=rol_actualizado.dict() if hasattr(rol_actualizado, 'dict') else rol_actualizado
     )
 
+@router.get("/roles/{id_rol}/usuarios", response_model=dict)
+@requires_permission('ver_rol')
+async def obtener_usuarios_rol(
+    id_rol: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """
+    👥 Obtener usuarios asignados a un rol específico
+    
+    Retorna lista de usuarios con:
+    - Información básica del usuario
+    - Información de la persona asociada
+    - Estado activo/inactivo
+    """
+    try:
+        # Verificar que el rol existe
+        rol = db.query(Rol).filter(
+            Rol.id_rol == id_rol,
+            Rol.is_active == True
+        ).first()
+        
+        if not rol:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Rol con ID {id_rol} no encontrado"
+            )
+        
+        # Obtener usuarios con este rol (solo activos)
+        usuarios_data = []
+        for usuario in rol.usuarios:
+            if usuario.is_active:
+                # Obtener información de la persona
+                persona = db.query(Persona1).filter(
+                    Persona1.id_persona == usuario.id_persona
+                ).first()
+                
+                usuarios_data.append({
+                    "id_usuario": usuario.id_usuario,
+                    "usuario": usuario.usuario,
+                    "email": usuario.correo,
+                    "activo": usuario.is_active,
+                    # Información de la persona
+                    "nombre": persona.nombres if persona else None,
+                    "apellido": f"{persona.apellido_paterno or ''} {persona.apellido_materno or ''}".strip() if persona else None,
+                    "nombre_completo": persona.nombre_completo if persona else None,
+                    "ci": persona.ci if persona else None,
+                    "tipo_persona": persona.tipo_persona if persona else None
+                })
+        
+        logger.info(f"✅ Usuarios del rol {id_rol} obtenidos: {len(usuarios_data)}")
+        
+        return ResponseModel.success(
+            message=f"Usuarios del rol obtenidos ({len(usuarios_data)} usuarios)",
+            data=usuarios_data,
+            status_code=status.HTTP_200_OK
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error al obtener usuarios del rol {id_rol}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener usuarios del rol: {str(e)}"
+        )
+
 # ==================== PERMISOS ====================
 
 @router.get("/permisos", response_model=dict)
@@ -1104,23 +1171,7 @@ async def listar_personas(
     current_user: Usuario = Depends(get_current_user_dependency)
 ) -> dict:
     """
-    📋 Listar todas las personas con filtros opcionales
-    
-    **Parámetros de paginación:**
-    - `skip`: Registros a saltar (para paginación)
-    - `limit`: Límite de registros por página (máx 1000, por defecto 50)
-    
-    **Parámetros de filtro (opcionales):**
-    - `tipo_persona`: 'profesor' o 'administrativo'
-    - `busqueda`: Búsqueda en nombres, CI, correo o teléfono
-    - `estado`: 'activo' o 'inactivo'
-    
-    **Ejemplo de uso:**
-```
-    GET /api/personas?tipo_persona=profesor&busqueda=juan&estado=activo
-    GET /api/personas?busqueda=12345678&skip=0&limit=50
-    GET /api/personas?skip=50&limit=50  # Segunda página
-```
+      Listar todas las personas con filtros opcionales
     """
     try:
         # Si hay filtros, usar listar_con_filtros
@@ -1141,6 +1192,16 @@ async def listar_personas(
                 limit=limit
             )
         
+        # ✅ AGREGAR usuario_activo a cada item
+        for item in resultado["items"]:
+            if item.get("id_usuario"):
+                usuario = db.query(Usuario).filter(
+                    Usuario.id_usuario == item["id_usuario"]
+                ).first()
+                item["usuario_activo"] = usuario.is_active if usuario else None
+            else:
+                item["usuario_activo"] = None
+
         #  ASEGURAR que la respuesta tenga la estructura correcta
         return ResponseModel.success(
             message=f"Personas listadas exitosamente ({resultado['total']} total, mostrando {len(resultado['items'])})",
@@ -1259,6 +1320,3 @@ async def obtener_estadisticas(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al obtener estadísticas: {str(e)}"
         )
-    
-
-  
