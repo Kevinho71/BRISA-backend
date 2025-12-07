@@ -1,9 +1,10 @@
-"app/module/auth/dto/auth_dto"
+"""
+app/modules/auth/dto/auth_dto.py - Mejorado
+"""
 
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Literal
 from datetime import datetime
-from app.core.database import Base
 from typing import TYPE_CHECKING
 
 # ==========================
@@ -28,20 +29,25 @@ class RegistroDTO(BaseModel):
     telefono: Optional[str] = None
     direccion: Optional[str] = None
     tipo_persona: Literal["profesor", "administrativo"] = "administrativo"
-    id_rol: Optional[int] = None  # ID del rol a asignar al usuario
+    id_rol: Optional[int] = None
     
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
-        """Validar complejidad de contraseña"""
-        if len(v) < 8:
-            raise ValueError('Contraseña debe tener mínimo 8 caracteres')
-        if not any(c.isupper() for c in v):
-            raise ValueError('Contraseña debe contener mayúsculas')
-        if not any(c.islower() for c in v):
-            raise ValueError('Contraseña debe contener minúsculas')
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Contraseña debe contener números')
+        """
+        Validar complejidad de contraseña.
+        Usa la función mejorada de security.py que maneja
+        contraseñas largas automáticamente.
+        """
+        from app.shared.security import validate_password_strength
+        
+        # Usar la validación robusta
+        es_valida, errores = validate_password_strength(v)
+        
+        if not es_valida:
+            # Unir todos los errores en un mensaje
+            raise ValueError("; ".join(errores))
+        
         return v
     
     model_config = {
@@ -114,6 +120,7 @@ class TokenDTO(BaseModel):
 class UsuarioActualDTO(BaseModel):
     """DTO para información del usuario actual"""
     id_usuario: int
+    id_persona: int
     usuario: str
     correo: EmailStr
     nombres: str
@@ -128,6 +135,7 @@ class UsuarioActualDTO(BaseModel):
         "json_schema_extra": {
             "example": {
                 "id_usuario": 1,
+                "id_persona": 10,
                 "usuario": "jperez",
                 "correo": "jperez@example.com",
                 "nombres": "Juan",
@@ -151,3 +159,50 @@ class TokenResponseDTO(BaseModel):
     access_token: str
     token_type: str = "bearer"
     usuario: "UsuarioResponseDTO"
+
+# ==========================
+# DTO para cambiar contraseña
+# ==========================
+class CambiarPasswordDTO(BaseModel):
+    """
+    DTO para cambio de contraseña del usuario
+    El usuario debe proporcionar su contraseña actual para seguridad
+    """
+    password_actual: str
+    password_nueva: str
+    confirmar_password_nueva: str
+    
+    @field_validator('password_nueva')
+    @classmethod
+    def validate_password_nueva(cls, v, info):
+        """Validar que la nueva contraseña cumpla requisitos de seguridad"""
+        from app.shared.security import validate_password_strength
+        
+        es_valida, errores = validate_password_strength(v)
+        
+        if not es_valida:
+            raise ValueError("; ".join(errores))
+        
+        # Validar que no sea igual a la actual
+        if 'password_actual' in info.data and v == info.data['password_actual']:
+            raise ValueError("La nueva contraseña debe ser diferente a la actual")
+        
+        return v
+    
+    @field_validator('confirmar_password_nueva')
+    @classmethod
+    def validate_confirmacion(cls, v, info):
+        """Validar que las contraseñas coincidan"""
+        if 'password_nueva' in info.data and v != info.data['password_nueva']:
+            raise ValueError("Las contraseñas no coinciden")
+        return v
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "password_actual": "Password123!",
+                "password_nueva": "NuevaPassword456!",
+                "confirmar_password_nueva": "NuevaPassword456!"
+            }
+        }
+    }

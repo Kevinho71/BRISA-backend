@@ -2,7 +2,7 @@
 
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Enum,
-    ForeignKey, Table
+    ForeignKey, Table, Boolean, func
 )
 from app.core.database import Base
 from sqlalchemy import Text as SQLText
@@ -151,3 +151,43 @@ class Adjunto(Base):
     fecha_subida = Column(DateTime, default=datetime.utcnow)
 
     incidente = relationship("Incidente", back_populates="adjuntos")
+
+
+#==================Nofitificaciones==================
+
+class Notificacion(Base):
+    __tablename__ = "notificaciones"
+
+    id_notificacion = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Usuario que recibe la notificación (obligatorio)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
+
+    # Opcionalmente atada a un incidente
+    id_incidente = Column(Integer, ForeignKey("incidentes.id_incidente"), nullable=True)
+
+    # Opcionalmente atada a una derivación
+    id_derivacion = Column(Integer, ForeignKey("derivaciones.id_derivacion"), nullable=True)
+
+    titulo = Column(String(150), nullable=False)
+    mensaje = Column(Text, nullable=False)
+
+    # tinyint(1) -> Boolean, por defecto 0 (no leído)
+    leido = Column(Boolean, nullable=True, default=False, server_default="0")
+
+    # timestamp DEFAULT current_timestamp()
+    fecha = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # RELACIONES
+    usuario = relationship("Usuario", backref="notificaciones")
+
+    incidente = relationship(
+        "Incidente",
+        backref="notificaciones"
+    )
+
+    derivacion = relationship(
+        "Derivacion",
+        backref="notificaciones"
+    )
+#==================Nofitificaciones==================

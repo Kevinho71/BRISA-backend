@@ -23,7 +23,7 @@ class PersonaBaseSchema(BaseSchema):
     direccion: Optional[str] = Field(None, max_length=100)
     telefono: Optional[str] = Field(None, max_length=20)
     correo: Optional[EmailStr] = None
-    tipo_persona: str = Field(..., pattern="^(profesor|administrativo)$")
+    tipo_persona: str = Field(..., pattern="^(profesor|administrativo|regente)$")
 
     @property
     def nombre_completo(self):

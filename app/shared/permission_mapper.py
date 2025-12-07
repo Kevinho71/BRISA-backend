@@ -1,138 +1,183 @@
 """
-app/shared/permission_mapper.py - VERSIÓN CORREGIDA
-Mapeo de permisos genéricos a acciones específicas
+app/shared/permission_mapper.py - VERSIÓN CON MÓDULOS
+Mapeo de acciones específicas a permisos genéricos + módulos
 
-CAMBIO CLAVE: Los permisos en BD son genéricos (Lectura, Agregar, Modificar, Eliminar)
-Este mapper traduce acciones específicas a esos permisos genéricos
 """
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 from app.modules.usuarios.models.usuario_models import Usuario
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-# ================ MAPEO DE ACCIONES A PERMISOS GENÉRICOS ================ 
+# ================ MAPEO: ACCIÓN → (PERMISO_GENÉRICO, MÓDULO) ================ 
 
-PERMISSION_MAP: Dict[str, List[str]] = {
-    # Usuarios - mapean a permisos GENÉRICOS en BD
-    "crear_usuario": ["Agregar"],
-    "ver_usuario": ["Lectura"],
-    "editar_usuario": ["Modificar"],
-    "eliminar_usuario": ["Eliminar"],
+PERMISSION_MAP: Dict[str, Tuple[List[str], str]] = {
+        
+    # ============ MÓDULO USUARIOS ============
+    "crear_usuario": (["Agregar"], "usuarios"),
+    "ver_usuario": (["Lectura"], "usuarios"),
+    "editar_usuario": (["Modificar"], "usuarios"),
+    "eliminar_usuario": (["Eliminar"], "usuarios"),
     
-    # Personas
-    "crear_persona": ["Agregar"],
-    "ver_persona": ["Lectura"],
-    "editar_persona": ["Modificar"],
-    "eliminar_persona": ["Eliminar"],
+    # ============ MÓDULO PERSONAS ============
+    "crear_persona": (["Agregar"], "usuarios"),  # Las personas están en módulo usuarios
+    "ver_personas": (["Lectura"], "usuarios"),
+    "editar_persona": (["Modificar"], "usuarios"),
+    "eliminar_persona": (["Eliminar"], "usuarios"),
     
-    # Roles
-    "crear_rol": ["Agregar"],
-    "ver_rol": ["Lectura"],
-    "editar_rol": ["Modificar"],
-    "eliminar_rol": ["Eliminar"],
-    "asignar_permisos": ["Modificar"],
+    # ============ MÓDULO ROLES ============
+    "crear_rol": (["Agregar"], "usuarios"),  # Gestión de roles está en usuarios
+    "ver_rol": (["Lectura"], "usuarios"),
+    "editar_rol": (["Modificar"], "usuarios"),
+    "eliminar_rol": (["Eliminar"], "usuarios"),
+    "asignar_permisos": (["Modificar"], "usuarios"),
     
-    # Reportes
-    "ver_reportes": ["Lectura"],
-    "generar_reportes": ["Agregar"],
+    # ============ MÓDULO ESQUELAS ============
+    "crear_esquela": (["Agregar"], "esquelas"),
+    "ver_esquela": (["Lectura"], "esquelas"),
+    "editar_esquela": (["Modificar"], "esquelas"),
+    "eliminar_esquela": (["Eliminar"], "esquelas"),
     
-    # Sistema
-    "gestionar_sistema": ["Modificar", "Eliminar"],
-    "ver_bitacora": ["Lectura"],
+    # ============ MÓDULO INCIDENTES ============
+    "crear_incidente": (["Agregar"], "incidentes"),
+    "ver_incidente": (["Lectura"], "incidentes"),
+    "editar_incidente": (["Modificar"], "incidentes"),
+    "eliminar_incidente": (["Eliminar"], "incidentes"),
+    
+    # ============ MÓDULO RETIROS TEMPRANOS ============
+    "crear_retiro": (["Agregar"], "retiros_tempranos"),
+    "ver_retiro": (["Lectura"], "retiros_tempranos"),
+    "editar_retiro": (["Modificar"], "retiros_tempranos"),
+    "eliminar_retiro": (["Eliminar"], "retiros_tempranos"),
+    
+    # ============ MÓDULO REPORTES ============
+    "ver_reportes": (["Lectura"], "reportes"),
+    "generar_reportes": (["Agregar"], "reportes"),
+    "exportar_reportes": (["Modificar"], "reportes"),
+    
+    # ============ MÓDULO PROFESORES ============
+    "crear_profesor": (["Agregar"], "profesores"),
+    "ver_profesor": (["Lectura"], "profesores"),
+    "editar_profesor": (["Modificar"], "profesores"),
+    "eliminar_profesor": (["Eliminar"], "profesores"),
+    "asignar_materia": (["Modificar"], "profesores"),
+    
+    # ============ MÓDULO ADMINISTRACIÓN ============
+    "ver_bitacora": (["Lectura"], "administracion"),
+    "gestionar_sistema": (["Modificar"], "administracion"),
+    "configurar_sistema": (["Modificar", "Agregar"], "administracion"),
 }
 
 
 # ================ ROLES CON ACCESO TOTAL ================ 
 
-ADMIN_ROLES = ["Director", "Administrativo", "Admin"]  # ← Agregado "Admin"
-
+ADMIN_ROLES = ["Director", "Admin"]
+ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo", "Administrador"]
+ROLES_VER_PROPIAS_ESQUELAS = ["Profesor"]
 
 def tiene_permiso(usuario: Usuario, accion: str) -> bool:
     """
     Verificar si un usuario tiene permiso para realizar una acción
+    AHORA VALIDA: permiso genérico + módulo correcto
     
     Args:
         usuario: Instancia del usuario
-        accion: Acción a verificar (ej: "editar_usuario", "crear_rol")
+        accion: Acción a verificar (ej: "editar_usuario", "crear_incidente")
     
     Returns:
         bool: True si tiene permiso, False si no
     
     Lógica:
         1. Si el usuario tiene rol "Director" o "Admin" -> acceso total
-        2. Si la acción requiere permisos genéricos, verificar si el usuario los tiene
-        3. Si no encuentra mapeo, denegar por defecto
+        2. Buscar en PERMISSION_MAP: accion → (permisos_genericos, modulo)
+        3. Verificar que el usuario tenga:
+           - Al menos UNO de los permisos genéricos requeridos
+           - Y que ese permiso sea del módulo correcto
     """
     if not usuario or not hasattr(usuario, 'roles'):
         logger.warning(f"Usuario sin roles intentando acción: {accion}")
         return False
     
-    # DEBUG: Log para ver qué roles tiene el usuario
+    # DEBUG: Roles del usuario
     roles_usuario = [r.nombre for r in usuario.roles if r.is_active]
     logger.debug(f"Usuario {usuario.usuario} tiene roles: {roles_usuario}")
     
-    # Verificar si tiene un rol de administrador
+    # 1. Verificar si tiene un rol de administrador (acceso total)
     for rol in usuario.roles:
         if not rol.is_active:
             continue
         if rol.nombre in ADMIN_ROLES:
-            logger.debug(f"Usuario {usuario.usuario} tiene rol admin: {rol.nombre}")
+            logger.debug(f"✅ Usuario {usuario.usuario} tiene rol admin: {rol.nombre}")
             return True
     
-    # Obtener permisos genéricos requeridos para esta acción
-    permisos_requeridos = PERMISSION_MAP.get(accion, [])
+    # 2. Buscar el mapeo de la acción
+    mapeo = PERMISSION_MAP.get(accion)
     
-    if not permisos_requeridos:
-        logger.warning(f"Acción no mapeada: {accion}")
+    if not mapeo:
+        logger.warning(f"❌ Acción no mapeada: {accion}")
         return False
     
-    # Obtener todos los permisos del usuario
-    permisos_usuario: Set[str] = set()
+    permisos_requeridos, modulo_requerido = mapeo
+    
+    logger.debug(f"Acción '{accion}' requiere:")
+    logger.debug(f"  - Permisos: {permisos_requeridos}")
+    logger.debug(f"  - Módulo: {modulo_requerido}")
+    
+    # 3. Obtener permisos del usuario (con módulo)
+    permisos_usuario: Set[Tuple[str, str]] = set()  # Set de (permiso_nombre, modulo)
+    
     for rol in usuario.roles:
         if not rol.is_active:
             continue
         for permiso in rol.permisos:
             if permiso.is_active:
-                permisos_usuario.add(permiso.nombre)
+                permisos_usuario.add((permiso.nombre, permiso.modulo))
     
-    # DEBUG: Log para ver qué permisos tiene
-    logger.debug(f"Usuario {usuario.usuario} tiene permisos: {permisos_usuario}")
-    logger.debug(f"Acción '{accion}' requiere: {permisos_requeridos}")
+    logger.debug(f"Permisos del usuario: {permisos_usuario}")
     
-    # Verificar si el usuario tiene AL MENOS UNO de los permisos requeridos
+    # 4. Verificar si el usuario tiene el permiso correcto en el módulo correcto
     for permiso_req in permisos_requeridos:
-        if permiso_req in permisos_usuario:
-            logger.debug(f"✅ Permiso concedido: {permiso_req}")
+        # Buscar tupla (permiso_req, modulo_requerido) en permisos_usuario
+        if (permiso_req, modulo_requerido) in permisos_usuario:
+            logger.debug(f"✅ PERMISO CONCEDIDO: {permiso_req} en módulo {modulo_requerido}")
             return True
     
     logger.warning(f"❌ Usuario {usuario.usuario} NO tiene permisos para: {accion}")
+    logger.warning(f"   Necesita: {permisos_requeridos} en módulo '{modulo_requerido}'")
     return False
 
 
-def obtener_permisos_usuario(usuario: Usuario) -> List[str]:
+def obtener_permisos_usuario(usuario: Usuario) -> List[Dict[str, str]]:
     """
-    Obtener lista de todos los permisos de un usuario (genéricos)
+    Obtener lista de todos los permisos de un usuario (con módulo)
     
     Args:
         usuario: Instancia del usuario
     
     Returns:
-        Lista de nombres de permisos
+        Lista de diccionarios con formato:
+        [
+            {"permiso": "Lectura", "modulo": "usuarios"},
+            {"permiso": "Agregar", "modulo": "esquelas"},
+            ...
+        ]
     """
     if not usuario or not hasattr(usuario, 'roles'):
         return []
     
-    permisos: Set[str] = set()
+    permisos: Set[Tuple[str, str]] = set()
     for rol in usuario.roles:
         if not rol.is_active:
             continue
         for permiso in rol.permisos:
             if permiso.is_active:
-                permisos.add(permiso.nombre)
+                permisos.add((permiso.nombre, permiso.modulo))
     
-    return list(permisos)
+    return [
+        {"permiso": p[0], "modulo": p[1]} 
+        for p in permisos
+    ]
 
 
 def obtener_acciones_usuario(usuario: Usuario) -> List[str]:
@@ -143,7 +188,7 @@ def obtener_acciones_usuario(usuario: Usuario) -> List[str]:
         usuario: Instancia del usuario
     
     Returns:
-        Lista de acciones (ej: ["crear_usuario", "editar_usuario"])
+        Lista de acciones (ej: ["crear_usuario", "ver_incidente"])
     """
     if not usuario:
         return []
@@ -154,6 +199,58 @@ def obtener_acciones_usuario(usuario: Usuario) -> List[str]:
             acciones.append(accion)
     
     return acciones
+
+
+def obtener_modulos_permitidos(usuario: Usuario) -> List[str]:
+    """
+    Obtener lista de módulos a los que el usuario tiene acceso
+    
+    Args:
+        usuario: Instancia del usuario
+    
+    Returns:
+        Lista de módulos únicos
+    """
+    if not usuario or not hasattr(usuario, 'roles'):
+        return []
+    
+    modulos: Set[str] = set()
+    for rol in usuario.roles:
+        if not rol.is_active:
+            continue
+        for permiso in rol.permisos:
+            if permiso.is_active:
+                modulos.add(permiso.modulo)
+    
+    return list(modulos)
+
+
+def puede_acceder_modulo(usuario: Usuario, modulo: str) -> bool:
+    """
+    Verificar si un usuario tiene al menos UN permiso en un módulo
+    
+    Args:
+        usuario: Instancia del usuario
+        modulo: Nombre del módulo (ej: "usuarios", "incidentes")
+    
+    Returns:
+        bool: True si tiene al menos un permiso en ese módulo
+    """
+    if not usuario or not hasattr(usuario, 'roles'):
+        return False
+    
+    # Administradores tienen acceso a todo
+    if es_administrador(usuario):
+        return True
+    
+    for rol in usuario.roles:
+        if not rol.is_active:
+            continue
+        for permiso in rol.permisos:
+            if permiso.is_active and permiso.modulo == modulo:
+                return True
+    
+    return False
 
 
 def es_administrador(usuario: Usuario) -> bool:
@@ -174,13 +271,11 @@ def es_administrador(usuario: Usuario) -> bool:
     for rol in usuario.roles:
         if rol.is_active:
             roles_usuario.append(rol.nombre)
-            # DEBUG: Log detallado
-            logger.debug(f"Verificando rol: {rol.nombre}, ¿está en ADMIN_ROLES? {rol.nombre in ADMIN_ROLES}")
             if rol.nombre in ADMIN_ROLES:
                 logger.debug(f"✅ Usuario {usuario.usuario} ES administrador con rol: {rol.nombre}")
                 return True
     
-    logger.debug(f"❌ Usuario {usuario.usuario} NO es admin. Roles: {roles_usuario}, ADMIN_ROLES: {ADMIN_ROLES}")
+    logger.debug(f"❌ Usuario {usuario.usuario} NO es admin. Roles: {roles_usuario}")
     return False
 
 
@@ -191,7 +286,7 @@ def puede_modificar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) -
     Reglas:
     1. Un usuario puede modificar su propio perfil
     2. Un administrador puede modificar a cualquier usuario
-    3. Un usuario con permiso "Modificar" puede modificar a otros
+    3. Un usuario con permiso "Modificar" en módulo "usuarios" puede modificar a otros
     
     Args:
         usuario_actual: Usuario que intenta hacer la modificación
@@ -209,12 +304,8 @@ def puede_modificar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) -
         logger.debug(f"Usuario {usuario_actual.usuario} modificando su propio perfil")
         return True
     
-    # DEBUG: Log de verificación de admin
-    es_admin = es_administrador(usuario_actual)
-    logger.debug(f"¿Usuario {usuario_actual.usuario} es admin? {es_admin}")
-    
     # Administradores pueden modificar a cualquiera
-    if es_admin:
+    if es_administrador(usuario_actual):
         logger.debug(f"✅ Admin {usuario_actual.usuario} puede modificar usuario {usuario_objetivo_id}")
         return True
     
@@ -231,7 +322,7 @@ def puede_eliminar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) ->
     
     Reglas:
     1. Nadie puede eliminarse a sí mismo
-    2. Solo administradores o usuarios con permiso "Eliminar"
+    2. Solo administradores o usuarios con permiso "Eliminar" en módulo "usuarios"
     
     Args:
         usuario_actual: Usuario que intenta eliminar
@@ -253,3 +344,109 @@ def puede_eliminar_usuario(usuario_actual: Usuario, usuario_objetivo_id: int) ->
     
     # Verificar si tiene permiso específico
     return tiene_permiso(usuario_actual, "eliminar_usuario")
+
+
+# ================ HELPERS PARA FRONTEND ================ 
+
+def obtener_permisos_por_modulo(usuario: Usuario) -> Dict[str, List[str]]:
+    """
+    Agrupar permisos del usuario por módulo (útil para el frontend)
+    
+    Args:
+        usuario: Instancia del usuario
+    
+    Returns:
+        Diccionario: {
+            "usuarios": ["Lectura", "Agregar"],
+            "incidentes": ["Lectura", "Modificar"],
+            ...
+        }
+    """
+    if not usuario or not hasattr(usuario, 'roles'):
+        return {}
+    
+    permisos_por_modulo: Dict[str, Set[str]] = {}
+    
+    for rol in usuario.roles:
+        if not rol.is_active:
+            continue
+        for permiso in rol.permisos:
+            if permiso.is_active:
+                if permiso.modulo not in permisos_por_modulo:
+                    permisos_por_modulo[permiso.modulo] = set()
+                permisos_por_modulo[permiso.modulo].add(permiso.nombre)
+    
+    # Convertir sets a listas
+    return {
+        modulo: list(permisos) 
+        for modulo, permisos in permisos_por_modulo.items()
+    }
+
+
+def tiene_permiso_completo_modulo(usuario: Usuario, modulo: str) -> bool:
+    """
+    Verificar si el usuario tiene TODOS los permisos en un módulo
+    (Lectura, Agregar, Modificar, Eliminar)
+    
+    Args:
+        usuario: Instancia del usuario
+        modulo: Nombre del módulo
+    
+    Returns:
+        bool: True si tiene los 4 permisos
+    """
+    permisos_completos = {"Lectura", "Agregar", "Modificar", "Eliminar"}
+    
+    if es_administrador(usuario):
+        return True
+    
+    permisos_usuario = set()
+    for rol in usuario.roles:
+        if not rol.is_active:
+            continue
+        for permiso in rol.permisos:
+            if permiso.is_active and permiso.modulo == modulo:
+                permisos_usuario.add(permiso.nombre)
+    
+    return permisos_completos.issubset(permisos_usuario)
+
+
+def puede_ver_esquela(usuario: Usuario, id_profesor: int = None) -> bool:
+    """
+    Determina si el usuario puede ver una esquela específica.
+    
+    Args:
+        usuario: Usuario autenticado
+        id_profesor: ID del profesor que asignó la esquela (opcional)
+    
+    Returns:
+        bool: True si puede ver la esquela
+    """
+    if not usuario or not usuario.is_active:
+        return False
+    
+    # Administradores y roles especiales ven todo
+    for rol in usuario.roles:
+        if rol.is_active and rol.nombre in ROLES_VER_TODAS_ESQUELAS:
+            return True
+    
+    # Profesores solo ven sus propias esquelas
+    if id_profesor:
+        for rol in usuario.roles:
+            if rol.is_active and rol.nombre in ROLES_VER_PROPIAS_ESQUELAS:
+                # Verificar que el usuario corresponda al profesor
+                return usuario.id_persona == id_profesor
+    
+    return False
+
+
+def puede_ver_todas_esquelas(usuario: Usuario) -> bool:
+    """Verifica si el usuario puede ver todas las esquelas"""
+    if not usuario or not usuario.is_active:
+        return False
+    
+    for rol in usuario.roles:
+        if rol.is_active and rol.nombre in ROLES_VER_TODAS_ESQUELAS:
+            return True
+    
+    return False

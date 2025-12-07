@@ -100,7 +100,7 @@ def require_permissions(*required_permissions: str):
     """
     Decorador para validar que el usuario tenga los permisos requeridos.
     
-    ✅ CAMBIO CRÍTICO: Ahora usa permission_mapper para traducir
+    Ahora usa permission_mapper para traducir
     acciones específicas (ej: "editar_usuario") a permisos genéricos (ej: "Modificar")
     
     Uso en endpoints:
@@ -347,3 +347,47 @@ def validar_puede_eliminar_usuario(current_user: Usuario, target_user_id: int):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para eliminar este usuario"
         )
+
+
+def require_esquela_access(allow_owner: bool = True):
+    """
+    Decorador para validar acceso a esquelas.
+    
+    Args:
+        allow_owner: Si True, permite al profesor ver sus propias esquelas
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Obtener current_user de los kwargs
+            current_user = kwargs.get('current_user')
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="No autenticado"
+                )
+            
+            # Importar aquí para evitar circular import
+            from app.shared.permission_mapper import puede_ver_todas_esquelas
+            
+            # Verificar si puede ver todas las esquelas
+            if puede_ver_todas_esquelas(current_user):
+                return await func(*args, **kwargs)
+            
+            # Si solo puede ver las propias, verificar que tenga el permiso básico
+            if allow_owner:
+                if not tiene_permiso(current_user, 'ver_esquelas'):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="No tiene permisos para ver esquelas"
+                    )
+                # La validación específica se hará en el servicio
+                return await func(*args, **kwargs)
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos suficientes para esta operación"
+            )
+        
+        return wrapper
+    return decorator

@@ -9,6 +9,9 @@ from app.modules.incidentes.repositories.repositories_derivaciones import Deriva
 from app.modules.incidentes.dto.dto_modificaciones import ModificacionCreateDTO
 from app.modules.incidentes.services.services_modificaciones import registrar_modificacion_service
 
+from app.modules.incidentes.services.services_notificaciones import NotificacionService
+from app.modules.incidentes.dto.dto_notificaiones import NotificacionCreateDTO
+
 
 class DerivacionService:
 
@@ -42,7 +45,7 @@ class DerivacionService:
         self.db.commit()
         self.db.refresh(incidente)
 
-        # 4. Registrar historial usando servicios_modificaciones.py
+        # 4. Registrar historial
         registro = ModificacionCreateDTO(
             id_incidente=id_incidente,
             id_usuario=data.id_quien_deriva,
@@ -50,7 +53,25 @@ class DerivacionService:
             valor_anterior=f"estado={estado_anterior}, id_responsable={responsable_anterior}",
             valor_nuevo=f"estado=derivado, id_responsable={data.id_quien_recibe}"
         )
-
         registrar_modificacion_service(self.db, registro)
+
+        # 5. Crear notificación para el nuevo responsable
+        noti_service = NotificacionService(self.db)
+
+        mensaje = (
+            data.observaciones 
+            if data.observaciones and data.observaciones.strip() != "" 
+            else f"Se le ha derivado el incidente #{id_incidente} para su atención."
+        )
+
+        noti_dto = NotificacionCreateDTO(
+            id_usuario=data.id_quien_recibe,
+            id_incidente=id_incidente,
+            id_derivacion=derivacion.id_derivacion,
+            titulo="Incidente derivado",
+            mensaje=mensaje
+        )
+
+        noti_service.crear_notificacion(noti_dto)
 
         return derivacion

@@ -1,11 +1,10 @@
 # app/modules/administracion/models/persona_models.py
 """Modelos para estudiantes y personas (profesores/registradores)"""
 
-from sqlalchemy import (
-    Table, Column, Integer, String, Date, Text, ForeignKey
-)
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Date, Text
 from app.core.database import Base
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Date, Text, Table, ForeignKey
 
 
 # ============================================

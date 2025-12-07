@@ -16,7 +16,7 @@ class IncidenteService:
         self.db = db
         self.repo = IncidenteRepository()
 
-    #   CREAR INCIDENTE  +  REGISTRAR HISTORIAL COMPLETO
+    #   CREAR INCIDENTE (SIN REGISTRAR HISTORIAL INICIAL)
     def crear_incidente(self, dto):
 
         incidente = Incidente(
@@ -31,25 +31,7 @@ class IncidenteService:
         incidente = self.repo.create(self.db, incidente)
         incidente = self.repo.add_relations(self.db, incidente, dto)
 
-        # === Registrar historial inicial de TODOS los campos ===
-        campos = {
-            "antecedentes": incidente.antecedentes,
-            "acciones_tomadas": incidente.acciones_tomadas,
-            "seguimiento": incidente.seguimiento,
-            "estado": incidente.estado,
-            "id_responsable": incidente.id_responsable
-        }
-
-        for campo, valor in campos.items():
-            registro = ModificacionCreateDTO(
-                id_incidente=incidente.id_incidente,
-                id_usuario=dto.id_responsable,   # El creador del incidente
-                campo_modificado=campo,
-                valor_anterior=None,
-                valor_nuevo=str(valor) if valor is not None else None
-            )
-            registrar_modificacion_service(self.db, registro)
-
+        # 👇 Ya no se registra nada en historial aquí
         return incidente
 
     #   OBTENER INCIDENTES

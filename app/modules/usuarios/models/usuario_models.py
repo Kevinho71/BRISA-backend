@@ -50,9 +50,9 @@ class Persona1(Base):
     correo = Column(String(50), unique=True, nullable=True)
     telefono = Column(String(20), nullable=True)
     direccion = Column(Text, nullable=True)
-    tipo_persona = Column(Enum('profesor', 'administrativo', name='tipo_persona_enum'), nullable=False)
+    tipo_persona = Column(Enum('profesor', 'administrativo', 'regente', name='tipo_persona_enum'), nullable=False)
     is_active = Column(Boolean, default=True)
-
+    
     @property
     def nombre_completo(self):
         return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}"
@@ -77,12 +77,14 @@ class Usuario(Base):
     persona = relationship(
         "Persona1",
         foreign_keys=[id_persona],
-        uselist=False
+        uselist=False,
+        viewonly=True
     )
     
     roles = relationship("Rol", secondary=usuario_roles_table, back_populates="usuarios")
     login_logs = relationship("LoginLog", back_populates="usuario", cascade="all, delete-orphan")
     historial_roles = relationship("RolHistorial", back_populates="usuario", cascade="all, delete-orphan")
+
 
     def __repr__(self):
         return f"<Usuario {self.usuario}>"

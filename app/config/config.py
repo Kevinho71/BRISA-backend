@@ -13,22 +13,22 @@ class Config:
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
 
     # 🔧 Conexión a tu base real
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil'
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo"""
     DEBUG = True
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil'
 
 class ProductionConfig(Config):
     """Configuración para producción"""
     DEBUG = False
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil'
 
 class TestingConfig(Config):
     """Configuración para testing"""
     TESTING = True
-    DATABASE_URL = os.environ.get('TEST_DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil_3'
+    DATABASE_URL = os.environ.get('TEST_DATABASE_URL') or 'mysql+pymysql://root:@127.0.0.1:3306/bienestar_estudiantil'
 
 # 🔁 Diccionario de configuraciones disponibles
 config = {

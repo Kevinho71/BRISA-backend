@@ -47,6 +47,12 @@ from app.modules.incidentes.dto.dto_detalles import IncidenteDetalles
 from app.modules.incidentes.services.services_derivaciones import DerivacionService
 from app.modules.incidentes.dto.dto_derivaciones import DerivacionCreate, DerivacionRead
 
+from app.modules.incidentes.services.services_notificaciones import NotificacionService
+from app.modules.incidentes.dto.dto_notificaiones import (
+    NotificacionCreateDTO,
+    NotificacionOutDTO
+)
+
 router = APIRouter(prefix="/Incidentes", tags=["Incidentes"])
 
 MEDIA_DIR = os.getenv("MEDIA_DIR", "uploads")
@@ -232,3 +238,35 @@ def crear_derivacion(id_incidente: int, data: DerivacionCreate, db: Session = De
         raise HTTPException(404, detail=str(e))
 
 #----DERIVACIONES----
+
+#----NOTIFICACIONES----
+@router.get("/notificaciones/{id_usuario}", response_model=list[NotificacionOutDTO])
+def listar_notificaciones(
+    id_usuario: int,
+    solo_no_leidas: bool = False,
+    limit: int | None = None,
+    db: Session = Depends(get_db)
+):
+    service = NotificacionService(db)
+    return service.listar_por_usuario(id_usuario, solo_no_leidas, limit)
+
+
+@router.patch("/notificaciones/{id_notificacion}/leer", response_model=NotificacionOutDTO)
+def marcar_notificacion_leida(
+    id_notificacion: int,
+    id_usuario: int,
+    db: Session = Depends(get_db)
+):
+    service = NotificacionService(db)
+    return service.marcar_como_leida(id_notificacion, id_usuario_actual=id_usuario)
+
+
+@router.patch("/notificaciones/{id_usuario}/leer-todas")
+def marcar_todas_leidas(
+    id_usuario: int,
+    db: Session = Depends(get_db)
+):
+    service = NotificacionService(db)
+    cantidad = service.marcar_todas_como_leidas(id_usuario)
+    return {"mensaje": "Notificaciones marcadas como leídas", "cantidad": cantidad}
+#----NOTIFICACIONES----

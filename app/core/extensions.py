@@ -1,16 +1,18 @@
-# app\core\extensions.py
+# app/core/extensions.py
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from typing import Dict
 
 from app.core.database import get_db
 from app.shared.response import ResponseModel
 from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
 from app.modules.auth.services.auth_service import AuthService
 from app.shared.security import verify_token
-from app.shared.security import verify_token
 
+# Router principal
 router = APIRouter()
+
+
 @router.post("/register", response_model=dict)
 async def registrar(
     registro: RegistroDTO,
@@ -18,22 +20,6 @@ async def registrar(
 ) -> dict:
     """
     Registrar nuevo usuario (RF-01)
-    
-    - Validar duplicados
-    - Encriptar contraseña
-    - Crear cuenta de usuario
-    - Asignar rol
-    - Auditar acción
-    
-    **Parámetros requeridos:**
-    - ci: Cédula de identidad
-    - nombres: Nombres completos
-    - apellido_paterno: Apellido paterno
-    - apellido_materno: Apellido materno
-    - usuario: Nombre de usuario único
-    - correo: Email único
-    - password: Contraseña (mín. 8 caracteres, mayúsculas, minúsculas, números)
-    - tipo_persona: 'profesor' o 'administrativo'
     """
     try:
         resultado = AuthService.registrar_usuario(db, registro)
@@ -51,6 +37,7 @@ async def registrar(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
 @router.post("/login", response_model=dict)
 async def login(
     login: LoginDTO,
@@ -59,15 +46,6 @@ async def login(
 ) -> dict:
     """
     Iniciar sesión y obtener token JWT (RF-05)
-    
-    - Validar usuario y contraseña
-    - Generar token JWT con 30 minutos de expiración
-    - Registrar login en bitacora
-    - Retornar token y datos de usuario
-    
-    **Parámetros requeridos:**
-    - correo: Correo del usuario
-    - password: Contraseña
     """
     try:
         ip_address = request.client.host if request.client else None
@@ -84,6 +62,7 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
 @router.get("/me", response_model=dict)
 async def obtener_usuario_actual(
     token_data: dict = Depends(verify_token),
@@ -91,9 +70,6 @@ async def obtener_usuario_actual(
 ) -> dict:
     """
     Obtener datos del usuario autenticado
-    
-    Requiere token JWT válido en header:
-    Authorization: Bearer <token>
     """
     try:
         usuario_id = token_data.get("usuario_id")
@@ -112,11 +88,14 @@ async def obtener_usuario_actual(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
 @router.post("/validate-token", response_model=dict)
 async def validar_token(
     token_data: dict = Depends(verify_token)
 ) -> dict:
-    """Validar que un token JWT es válido"""
+    """
+    Validar que un token JWT es válido
+    """
     return ResponseModel.success(
         message="Token válido",
         data={"usuario_id": token_data.get("usuario_id")},
@@ -124,13 +103,9 @@ async def validar_token(
     )
 
 
-# Función para Alembic
-
-
 def init_extensions(app):
     """
-    Inicializar extensiones de FastAPI.
-    Este stub evita errores de importación en Alembic.
-    Puedes agregar middlewares, CORS, routers adicionales aquí.
+    Inicializar extensiones y routers de FastAPI.
+    - Agregar middlewares, CORS, routers adicionales aquí.
     """
     app.include_router(router)

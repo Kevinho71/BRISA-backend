@@ -1,9 +1,8 @@
 """
 usuario_controller.py 
-- CORREGIDO CON DECORADORES DE SEGURIDAD
 Controlador de usuarios, roles y permisos
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, logger, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -11,7 +10,7 @@ from app.core.database import get_db
 from app.shared.response import ResponseModel
 from app.shared.permissions import requires_permission, check_permission
 from app.modules.auth.services.auth_service import get_current_user_dependency
-from app.modules.usuarios.models.usuario_models import Usuario
+from app.modules.usuarios.models.usuario_models import Persona1, Rol, Usuario
 from app.modules.usuarios.dto.usuario_dto import (
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
     RolCreateDTO, RolUpdateDTO, RolResponseDTO,
@@ -263,6 +262,75 @@ async def obtener_rol(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Error al obtener rol: {str(e)}"
         )
+
+
+@router.get("/roles/{id_rol}/usuarios", response_model=dict)
+@requires_permission('ver_rol')
+async def obtener_usuarios_rol(
+    id_rol: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_dependency)
+) -> dict:
+    """
+    👥 Obtener usuarios asignados a un rol específico
+    
+    Retorna lista de usuarios con:
+    - Información básica del usuario
+    - Información de la persona asociada
+    - Estado activo/inactivo
+    """
+    try:
+        # Verificar que el rol existe
+        rol = db.query(Rol).filter(
+            Rol.id_rol == id_rol,
+            Rol.is_active == True
+        ).first()
+        
+        if not rol:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Rol con ID {id_rol} no encontrado"
+            )
+        
+        # Obtener usuarios con este rol (solo activos)
+        usuarios_data = []
+        for usuario in rol.usuarios:
+            if usuario.is_active:
+                # Obtener información de la persona
+                persona = db.query(Persona1).filter(
+                    Persona1.id_persona == usuario.id_persona
+                ).first()
+                
+                usuarios_data.append({
+                    "id_usuario": usuario.id_usuario,
+                    "usuario": usuario.usuario,
+                    "email": usuario.correo,
+                    "activo": usuario.is_active,
+                    # Información de la persona
+                    "nombre": persona.nombres if persona else None,
+                    "apellido": f"{persona.apellido_paterno or ''} {persona.apellido_materno or ''}".strip() if persona else None,
+                    "nombre_completo": persona.nombre_completo if persona else None,
+                    "ci": persona.ci if persona else None,
+                    "tipo_persona": persona.tipo_persona if persona else None
+                })
+        
+        logger.info(f"✅ Usuarios del rol {id_rol} obtenidos: {len(usuarios_data)}")
+        
+        return ResponseModel.success(
+            message=f"Usuarios del rol obtenidos ({len(usuarios_data)} usuarios)",
+            data=usuarios_data,
+            status_code=status.HTTP_200_OK
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error al obtener usuarios del rol {id_rol}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener usuarios del rol: {str(e)}"
+        )
+
 
 @router.post("/{id_usuario}/roles/{id_rol}")
 @requires_permission("asignar_permisos")
