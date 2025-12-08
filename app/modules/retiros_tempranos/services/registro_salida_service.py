@@ -14,9 +14,19 @@ class RegistroSalidaService(BaseService):
     def __init__(self, repository: IRegistroSalidaRepository, solicitud_repository: ISolicitudRetiroRepository = None):
         self.repository = repository
         self.solicitud_repository = solicitud_repository
+    
+    def _tiene_rol(self, usuario, nombre_rol: str) -> bool:
+        """Verificar si un usuario tiene un rol específico"""
+        if not usuario or not hasattr(usuario, 'roles'):
+            return False
+        return any(rol.nombre.lower() == nombre_rol.lower() for rol in usuario.roles)
 
-    def create_registro(self, registro_dto: RegistroSalidaCreateDTO) -> RegistroSalidaResponseDTO:
-        """Crear un nuevo registro de salida (solo para solicitudes aprobadas)"""
+    def create_registro(self, registro_dto: RegistroSalidaCreateDTO, usuario_actual=None) -> RegistroSalidaResponseDTO:
+        """Crear un nuevo registro de salida - Requiere usuario con rol 'Recepcion'"""
+        
+        # Validar rol si se proporciona usuario
+        if usuario_actual and not self._tiene_rol(usuario_actual, 'Recepcion'):
+            raise HTTPException(status_code=403, detail='Solo usuarios con rol Recepcion pueden registrar salidas')
         
         # Obtener la solicitud y validar
         if not self.solicitud_repository:

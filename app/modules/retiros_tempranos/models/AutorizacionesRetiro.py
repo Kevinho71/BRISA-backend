@@ -20,13 +20,13 @@ class AutorizacionRetiro(Base):
     __table_args__ = {'extend_existing': True}
     
     id_autorizacion = Column(Integer, primary_key=True, autoincrement=True)
-    decidido_por = Column(Integer, ForeignKey("personas.id_persona", ondelete="SET NULL"), nullable=False)
+    id_usuario_aprobador = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=False)
     decision = Column(Enum(DecisionEnum), nullable=False)
     motivo_decision = Column(String(255), nullable=True)
     fecha_decision = Column(DateTime, nullable=False)
     
     # Relaciones
-    persona_decidio = relationship("Persona", foreign_keys=[decidido_por])
+    usuario_aprobador = relationship("Usuario", foreign_keys=[id_usuario_aprobador])
     solicitud = relationship("SolicitudRetiro", back_populates="autorizacion", uselist=False)  # Relación 1:1
     
     def __repr__(self):

@@ -32,10 +32,10 @@ class SolicitudRetiro(Base):
     fecha_creacion = Column(DateTime, nullable=False)
     
     # Campos para el flujo de aprobación
-    estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="pendiente_recepcion", index=True)
-    recibido_por = Column(Integer, ForeignKey("personas.id_persona", ondelete="SET NULL"), nullable=True, index=True)
+    estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="recibida", index=True)
+    id_recepcionista = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
     fecha_recepcion = Column(DateTime, nullable=True)
-    derivado_a = Column(Integer, ForeignKey("personas.id_persona", ondelete="SET NULL"), nullable=True, index=True)
+    id_regente = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
     fecha_derivacion = Column(DateTime, nullable=True)
     
     # Relaciones
@@ -45,8 +45,8 @@ class SolicitudRetiro(Base):
     autorizacion = relationship("AutorizacionRetiro", back_populates="solicitud", uselist=False)  # Relación 1:1
     detalles = relationship("SolicitudRetiroDetalle", back_populates="solicitud", cascade="all, delete-orphan")
     registro_salida = relationship("RegistroSalida", back_populates="solicitud", uselist=False)
-    persona_recibio = relationship("Persona", foreign_keys=[recibido_por])
-    persona_revisa = relationship("Persona", foreign_keys=[derivado_a])
+    recepcionista = relationship("Usuario", foreign_keys=[id_recepcionista])
+    regente = relationship("Usuario", foreign_keys=[id_regente])
     
     def __repr__(self):
         return f"<SolicitudRetiro(id={self.id_solicitud}, estudiante_id={self.id_estudiante})>"

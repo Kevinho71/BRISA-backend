@@ -23,60 +23,60 @@ INSERT INTO personas (ci, nombres, apellido_paterno, apellido_materno, direccion
 -- ========================================
 -- 2. ROLES
 -- ========================================
-INSERT INTO roles (nombre, descripcion) VALUES
-('Director','Acceso total al sistema'),
-('Profesor','Acceso a módulos de estudiantes, esquelas e incidentes'),
-('Regente','Acceso a incidentes y esquelas'),
-('Gabinete Psicopedagógico','Acceso a incidentes y seguimiento'),
-('Gabinete Psicología','Acceso a incidentes y seguimiento'),
-('Administrativo','Acceso a usuarios y registros de retiros'),
-('Recepción','Acceso a retiros tempranos');
+INSERT INTO roles (nombre, descripcion, is_active, created_at, updated_at) VALUES
+('Director','Acceso total al sistema', true, NOW(), NOW()),
+('Profesor','Acceso a módulos de estudiantes, esquelas e incidentes', true, NOW(), NOW()),
+('Regente','Acceso a incidentes y esquelas', true, NOW(), NOW()),
+('Gabinete Psicopedagógico','Acceso a incidentes y seguimiento', true, NOW(), NOW()),
+('Gabinete Psicología','Acceso a incidentes y seguimiento', true, NOW(), NOW()),
+('Administrativo','Acceso a usuarios y registros de retiros', true, NOW(), NOW()),
+('Recepción','Acceso a retiros tempranos', true, NOW(), NOW());
 
 -- ========================================
 -- 3. PERMISOS
 -- ========================================
-INSERT INTO permisos (nombre, descripcion, modulo) VALUES
+INSERT INTO permisos (nombre, descripcion, modulo, is_active, created_at, updated_at) VALUES
 -- Módulo de Usuarios
-('Lectura', 'Puede ver información', 'usuarios'),
-('Agregar', 'Puede agregar información', 'usuarios'),
-('Modificar', 'Puede modificar información', 'usuarios'),
-('Eliminar', 'Puede eliminar información', 'usuarios'),
+('Lectura', 'Puede ver información', 'usuarios', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'usuarios', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'usuarios', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'usuarios', true, NOW(), NOW()),
 
 -- Módulo de Esquelas
-('Lectura', 'Puede ver información', 'esquelas'),
-('Agregar', 'Puede agregar información', 'esquelas'),
-('Modificar', 'Puede modificar información', 'esquelas'),
-('Eliminar', 'Puede eliminar información', 'esquelas'),
+('Lectura', 'Puede ver información', 'esquelas', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'esquelas', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'esquelas', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'esquelas', true, NOW(), NOW()),
 
 -- Módulo de Incidentes
-('Lectura', 'Puede ver información', 'incidentes'),
-('Agregar', 'Puede agregar información', 'incidentes'),
-('Modificar', 'Puede modificar información', 'incidentes'),
-('Eliminar', 'Puede eliminar información', 'incidentes'),
+('Lectura', 'Puede ver información', 'incidentes', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'incidentes', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'incidentes', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'incidentes', true, NOW(), NOW()),
 
 -- Módulo de Retiros Tempranos
-('Lectura', 'Puede ver información', 'retiros_tempranos'),
-('Agregar', 'Puede agregar información', 'retiros_tempranos'),
-('Modificar', 'Puede modificar información', 'retiros_tempranos'),
-('Eliminar', 'Puede eliminar información', 'retiros_tempranos'),
+('Lectura', 'Puede ver información', 'retiros_tempranos', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'retiros_tempranos', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'retiros_tempranos', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'retiros_tempranos', true, NOW(), NOW()),
 
 -- Módulo de Reportes
-('Lectura', 'Puede ver información', 'reportes'),
-('Agregar', 'Puede agregar información', 'reportes'),
-('Modificar', 'Puede modificar información', 'reportes'),
-('Eliminar', 'Puede eliminar información', 'reportes'),
+('Lectura', 'Puede ver información', 'reportes', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'reportes', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'reportes', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'reportes', true, NOW(), NOW()),
 
 -- Módulo de Profesores
-('Lectura', 'Puede ver información', 'profesores'),
-('Agregar', 'Puede agregar información', 'profesores'),
-('Modificar', 'Puede modificar información', 'profesores'),
-('Eliminar', 'Puede eliminar información', 'profesores'),
+('Lectura', 'Puede ver información', 'profesores', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'profesores', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'profesores', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'profesores', true, NOW(), NOW()),
 
 -- Módulo Administración
-('Lectura', 'Puede ver información', 'administracion'),
-('Agregar', 'Puede agregar información', 'administracion'),
-('Modificar', 'Puede modificar información', 'administracion'),
-('Eliminar', 'Puede eliminar información', 'administracion');
+('Lectura', 'Puede ver información', 'administracion', true, NOW(), NOW()),
+('Agregar', 'Puede agregar información', 'administracion', true, NOW(), NOW()),
+('Modificar', 'Puede modificar información', 'administracion', true, NOW(), NOW()),
+('Eliminar', 'Puede eliminar información', 'administracion', true, NOW(), NOW());
 
 -- ========================================
 -- 4. ROL_PERMISOS
@@ -158,22 +158,22 @@ INSERT INTO usuario_roles (id_usuario, id_rol, fecha_inicio, estado) VALUES
 -- ========================================
 -- 7. LOGIN_LOGS
 -- ========================================
-INSERT INTO login_logs (id_usuario, fecha_hora) VALUES
-(1,'2025-09-01 08:00:00'),
-(2,'2025-09-01 08:05:00'),
-(3,'2025-09-01 08:10:00'),
-(4,'2025-09-01 08:15:00'),
-(5,'2025-09-01 08:20:00'),
-(6,'2025-09-01 08:25:00'),
-(7,'2025-09-01 08:30:00'),
-(8,'2025-09-01 08:35:00'),
-(9,'2025-09-01 08:40:00'),
-(10,'2025-09-01 08:45:00'),
-(11,'2025-09-01 08:50:00'),
-(12,'2025-09-01 08:55:00'),
-(13,'2025-09-01 09:00:00'),
-(14,'2025-09-01 09:05:00'),
-(15,'2025-09-01 09:10:00');
+INSERT INTO login_logs (id_usuario, fecha_hora, ip_address, user_agent, estado) VALUES
+(1,'2025-09-01 08:00:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(2,'2025-09-01 08:05:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(3,'2025-09-01 08:10:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(4,'2025-09-01 08:15:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(5,'2025-09-01 08:20:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(6,'2025-09-01 08:25:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(7,'2025-09-01 08:30:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(8,'2025-09-01 08:35:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(9,'2025-09-01 08:40:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(10,'2025-09-01 08:45:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(11,'2025-09-01 08:50:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(12,'2025-09-01 08:55:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(13,'2025-09-01 09:00:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(14,'2025-09-01 09:05:00','127.0.0.1','Mozilla/5.0','exitoso'),
+(15,'2025-09-01 09:10:00','127.0.0.1','Mozilla/5.0','exitoso');
 
 -- ========================================
 -- 8. ESTUDIANTES
@@ -249,27 +249,81 @@ INSERT INTO profesores_cursos_materias (id_profesor,id_curso,id_materia) VALUES
 (8,10,8),(9,11,9),(10,12,10),(11,13,11),(12,14,12);
 
 -- ========================================
--- 13. RETIROS_TEMPRANOS
+-- 13. APODERADOS
 -- ========================================
-INSERT INTO retiros_tempranos (id_estudiante, fecha_hora, motivo, quien_retiro) VALUES
-(1,'2025-09-15 12:00:00','Cita médica','Padre'),
-(2,'2025-09-15 12:15:00','Problema familiar','Madre'),
-(3,'2025-09-15 12:30:00','Enfermedad','Tía'),
-(4,'2025-09-15 12:45:00','Cita médica','Hermano'),
-(5,'2025-09-15 13:00:00','Problema familiar','Padre'),
-(6,'2025-09-15 13:15:00','Enfermedad','Madre'),
-(7,'2025-09-15 13:30:00','Cita médica','Tía'),
-(8,'2025-09-15 13:45:00','Problema familiar','Hermano'),
-(9,'2025-09-15 14:00:00','Enfermedad','Padre'),
-(10,'2025-09-15 14:15:00','Cita médica','Madre'),
-(11,'2025-09-15 14:30:00','Problema familiar','Tía'),
-(12,'2025-09-15 14:45:00','Enfermedad','Hermano'),
-(13,'2025-09-15 15:00:00','Cita médica','Padre'),
-(14,'2025-09-15 15:15:00','Problema familiar','Madre'),
-(15,'2025-09-15 15:30:00','Enfermedad','Tía');
+INSERT INTO apoderados (ci, nombres, apellidos, telefono, correo, direccion) VALUES
+('5123456','José Antonio','García Quispe','70123456','jose.garcia@email.com','Calle Los Pinos #100'),
+('5234567','Rosa María','Mamani Condori','71123456','rosa.mamani@email.com','Calle Los Pinos #100'),
+('5345678','Miguel Ángel','López Vargas','70234567','miguel.lopez@email.com','Av. del Maestro #200'),
+('5456789','Carmen Elena','Flores Cruz','71234567','carmen.flores@email.com','Av. del Maestro #200'),
+('5567890','Fernando José','Morales Pérez','70345678','fernando.morales@email.com','Zona Central #300'),
+('5678901','Ricardo Andrés','Quispe Mamani','70456789','ricardo.quispe@email.com','Calle Libertad #400'),
+('5789012','Alberto Daniel','Fernández Torres','70567890','alberto.fernandez@email.com','Av. Principal #500'),
+('5890123','Sandra Beatriz','Rojas Morales','71567890','sandra.rojas@email.com','Av. Principal #500'),
+('5901234','Jorge Eduardo','Ramírez López','70678901','jorge.ramirez@email.com','Calle Nueva #600'),
+('6012345','Patricia Isabel','Mendoza Torres','71678901','patricia.mendoza@email.com','Calle Nueva #600'),
+('6123456','Carlos Alberto','Salinas Vega','70789012','carlos.salinas@email.com','Av. Secundaria #700'),
+('6234567','María Luisa','Vega Díaz','71789012','maria.vega@email.com','Av. Secundaria #700'),
+('6345678','Roberto Carlos','López Rojas','70890123','roberto.lopez@email.com','Zona Norte #800'),
+('6456789','Elena Patricia','Rojas Torres','71890123','elena.rojas@email.com','Zona Norte #800'),
+('6567890','Daniel Fernando','Ramírez Cruz','70901234','daniel.ramirez@email.com','Calle Central #900'),
+('6678901','Ana Carolina','Cruz Gómez','71901234','ana.cruz@email.com','Calle Central #900');
 
 -- ========================================
--- 14. AREAS_INCIDENTE
+-- 14. ESTUDIANTES_APODERADOS
+-- ========================================
+INSERT INTO estudiantes_apoderados (id_estudiante, id_apoderado, parentesco, es_contacto_principal) VALUES
+-- Estudiante 1: Luis Ramirez Cruz
+(1,1,'Padre',true),
+(1,2,'Madre',false),
+-- Estudiante 2: Ana Torres Vega
+(2,3,'Padre',true),
+(2,4,'Madre',false),
+-- Estudiante 3: Juan Flores Paredes
+(3,5,'Padre',true),
+-- Estudiante 4: Carla Salinas Alvarado
+(4,6,'Padre',true),
+-- Estudiante 5: Diego Rojas Lopez
+(5,7,'Padre',false),
+(5,8,'Madre',true),
+-- Estudiante 6: Laura Mendoza Salcedo (apoderado compartido con estudiante 1)
+(6,1,'Tío',true),
+-- Estudiante 7: Miguel Vargas Paredes (apoderado compartido)
+(7,3,'Abuelo',true),
+-- Estudiante 8: Sofía Lopez Ramírez
+(8,5,'Padre',true),
+-- Estudiante 9: Andrés Gómez Vega
+(9,6,'Tutor Legal',true),
+-- Estudiante 10: Patricia Salazar Cruz
+(10,7,'Padre',true),
+(10,8,'Madre',false),
+-- Estudiante 11: Fernando Ramírez Lopez
+(11,9,'Padre',true),
+(11,10,'Madre',false),
+-- Estudiante 12: Elena Mendoza Torres
+(12,11,'Padre',true),
+(12,12,'Madre',false),
+-- Estudiante 13: Raúl Salinas Vega
+(13,13,'Padre',true),
+(13,14,'Madre',false),
+-- Estudiante 14: Isabel Lopez Rojas
+(14,15,'Padre',true),
+(14,16,'Madre',false),
+-- Estudiante 15: Andrés Ramírez Cruz
+(15,9,'Tío',true);
+
+-- ========================================
+-- 15. MOTIVOS_RETIRO
+-- ========================================
+INSERT INTO motivos_retiro (nombre, descripcion, severidad, activo) VALUES
+('Cita Médica','Estudiante tiene cita médica programada','leve',true),
+('Emergencia Familiar','Situación familiar urgente que requiere la presencia del estudiante','grave',true),
+('Enfermedad','Estudiante presenta síntomas de enfermedad','grave',true),
+('Trámite Urgente','Apoderado necesita realizar trámite con el estudiante','leve',true),
+('Otro','Otros motivos no especificados','leve',true);
+
+-- ========================================
+-- 16. AREAS_INCIDENTE
 -- ========================================
 INSERT INTO areas_incidente (nombre_area, descripcion) VALUES
 ('Emocional','Problemas de ansiedad, estrés o autoestima'),
@@ -279,7 +333,7 @@ INSERT INTO areas_incidente (nombre_area, descripcion) VALUES
 ('Académica','Problemas de rendimiento');
 
 -- ========================================
--- 15. SITUACIONES_INCIDENTE
+-- 17. SITUACIONES_INCIDENTE
 -- ========================================
 INSERT INTO situaciones_incidente (id_area, nombre_situacion, nivel_gravedad) VALUES
 (1,'Ansiedad','leve'),
@@ -299,7 +353,7 @@ INSERT INTO situaciones_incidente (id_area, nombre_situacion, nivel_gravedad) VA
 (5,'Desinterés académico','leve');
 
 -- ========================================
--- 16. INCIDENTES
+-- 18. INCIDENTES
 -- ========================================
 INSERT INTO incidentes (fecha, antecedentes, acciones_tomadas, seguimiento, estado) VALUES
 ('2025-09-01 10:00:00','Conflicto en clase','Llamado de atención','Seguimiento semanal','provisional'),
@@ -319,25 +373,25 @@ INSERT INTO incidentes (fecha, antecedentes, acciones_tomadas, seguimiento, esta
 ('2025-09-15 14:00:00','Rendimiento bajo','Tutoría','Evaluación quincenal','cerrado');
 
 -- ========================================
--- 17. INCIDENTES_ESTUDIANTES
+-- 19. INCIDENTES_ESTUDIANTES
 -- ========================================
 INSERT INTO incidentes_estudiantes (id_incidente, id_estudiante) VALUES
 (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(11,11),(12,12),(13,13),(14,14),(15,15);
 
 -- ========================================
--- 18. INCIDENTES_PROFESORES
+-- 20. INCIDENTES_PROFESORES
 -- ========================================
 INSERT INTO incidentes_profesores (id_incidente, id_profesor) VALUES
 (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(11,11),(12,12),(13,13),(14,14),(15,15);
 
 -- ========================================
--- 19. INCIDENTES_SITUACIONES
+-- 21. INCIDENTES_SITUACIONES
 -- ========================================
 INSERT INTO incidentes_situaciones (id_incidente, id_situacion) VALUES
 (1,1),(2,4),(3,14),(4,6),(5,13),(6,3),(7,7),(8,8),(9,12),(10,11),(11,2),(12,5),(13,9),(14,10),(15,15);
 
 -- ========================================
--- 20. CODIGOS_ESQUELAS
+-- 22. CODIGOS_ESQUELAS
 -- ========================================
 INSERT INTO codigos_esquelas (tipo, codigo, descripcion) VALUES
 ('reconocimiento','R01','Buen rendimiento académico'),
@@ -357,7 +411,7 @@ INSERT INTO codigos_esquelas (tipo, codigo, descripcion) VALUES
 ('reconocimiento','R08','Cumple con los reglamentos');
 
 -- ========================================
--- 21. ESQUELAS
+-- 23. ESQUELAS
 -- ========================================
 INSERT INTO esquelas (id_estudiante, id_profesor, id_registrador, fecha, observaciones) VALUES
 (1,1,1,'2025-09-01','Excelente desempeño'),
@@ -377,7 +431,7 @@ INSERT INTO esquelas (id_estudiante, id_profesor, id_registrador, fecha, observa
 (15,15,15,'2025-09-15','Buen comportamiento');
 
 -- ========================================
--- 22. ESQUELAS_CODIGOS
+-- 24. ESQUELAS_CODIGOS
 -- ========================================
 INSERT INTO esquelas_codigos (id_esquela, id_codigo) VALUES
 (1,1),(1,2),(2,2),(2,5),(3,6),(3,7),(4,3),(4,1),(5,4),(5,7),

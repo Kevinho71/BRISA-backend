@@ -5,6 +5,7 @@ from app.modules.retiros_tempranos.services.solicitud_retiro_service import Soli
 from app.modules.retiros_tempranos.dto import (
     SolicitudRetiroCreateDTO,
     SolicitudRetiroUpdateDTO,
+    SolicitudRetiroDerivarDTO,
     SolicitudRetiroResponseDTO,
     EstadoSolicitudEnum
 )
@@ -66,10 +67,12 @@ async def get_solicitudes_by_estudiante(
 @router.post("/{solicitud_id}/derivar", response_model=SolicitudRetiroResponseDTO)
 async def derivar_solicitud(
     solicitud_id: int,
+    derivar_dto: SolicitudRetiroDerivarDTO,
     service: SolicitudRetiroService = Depends(get_solicitud_retiro_service)
 ) -> SolicitudRetiroResponseDTO:
-    """RECEPCIONISTA: Derivar solicitud al regente (recibida → derivada, automático sin body)"""
-    return service.derivar_solicitud(solicitud_id)
+    """RECEPCIONISTA: Derivar solicitud a un regente espec\u00edfico (recibida \u2192 derivada)"""
+    # TODO: Agregar current_user desde JWT para validar rol 'Recepcion'
+    return service.derivar_solicitud(solicitud_id, derivar_dto.id_regente)
 
 
 @router.put("/{solicitud_id}", response_model=SolicitudRetiroResponseDTO)

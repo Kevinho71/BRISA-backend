@@ -10,17 +10,23 @@ from app.modules.retiros_tempranos.dto import (
 )
 from app.shared.services.base_services import BaseService
 
-# IDs fijos de los actores del sistema
-RECEPCIONISTA_ID = 1
-REGENTE_ID = 2
-
 
 class SolicitudRetiroService(BaseService):
     def __init__(self, repository: ISolicitudRetiroRepository):
         self.repository = repository
+    
+    def _tiene_rol(self, usuario, nombre_rol: str) -> bool:
+        """Verificar si un usuario tiene un rol específico"""
+        if not usuario or not hasattr(usuario, 'roles'):
+            return False
+        return any(rol.nombre.lower() == nombre_rol.lower() for rol in usuario.roles)
 
-    def create_solicitud(self, solicitud_dto: SolicitudRetiroCreateDTO) -> SolicitudRetiroResponseDTO:
-        """Crear solicitud - fecha_creacion, estado, recibido_por y fecha_recepcion automáticos"""
+    def create_solicitud(self, solicitud_dto: SolicitudRetiroCreateDTO, usuario_actual=None) -> SolicitudRetiroResponseDTO:
+        """Crear solicitud - Requiere usuario con rol 'Recepcion'"""
+        # Validar rol si se proporciona usuario
+        if usuario_actual and not self._tiene_rol(usuario_actual, 'Recepcion'):
+            raise HTTPException(status_code=403, detail='Solo usuarios con rol Recepcion pueden recibir solicitudes')
+        
         now = datetime.now()
         solicitud = SolicitudRetiro(
             id_estudiante=solicitud_dto.id_estudiante,
@@ -29,10 +35,10 @@ class SolicitudRetiroService(BaseService):
             fecha_hora_salida=solicitud_dto.fecha_hora_salida,
             fecha_hora_retorno_previsto=solicitud_dto.fecha_hora_retorno_previsto,
             observacion=solicitud_dto.observacion,
-            fecha_creacion=now,  # Automático
-            estado=EstadoSolicitudEnum.recibida,  # Automático
-            recibido_por=RECEPCIONISTA_ID,  # Automático (ID=1)
-            fecha_recepcion=now  # Automático
+            fecha_creacion=now,
+            estado=EstadoSolicitudEnum.recibida,
+            id_recepcionista=usuario_actual.id_usuario if usuario_actual else None,
+            fecha_recepcion=now if usuario_actual else None
         )
         creada = self.repository.create(solicitud)
         return SolicitudRetiroResponseDTO.model_validate(creada)
@@ -55,13 +61,26 @@ class SolicitudRetiroService(BaseService):
         solicitudes = self.repository.get_by_estado(estado.value)
         return [SolicitudRetiroResponseDTO.model_validate(s) for s in solicitudes]
 
-    def derivar_solicitud(self, solicitud_id: int) -> SolicitudRetiroResponseDTO:
+    def derivar_solicitud(self, solicitud_id: int, id_regente: int, usuario_actual=None) -> SolicitudRetiroResponseDTO:
+        """Derivar solicitud a un regente - Requiere usuario con rol 'Recepcion'"""
+        # Validar rol si se proporciona usuario
+        if usuario_actual and not self._tiene_rol(usuario_actual, 'Recepcion'):
+            raise HTTPException(status_code=403, detail='Solo usuarios con rol Recepcion pueden derivar solicitudes')
+        
         solicitud = self.repository.get_by_id(solicitud_id)
         if not solicitud:
             raise HTTPException(status_code=404, detail='Solicitud no encontrada')
         if solicitud.estado != EstadoSolicitudEnum.recibida:
             raise HTTPException(status_code=400, detail=f'Solo se pueden derivar solicitudes en estado recibida. Estado actual: {solicitud.estado}')
-        updated = self.repository.update(solicitud_id, {'estado': EstadoSolicitudEnum.derivada.value, 'derivado_a': REGENTE_ID, 'fecha_derivacion': datetime.now()})
+        
+        # TODO: Validar que id_regente existe y tiene rol 'Regente'
+        # Requiere inyección de usuario_repository
+        
+        updated = self.repository.update(solicitud_id, {
+            'estado': EstadoSolicitudEnum.derivada.value,
+            'id_regente': id_regente,
+            'fecha_derivacion': datetime.now()
+        })
         return SolicitudRetiroResponseDTO.model_validate(updated)
 
     def update_solicitud(self, solicitud_id: int, solicitud_dto: SolicitudRetiroUpdateDTO) -> SolicitudRetiroResponseDTO:

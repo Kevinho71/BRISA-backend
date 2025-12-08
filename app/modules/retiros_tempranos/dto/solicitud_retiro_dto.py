@@ -34,6 +34,11 @@ class SolicitudRetiroUpdateDTO(BaseModel):
     estado: Optional[EstadoSolicitudEnum] = Field(None, description="Estado de la solicitud")
 
 
+class SolicitudRetiroDerivarDTO(BaseModel):
+    """DTO para derivar una solicitud a un regente"""
+    id_regente: int = Field(..., description="ID del usuario regente al que se deriva")
+
+
 class SolicitudRetiroResponseDTO(BaseModel):
     """DTO para respuesta de solicitud de retiro"""
     id_solicitud: int = Field(..., description="ID de la solicitud")
@@ -46,9 +51,9 @@ class SolicitudRetiroResponseDTO(BaseModel):
     observacion: Optional[str] = Field(None, description="Observaciones")
     fecha_creacion: datetime = Field(..., description="Fecha de creación")
     estado: str = Field(..., description="Estado actual de la solicitud")
-    recibido_por: Optional[int] = Field(None, description="ID del recepcionista")
+    id_recepcionista: Optional[int] = Field(None, description="ID del usuario recepcionista")
     fecha_recepcion: Optional[datetime] = Field(None, description="Fecha de recepción")
-    derivado_a: Optional[int] = Field(None, description="ID del regente")
+    id_regente: Optional[int] = Field(None, description="ID del usuario regente")
     fecha_derivacion: Optional[datetime] = Field(None, description="Fecha de derivación")
     
     class Config:

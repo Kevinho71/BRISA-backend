@@ -10,17 +10,24 @@ from app.modules.retiros_tempranos.dto import (
 )
 from app.shared.services.base_services import BaseService
 
-# ID fijo del regente (quien siempre toma las decisiones)
-REGENTE_ID = 2
-
 
 class AutorizacionRetiroService(BaseService):
     def __init__(self, repository: IAutorizacionRetiroRepository, solicitud_repository: ISolicitudRetiroRepository = None):
         self.repository = repository
         self.solicitud_repository = solicitud_repository
+    
+    def _tiene_rol(self, usuario, nombre_rol: str) -> bool:
+        """Verificar si un usuario tiene un rol específico"""
+        if not usuario or not hasattr(usuario, 'roles'):
+            return False
+        return any(rol.nombre.lower() == nombre_rol.lower() for rol in usuario.roles)
 
-    def create_autorizacion(self, autorizacion_dto: AutorizacionRetiroCreateDTO) -> AutorizacionRetiroResponseDTO:
-        """Crear una nueva autorización de retiro y actualizar la solicitud (decidido_por y fecha_decision automáticos)"""
+    def create_autorizacion(self, autorizacion_dto: AutorizacionRetiroCreateDTO, usuario_actual=None) -> AutorizacionRetiroResponseDTO:
+        """Crear una nueva autorización de retiro - Requiere usuario con rol 'Regente'"""
+        
+        # Validar rol si se proporciona usuario
+        if usuario_actual and not self._tiene_rol(usuario_actual, 'Regente'):
+            raise HTTPException(status_code=403, detail='Solo usuarios con rol Regente pueden aprobar/rechazar solicitudes')
         
         # Validar que la solicitud existe y está en estado válido
         if self.solicitud_repository:
@@ -34,13 +41,20 @@ class AutorizacionRetiroService(BaseService):
                     status_code=400, 
                     detail=f"La solicitud debe estar en estado 'derivada', actualmente está en '{solicitud.estado}'"
                 )
+            
+            # Validar que la solicitud esté asignada a este regente
+            if usuario_actual and solicitud.id_regente != usuario_actual.id_usuario:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Esta solicitud no está asignada a usted"
+                )
         
-        # Crear la autorización con valores automáticos
+        # Crear la autorización
         autorizacion = AutorizacionRetiro(
-            decidido_por=REGENTE_ID,  # Regente fijo (ID=2)
+            id_usuario_aprobador=usuario_actual.id_usuario if usuario_actual else None,
             decision=autorizacion_dto.decision,
             motivo_decision=autorizacion_dto.motivo_decision,
-            fecha_decision=datetime.now(),  # Fecha automática
+            fecha_decision=datetime.now(),
         )
         creada = self.repository.create(autorizacion)
         
