@@ -19,6 +19,7 @@ class SolicitudRetiro(Base):
     Representa las solicitudes de retiro temprano de los estudiantes
     """
     __tablename__ = "solicitudes_retiro"
+    __table_args__ = {'extend_existing': True}
     
     id_solicitud = Column(Integer, primary_key=True, autoincrement=True)
     id_estudiante = Column(Integer, ForeignKey("estudiantes.id_estudiante", ondelete="CASCADE"), nullable=False, index=True)

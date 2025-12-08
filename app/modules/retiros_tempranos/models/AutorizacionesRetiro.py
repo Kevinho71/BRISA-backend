@@ -17,6 +17,7 @@ class AutorizacionRetiro(Base):
     Representa las autorizaciones para retiros tempranos
     """
     __tablename__ = "autorizaciones_retiro"
+    __table_args__ = {'extend_existing': True}
     
     id_autorizacion = Column(Integer, primary_key=True, autoincrement=True)
     decidido_por = Column(Integer, ForeignKey("personas.id_persona", ondelete="SET NULL"), nullable=False)

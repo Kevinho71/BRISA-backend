@@ -8,6 +8,7 @@ class Apoderado(Base):
     Representa a los apoderados/tutores de los estudiantes
     """
     __tablename__ = "apoderados"
+    __table_args__ = {'extend_existing': True}
     
     id_apoderado = Column(Integer, primary_key=True, autoincrement=True)
     ci = Column(String(20), unique=True, nullable=False, index=True)

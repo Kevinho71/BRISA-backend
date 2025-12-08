@@ -9,6 +9,7 @@ class RegistroSalida(Base):
     Representa el registro de salidas efectivas de estudiantes
     """
     __tablename__ = "registros_salida"
+    __table_args__ = {'extend_existing': True}
     
     id_registro = Column(Integer, primary_key=True, autoincrement=True)
     id_solicitud = Column(Integer, ForeignKey("solicitudes_retiro.id_solicitud", ondelete="CASCADE"), unique=True, nullable=False, index=True)

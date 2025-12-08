@@ -10,6 +10,7 @@ class SolicitudRetiroDetalle(Base):
     __tablename__ = "solicitudes_retiro_detalle"
     __table_args__ = (
         UniqueConstraint('id_solicitud', 'id_curso', 'id_materia', name='uq_solicitud_curso_materia'),
+        {'extend_existing': True}
     )
     
     id_detalle = Column(Integer, primary_key=True, autoincrement=True)

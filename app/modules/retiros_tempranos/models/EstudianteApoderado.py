@@ -9,6 +9,7 @@ class EstudianteApoderado(Base):
     Relación N:N entre estudiantes y apoderados con información adicional
     """
     __tablename__ = "estudiantes_apoderados"
+    __table_args__ = {'extend_existing': True}
     
     id_estudiante = Column(Integer, ForeignKey("estudiantes.id_estudiante", ondelete="CASCADE"), primary_key=True, nullable=False)
     id_apoderado = Column(Integer, ForeignKey("apoderados.id_apoderado", ondelete="CASCADE"), primary_key=True, nullable=False)

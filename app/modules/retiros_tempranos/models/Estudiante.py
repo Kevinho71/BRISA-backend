@@ -9,6 +9,7 @@ class Estudiante(Base):
     Representa la entidad estudiante con información personal y de contacto
     """
     __tablename__ = "estudiantes"
+    __table_args__ = {'extend_existing': True}
     
     id_estudiante = Column(Integer, primary_key=True, autoincrement=True)
     ci = Column(String(20), nullable=True)

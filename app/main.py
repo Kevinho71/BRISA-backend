@@ -17,6 +17,13 @@ from app.modules.usuarios.controllers import usuario_controller
 from app.modules.bitacora.controllers import bitacora_controller
 # from app.modules.reportes.controllers import reportes_controller
 
+# Retiros Tempranos
+from app.modules.retiros_tempranos.controllers.autorizacion_retiro_controller import router as autorizacion_router
+from app.modules.retiros_tempranos.controllers.motivo_retiro_controller import router as motivo_router
+from app.modules.retiros_tempranos.controllers.registro_salida_controller import router as registro_router
+from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller import router as solicitud_router
+from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
+
 load_dotenv()
 
 # ========================= LOGGING =========================
@@ -63,6 +70,13 @@ app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticac
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
 # app.include_router(reportes_controller.router, prefix="/api/reportes", tags=["Reportes"])
+
+# Retiros Tempranos (ya tienen prefix="/api/..." en sus routers)
+app.include_router(autorizacion_router, tags=["Retiros Tempranos - Autorizaciones"])
+app.include_router(motivo_router, tags=["Retiros Tempranos - Motivos"])
+app.include_router(registro_router, tags=["Retiros Tempranos - Registros"])
+app.include_router(solicitud_router, tags=["Retiros Tempranos - Solicitudes"])
+app.include_router(estudiante_apoderado_router, tags=["Retiros Tempranos - Relaciones"])
 
 # ========================= ROOT =========================
 @app.get("/")

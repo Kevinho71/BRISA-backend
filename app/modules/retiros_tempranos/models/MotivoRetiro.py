@@ -17,6 +17,7 @@ class MotivoRetiro(Base):
     Catálogo de motivos para retiros tempranos
     """
     __tablename__ = "motivos_retiro"
+    __table_args__ = {'extend_existing': True}
     
     id_motivo = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String(100), unique=True, nullable=False)
