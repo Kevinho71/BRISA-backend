@@ -2,7 +2,8 @@
 Modelos para el módulo de Retiros Tempranos
 """
 
-from .Estudiante import Estudiante
+# Importar Estudiante desde administracion (modelo compartido)
+from app.modules.administracion.models.persona_models import Estudiante
 from .Apoderado import Apoderado
 from .EstudianteApoderado import EstudianteApoderado
 from .MotivoRetiro import MotivoRetiro, SeveridadEnum

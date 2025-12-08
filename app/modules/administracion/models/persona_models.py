@@ -29,9 +29,10 @@ profesores_cursos_materias = Table(
 class Estudiante(Base):
     """Modelo para estudiantes - adaptado a la estructura existente"""
     __tablename__ = "estudiantes"
+    __table_args__ = {'extend_existing': True}
 
-    id_estudiante = Column(Integer, primary_key=True, index=True)
-    ci = Column(String(20), unique=True, nullable=False, index=True)
+    id_estudiante = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    ci = Column(String(20), nullable=True, index=True)
     nombres = Column(String(100), nullable=False)
     apellido_paterno = Column(String(100), nullable=False)
     apellido_materno = Column(String(100), nullable=True)
@@ -48,6 +49,13 @@ class Estudiante(Base):
     
     # Relaciones
     cursos = relationship("Curso", secondary=estudiantes_cursos, back_populates="estudiantes")
+    # Relaciones de retiros_tempranos (se importarán cuando sea necesario)
+    # solicitudes_retiro = relationship("SolicitudRetiro", back_populates="estudiante", lazy="dynamic")
+    # registros_salida = relationship("RegistroSalida", back_populates="estudiante", lazy="dynamic")
+    # estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="estudiante", lazy="dynamic")
+    
+    def __repr__(self):
+        return f"<Estudiante(id={self.id_estudiante}, ci={self.ci}, nombres={self.nombres} {self.apellido_paterno})>"
     esquelas = relationship("Esquela", back_populates="estudiante")
     
     @property
