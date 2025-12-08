@@ -213,7 +213,7 @@ CREATE TABLE `incidentes` (
   `acciones_tomadas` text,
   `seguimiento` text,
   `estado` ENUM ('provisional', 'derivado', 'cerrado') NOT NULL,
-  `id_estado_catalogo` int
+  `id_responsable` int DEFAULT NULL
 );
 
 CREATE TABLE `incidentes_estudiantes` (
@@ -234,20 +234,12 @@ CREATE TABLE `incidentes_situaciones` (
   PRIMARY KEY (`id_incidente`, `id_situacion`)
 );
 
-CREATE TABLE `estados_incidente` (
-  `id_estado` int PRIMARY KEY AUTO_INCREMENT,
-  `nombre_estado` varchar(50) UNIQUE NOT NULL,
-  `descripcion` varchar(255)
-);
-
 CREATE TABLE `derivaciones` (
   `id_derivacion` int PRIMARY KEY AUTO_INCREMENT,
   `id_incidente` int NOT NULL,
   `id_quien_deriva` int NOT NULL,
   `id_quien_recibe` int NOT NULL,
   `fecha_derivacion` datetime NOT NULL,
-  `id_estado_anterior` int NOT NULL,
-  `id_estado_nuevo` int NOT NULL,
   `observaciones` text
 );
 
@@ -270,6 +262,17 @@ CREATE TABLE `adjuntos` (
   `tamanio_bytes` int,
   `subido_por` int NOT NULL,
   `fecha_subida` datetime NOT NULL
+);
+
+CREATE TABLE `notificaciones` (
+  `id_notificacion` int PRIMARY KEY AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `id_incidente` int DEFAULT NULL,
+  `id_derivacion` int DEFAULT NULL,
+  `titulo` varchar(150) NOT NULL,
+  `mensaje` text NOT NULL,
+  `leido` boolean DEFAULT false,
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE `codigos_esquelas` (
@@ -350,7 +353,7 @@ ALTER TABLE `registros_salida` ADD FOREIGN KEY (`id_estudiante`) REFERENCES `est
 
 ALTER TABLE `situaciones_incidente` ADD FOREIGN KEY (`id_area`) REFERENCES `areas_incidente` (`id_area`);
 
-ALTER TABLE `incidentes` ADD FOREIGN KEY (`id_estado_catalogo`) REFERENCES `estados_incidente` (`id_estado`);
+ALTER TABLE `incidentes` ADD FOREIGN KEY (`id_responsable`) REFERENCES `personas` (`id_persona`);
 
 ALTER TABLE `incidentes_estudiantes` ADD FOREIGN KEY (`id_incidente`) REFERENCES `incidentes` (`id_incidente`);
 
@@ -370,10 +373,6 @@ ALTER TABLE `derivaciones` ADD FOREIGN KEY (`id_quien_deriva`) REFERENCES `perso
 
 ALTER TABLE `derivaciones` ADD FOREIGN KEY (`id_quien_recibe`) REFERENCES `personas` (`id_persona`);
 
-ALTER TABLE `derivaciones` ADD FOREIGN KEY (`id_estado_anterior`) REFERENCES `estados_incidente` (`id_estado`);
-
-ALTER TABLE `derivaciones` ADD FOREIGN KEY (`id_estado_nuevo`) REFERENCES `estados_incidente` (`id_estado`);
-
 ALTER TABLE `historial_modificaciones` ADD FOREIGN KEY (`id_incidente`) REFERENCES `incidentes` (`id_incidente`);
 
 ALTER TABLE `historial_modificaciones` ADD FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
@@ -381,6 +380,12 @@ ALTER TABLE `historial_modificaciones` ADD FOREIGN KEY (`id_usuario`) REFERENCES
 ALTER TABLE `adjuntos` ADD FOREIGN KEY (`id_incidente`) REFERENCES `incidentes` (`id_incidente`);
 
 ALTER TABLE `adjuntos` ADD FOREIGN KEY (`subido_por`) REFERENCES `personas` (`id_persona`);
+
+ALTER TABLE `notificaciones` ADD FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
+
+ALTER TABLE `notificaciones` ADD FOREIGN KEY (`id_incidente`) REFERENCES `incidentes` (`id_incidente`);
+
+ALTER TABLE `notificaciones` ADD FOREIGN KEY (`id_derivacion`) REFERENCES `derivaciones` (`id_derivacion`);
 
 ALTER TABLE `esquelas` ADD FOREIGN KEY (`id_estudiante`) REFERENCES `estudiantes` (`id_estudiante`);
 
@@ -448,12 +453,12 @@ ALTER TABLE `solicitudes_retiro_detalle` COMMENT = 'Tabla nueva. Registra qué c
 
 ALTER TABLE `registros_salida` COMMENT = 'Tabla nueva. Registra la hora real de salida y retorno del estudiante.';
 
-ALTER TABLE `incidentes` COMMENT = 'Se agregó id_estado_catalogo para usar el catálogo de estados. El campo "estado" ENUM se mantiene por compatibilidad.';
+ALTER TABLE `incidentes` COMMENT = 'Gestión de incidentes estudiantiles con seguimiento de responsable actual.';
 
-ALTER TABLE `estados_incidente` COMMENT = 'Tabla nueva. Catálogo de estados de incidentes más flexible que el ENUM.';
-
-ALTER TABLE `derivaciones` COMMENT = 'Tabla nueva. Registra el historial de derivaciones de incidentes entre personal.';
+ALTER TABLE `derivaciones` COMMENT = 'Registra el historial de derivaciones de incidentes entre personal.';
 
 ALTER TABLE `historial_modificaciones` COMMENT = 'Tabla nueva. Auditoría de cambios realizados en los incidentes.';
 
 ALTER TABLE `adjuntos` COMMENT = 'Tabla nueva. Gestión de archivos adjuntos a incidentes (documentos, imágenes, etc.).';
+
+ALTER TABLE `notificaciones` COMMENT = 'Tabla nueva. Sistema de notificaciones para usuarios sobre derivaciones y actualizaciones de incidentes.';
