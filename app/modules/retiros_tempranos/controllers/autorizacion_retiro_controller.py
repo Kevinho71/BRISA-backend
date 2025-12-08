@@ -7,7 +7,7 @@ from app.modules.retiros_tempranos.dto import (
     AutorizacionRetiroUpdateDTO,
     AutorizacionRetiroResponseDTO
 )
-from app.core.extensions import get_db
+from app.core.database import get_db
 from app.modules.retiros_tempranos.repositories import AutorizacionRetiroRepository, SolicitudRetiroRepository
 
 router = APIRouter(prefix="/api/autorizaciones-retiro", tags=["autorizaciones-retiro"])

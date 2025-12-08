@@ -7,7 +7,7 @@ from app.modules.retiros_tempranos.dto import (
     EstudianteApoderadoUpdateDTO,
     EstudianteApoderadoResponseDTO
 )
-from app.core.extensions import get_db
+from app.core.database import get_db
 from app.modules.retiros_tempranos.repositories import EstudianteApoderadoRepository
 
 router = APIRouter(prefix="/api/estudiantes-apoderados", tags=["estudiantes-apoderados"])

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
-from app.core.extensions import Base
+from app.core.database import Base
 
 class SolicitudRetiroDetalle(Base):
     """

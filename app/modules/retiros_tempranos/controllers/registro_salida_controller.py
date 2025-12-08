@@ -7,7 +7,7 @@ from app.modules.retiros_tempranos.dto import (
     RegistroSalidaUpdateDTO,
     RegistroSalidaResponseDTO
 )
-from app.core.extensions import get_db
+from app.core.database import get_db
 from app.modules.retiros_tempranos.repositories import RegistroSalidaRepository, SolicitudRetiroRepository
 
 router = APIRouter(prefix="/api/registros-salida", tags=["registros-salida"])

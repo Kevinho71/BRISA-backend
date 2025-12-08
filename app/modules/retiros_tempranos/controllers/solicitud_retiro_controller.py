@@ -8,7 +8,7 @@ from app.modules.retiros_tempranos.dto import (
     SolicitudRetiroResponseDTO,
     EstadoSolicitudEnum
 )
-from app.core.extensions import get_db
+from app.core.database import get_db
 from app.modules.retiros_tempranos.repositories import SolicitudRetiroRepository
 
 router = APIRouter(prefix="/api/solicitudes-retiro", tags=["solicitudes-retiro"])

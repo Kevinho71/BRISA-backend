@@ -7,7 +7,7 @@ from app.modules.retiros_tempranos.dto import (
     MotivoRetiroUpdateDTO,
     MotivoRetiroResponseDTO
 )
-from app.core.extensions import get_db
+from app.core.database import get_db
 from app.modules.retiros_tempranos.repositories import MotivoRetiroRepository
 
 router = APIRouter(prefix="/api/motivos-retiro", tags=["motivos-retiro"])
