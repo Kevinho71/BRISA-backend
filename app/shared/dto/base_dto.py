@@ -1,51 +1,57 @@
 """
 DTOs base compartidos por todos los módulos
 """
-from marshmallow import Schema, fields, validate, post_load
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from datetime import datetime
+from typing import Optional, List, Any, Dict
 
-class BaseSchema(Schema):
+class BaseSchema(BaseModel):
     """Schema base con campos comunes"""
-    id = fields.Integer(dump_only=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-    is_active = fields.Boolean(dump_only=True)
+    id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    is_active: Optional[bool] = True
+    
+    model_config = {"from_attributes": True}
 
 class PersonaBaseSchema(BaseSchema):
     """Schema base para personas"""
-    nombres = fields.String(required=True, validate=validate.Length(min=2, max=100))
-    apellidos = fields.String(required=True, validate=validate.Length(min=2, max=100))
-    cedula = fields.String(required=True, validate=validate.Length(min=7, max=20))
-    email = fields.Email(allow_none=True)
-    telefono = fields.String(allow_none=True, validate=validate.Length(max=15))
-    fecha_nacimiento = fields.Date(allow_none=True)
-    direccion = fields.String(allow_none=True)
-    
-    nombre_completo = fields.String(dump_only=True)
+    ci: str = Field(..., min_length=7, max_length=20)
+    nombres: str = Field(..., min_length=2, max_length=50)
+    apellido_paterno: str = Field(..., min_length=2, max_length=50)
+    apellido_materno: str = Field(..., min_length=2, max_length=50)
+    direccion: Optional[str] = Field(None, max_length=100)
+    telefono: Optional[str] = Field(None, max_length=20)
+    correo: Optional[EmailStr] = None
+    tipo_persona: str = Field(..., pattern="^(profesor|administrativo|regente)$")
 
-class PaginationSchema(Schema):
+    @property
+    def nombre_completo(self):
+        return f"{self.nombres} {self.apellido_paterno} {self.apellido_materno}"
+
+class PaginationSchema(BaseModel):
     """Schema para paginación"""
-    page = fields.Integer(missing=1, validate=validate.Range(min=1))
-    per_page = fields.Integer(missing=10, validate=validate.Range(min=1, max=100))
-    sort_by = fields.String(missing='id')
-    sort_order = fields.String(missing='asc', validate=validate.OneOf(['asc', 'desc']))
+    page: int = Field(1, ge=1)
+    per_page: int = Field(10, ge=1, le=100)
+    sort_by: str = "id"
+    sort_order: str = "asc"
 
-class ResponseSchema(Schema):
+class ResponseSchema(BaseModel):
     """Schema para respuestas estandarizadas"""
-    success = fields.Boolean(required=True)
-    message = fields.String(required=True)
-    data = fields.Raw(allow_none=True)
-    errors = fields.List(fields.String(), allow_none=True)
-    timestamp = fields.DateTime(required=True)
+    success: bool
+    message: str
+    data: Optional[Any] = None
+    errors: Optional[List[str]] = None
+    timestamp: datetime
 
 class PaginatedResponseSchema(ResponseSchema):
     """Schema para respuestas paginadas"""
-    pagination = fields.Dict(keys=fields.String(), values=fields.Raw())
+    pagination: Optional[Dict[str, Any]] = None
 
-class ErrorResponseSchema(Schema):
+class ErrorResponseSchema(BaseModel):
     """Schema para respuestas de error"""
-    success = fields.Boolean(required=True, default=False)
-    message = fields.String(required=True)
-    errors = fields.List(fields.String())
-    error_code = fields.String(allow_none=True)
-    timestamp = fields.DateTime(required=True)
+    success: bool = False
+    message: str
+    errors: List[str] = []
+    error_code: Optional[str] = None
+    timestamp: datetime

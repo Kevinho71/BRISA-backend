@@ -1,126 +1,111 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import QueuePool
-from typing import Generator
-import os
+# app/core/extensions.py
 
-# Base para modelos SQLAlchemy
-Base = declarative_base()
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy.orm import Session
 
-# Variables para sesión de BD
-engine = None
-SessionLocal = None
+from app.core.database import get_db
+from app.shared.response import ResponseModel
+from app.modules.auth.dto.auth_dto import RegistroDTO, LoginDTO, TokenDTO, UsuarioActualDTO
+from app.modules.auth.services.auth_service import AuthService
+from app.shared.security import verify_token
+
+# Router principal
+router = APIRouter()
+
+
+@router.post("/register", response_model=dict)
+async def registrar(
+    registro: RegistroDTO,
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Registrar nuevo usuario (RF-01)
+    """
+    try:
+        resultado = AuthService.registrar_usuario(db, registro)
+        return ResponseModel.success(
+            message="Usuario registrado exitosamente",
+            data=resultado,
+            status_code=status.HTTP_201_CREATED
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return ResponseModel.error(
+            message="Error al registrar usuario",
+            error_details=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@router.post("/login", response_model=dict)
+async def login(
+    login: LoginDTO,
+    request: Request,
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Iniciar sesión y obtener token JWT (RF-05)
+    """
+    try:
+        ip_address = request.client.host if request.client else None
+        token_data = AuthService.login(db, login, ip_address)
+        return ResponseModel.success(
+            message="Inicio de sesión exitoso",
+            data=token_data.dict(),
+            status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        return ResponseModel.error(
+            message="Error en inicio de sesión",
+            error_details=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@router.get("/me", response_model=dict)
+async def obtener_usuario_actual(
+    token_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Obtener datos del usuario autenticado
+    """
+    try:
+        usuario_id = token_data.get("usuario_id")
+        usuario_actual = AuthService.obtener_usuario_actual(db, usuario_id)
+        return ResponseModel.success(
+            message="Datos del usuario obtenidos",
+            data=usuario_actual.dict(),
+            status_code=status.HTTP_200_OK
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        return ResponseModel.error(
+            message="Error al obtener datos del usuario",
+            error_details=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@router.post("/validate-token", response_model=dict)
+async def validar_token(
+    token_data: dict = Depends(verify_token)
+) -> dict:
+    """
+    Validar que un token JWT es válido
+    """
+    return ResponseModel.success(
+        message="Token válido",
+        data={"usuario_id": token_data.get("usuario_id")},
+        status_code=status.HTTP_200_OK
+    )
+
 
 def init_extensions(app):
-    """Inicializar todas las extensiones para FastAPI"""
-    global engine, SessionLocal
-    
-    # Obtener configuración del entorno
-    from app.config.config import config
-    config_name = os.environ.get('ENV', 'development')
-    app_config = config[config_name]
-    
-    # Guardar config en app para acceso posterior
-    app.state.config = app_config
-    
-    database_url = app_config.DATABASE_URL
-    echo_sql = app_config.SQLALCHEMY_ECHO
-    
-    print(f"🔗 Conectando a base de datos...")
-    print(f"📍 URL: {database_url.split('@')[1].split('?')[0] if '@' in database_url else 'N/A'}")
-    print(f"🔍 Echo SQL: {echo_sql}")
-    
-    # Configurar argumentos de conexión para MySQL
-    connect_args = {}
-    
-    # Si es Aiven o requiere SSL, configurar SSL
-    if 'aivencloud.com' in database_url or 'ssl' in database_url.lower():
-        print("🔒 Conexión SSL REQUIRED detectada (Aiven Cloud)")
-        # PyMySQL requiere ssl como diccionario o True para SSL
-        connect_args = {
-            'ssl': {'check_hostname': False, 'verify_mode': False}
-        }
-    
-    # Crear engine de SQLAlchemy
-    engine = create_engine(
-        database_url,
-        echo=echo_sql,
-        pool_pre_ping=True,  # Verificar conexión antes de usar
-        pool_size=10,         # Tamaño del pool de conexiones
-        max_overflow=20,      # Conexiones adicionales si se necesita
-        pool_recycle=3600,    # Reciclar conexiones cada hora
-        poolclass=QueuePool,  # Usar QueuePool para conexiones persistentes
-        connect_args=connect_args
-    )
-    
-    # Crear SessionLocal
-    SessionLocal = sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=engine
-    )
-    
-    # Importar todos los modelos para que SQLAlchemy los reconozca
-    import_all_models()
-    
-    print("✅ Extensiones inicializadas correctamente")
-    
-    return app
-
-def import_all_models():
-    """Importar todos los modelos para que SQLAlchemy los reconozca"""
-    # Módulo Retiros Tempranos
-    from app.modules.retiros_tempranos.models import (
-        Estudiante,
-        Apoderado,
-        EstudianteApoderado,
-        MotivoRetiro,
-        AutorizacionRetiro,
-        SolicitudRetiro,
-        RegistroSalida,
-        SolicitudRetiroDetalle,
-    )
-    
-    # Módulo Estudiantes (modelos compartidos)
-    from app.modules.estudiantes.models import (
-        Curso,
-        Materia,
-        EstudianteCurso,
-    )
-    
-    # Modelos compartidos
-    from app.shared.models import (
-        Persona,
-        ProfesorCursoMateria,
-    )
-    
-    print("📦 Modelos importados correctamente")
-
-def get_db() -> Generator:
-    """Dependency para obtener sesión de BD en FastAPI"""
-    if SessionLocal is None:
-        raise RuntimeError("Database not initialized. Call init_extensions first.")
-    
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def create_tables():
-    """Crear todas las tablas en la base de datos"""
-    if engine is None:
-        raise RuntimeError("Database engine not initialized.")
-    
-    import_all_models()
-    Base.metadata.create_all(bind=engine)
-    print("✅ Tablas creadas correctamente")
-
-def drop_tables():
-    """Eliminar todas las tablas de la base de datos"""
-    if engine is None:
-        raise RuntimeError("Database engine not initialized.")
-    
-    import_all_models()
-    Base.metadata.drop_all(bind=engine)
-    print("🗑️  Tablas eliminadas correctamente")
+    """
+    Inicializar extensiones y routers de FastAPI.
+    - Agregar middlewares, CORS, routers adicionales aquí.
+    """
+    app.include_router(router)
