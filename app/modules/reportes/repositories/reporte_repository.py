@@ -11,6 +11,8 @@ from datetime import date, datetime
 from typing import Optional, Literal, List
 
 
+from app.shared.models.profesor_curso_materia import ProfesorCursoMateria
+
 class ReporteRepository:
 
     @staticmethod
@@ -484,15 +486,15 @@ class ReporteRepository:
             Curso.nombre_curso,
             Curso.gestion,
             Materia.nombre_materia
-        ).join(
-            profesores_cursos_materias, 
-            Persona.id_persona == profesores_cursos_materias.c.id_profesor
+        ).select_from(Persona).join(
+            ProfesorCursoMateria, 
+            Persona.id_persona == ProfesorCursoMateria.id_profesor
         ).join(
             Curso, 
-            Curso.id_curso == profesores_cursos_materias.c.id_curso
+            Curso.id_curso == ProfesorCursoMateria.id_curso
         ).join(
             Materia, 
-            Materia.id_materia == profesores_cursos_materias.c.id_materia
+            Materia.id_materia == ProfesorCursoMateria.id_materia
         ).filter(
             Persona.tipo_persona == 'profesor'
         )
