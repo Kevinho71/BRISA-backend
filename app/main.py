@@ -28,6 +28,9 @@ from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller impor
 from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
 from app.core.extensions import router as extensions_router  # <- add this import
 
+# Situaciones Áreas e Incidentes SIA
+from app.modules.incidentes.controllers import controllers_incidentes
+
 load_dotenv()
 
 # ========================= LOGGING =========================
@@ -79,6 +82,8 @@ register_exception_handlers(app)
 app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
+# Routes SIA
+app.include_router(controllers_incidentes.router, prefix="/api/incidentes", tags=["Incidentes"])
 
 # Nuevos módulos
 app.include_router(esquela_controller.router, prefix="/api") 

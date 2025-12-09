@@ -92,7 +92,8 @@ def register_routes(app):
     from app.modules.retiros_tempranos.controllers.registro_salida_controller import router as registro_router
     from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller import router as solicitud_router
     from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
-    
+    from app.modules.incidentes.controllers.controllers_incidentes import router as reportes_router
+    app.include_router(reportes_router, prefix="/api", tags=["Incidentes"])
     app.include_router(autorizacion_router, tags=["Retiros Tempranos - Autorizaciones"])
     app.include_router(motivo_router, tags=["Retiros Tempranos - Motivos"])
     app.include_router(registro_router, tags=["Retiros Tempranos - Registros"])
