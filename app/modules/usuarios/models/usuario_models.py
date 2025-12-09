@@ -52,13 +52,7 @@ class Persona1(Base):
     correo = Column(String(120), nullable=True)
     telefono = Column(String(20), nullable=True)
     direccion = Column(Text, nullable=True)
-    tipo_persona = Column(String(50), nullable=False)
-    id_cargo = Column(Integer, ForeignKey('cargos.id_cargo'), nullable=True)
-    estado_laboral = Column(String(20), nullable=True, default='activo')
-    anos_experiencia = Column("años_experiencia", Integer, nullable=True, default=0)
-    fecha_ingreso = Column(Date, nullable=True)
-    fecha_retiro = Column(Date, nullable=True)
-    motivo_retiro = Column(Text, nullable=True)
+    tipo_persona = Column(Enum('profesor', 'administrativo', 'regente', name='tipo_persona_enum'), nullable=False)
     is_active = Column(Boolean, default=True)
     
     @property

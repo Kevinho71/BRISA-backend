@@ -106,48 +106,48 @@ INSERT INTO roles (nombre, descripcion, is_active, created_at, updated_at) VALUE
 -- ========================================
 -- 5. PERMISOS
 -- ========================================
-INSERT INTO permisos (nombre, descripcion, modulo, is_active, created_at, updated_at) VALUES
+INSERT INTO permisos (nombre, descripcion, modulo) VALUES
 -- Módulo de Usuarios
-('Lectura', 'Puede ver información', 'usuarios', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'usuarios', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'usuarios', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'usuarios', true, NOW(), NOW()),
+('Lectura', 'Puede ver información', 'usuarios'),
+('Agregar', 'Puede agregar información', 'usuarios'),
+('Modificar', 'Puede modificar información', 'usuarios'),
+('Eliminar', 'Puede eliminar información', 'usuarios'),
 
 -- Módulo de Esquelas
-('Lectura', 'Puede ver información', 'esquelas', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'esquelas', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'esquelas', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'esquelas', true, NOW(), NOW()),
+('Lectura', 'Puede ver información', 'esquelas'),
+('Agregar', 'Puede agregar información', 'esquelas'),
+('Modificar', 'Puede modificar información', 'esquelas'),
+('Eliminar', 'Puede eliminar información', 'esquelas'),
 
 -- Módulo de Incidentes
-('Lectura', 'Puede ver información', 'incidentes', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'incidentes', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'incidentes', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'incidentes', true, NOW(), NOW()),
+('Lectura', 'Puede ver información', 'incidentes'),
+('Agregar', 'Puede agregar información', 'incidentes'),
+('Modificar', 'Puede modificar información', 'incidentes'),
+('Eliminar', 'Puede eliminar información', 'incidentes'),
 
 -- Módulo de Retiros Tempranos
-('Lectura', 'Puede ver información', 'retiros_tempranos', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'retiros_tempranos', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'retiros_tempranos', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'retiros_tempranos', true, NOW(), NOW()),
+('Lectura', 'Puede ver información', 'retiros_tempranos'),
+('Agregar', 'Puede agregar información', 'retiros_tempranos'),
+('Modificar', 'Puede modificar información', 'retiros_tempranos'),
+('Eliminar', 'Puede eliminar información', 'retiros_tempranos'),
 
 -- Módulo de Reportes
-('Lectura', 'Puede ver información', 'reportes', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'reportes', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'reportes', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'reportes', true, NOW(), NOW()),
+('Lectura', 'Puede ver información', 'reportes'),
+('Agregar', 'Puede agregar información', 'reportes'),
+('Modificar', 'Puede modificar información', 'reportes'),
+('Eliminar', 'Puede eliminar información', 'reportes'),
 
 -- Módulo de Profesores
-('Lectura', 'Puede ver información', 'profesores', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'profesores', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'profesores', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'profesores', true, NOW(), NOW()),
+('Lectura', 'Puede ver información', 'profesores'),
+('Agregar', 'Puede agregar información', 'profesores'),
+('Modificar', 'Puede modificar información', 'profesores'),
+('Eliminar', 'Puede eliminar información', 'profesores'),
 
 -- Módulo Administración
-('Lectura', 'Puede ver información', 'administracion', true, NOW(), NOW()),
-('Agregar', 'Puede agregar información', 'administracion', true, NOW(), NOW()),
-('Modificar', 'Puede modificar información', 'administracion', true, NOW(), NOW()),
-('Eliminar', 'Puede eliminar información', 'administracion', true, NOW(), NOW());
+('Lectura', 'Puede ver información', 'administracion'),
+('Agregar', 'Puede agregar información', 'administracion'),
+('Modificar', 'Puede modificar información', 'administracion'),
+('Eliminar', 'Puede eliminar información', 'administracion');
 
 -- ========================================
 -- 6. ROL_PERMISOS
@@ -184,6 +184,7 @@ INSERT INTO rol_permisos (id_rol,id_permiso) VALUES
 
 -- Recepción
 (7,13),(7,14);
+
 
 -- ========================================
 -- 7. USUARIOS

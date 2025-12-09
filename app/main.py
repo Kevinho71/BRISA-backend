@@ -5,8 +5,13 @@ import logging
 import os
 from dotenv import load_dotenv
 
+from sqlalchemy.orm import Session
+
 # Middleware JWT
 from app.core.middleware.jwt_middleware import JWTMiddleware
+
+# DB
+from app.core.database import get_db
 
 # Exception handlers
 from app.shared.exceptions.custom_exceptions import register_exception_handlers
@@ -16,14 +21,10 @@ from app.modules.auth.controllers import auth_controller
 from app.modules.usuarios.controllers import usuario_controller
 from app.modules.bitacora.controllers import bitacora_controller
 # from app.modules.reportes.controllers import reportes_controller
+from app.modules.incidentes.controllers import controllers_incidentes
 
-# Retiros Tempranos
-from app.modules.retiros_tempranos.controllers.autorizacion_retiro_controller import router as autorizacion_router
-from app.modules.retiros_tempranos.controllers.motivo_retiro_controller import router as motivo_router
-from app.modules.retiros_tempranos.controllers.registro_salida_controller import router as registro_router
-from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller import router as solicitud_router
-from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
-from app.core.extensions import router as extensions_router  # <- add this import
+# Servicios
+from app.modules.auth.services.auth_service import AuthService
 
 load_dotenv()
 
@@ -44,8 +45,6 @@ app = FastAPI(
 )
 
 # ========================= MIDDLEWARE =========================
-
-# CORS
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -60,27 +59,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# JWT Middleware (DESPUÉS de CORS)
 app.add_middleware(JWTMiddleware)
 
 # ========================= EXCEPTION HANDLERS =========================
 register_exception_handlers(app)
 
 # ========================= ROUTERS =========================
-app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(auth_controller.router,    prefix="/api/auth",     tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
 # app.include_router(reportes_controller.router, prefix="/api/reportes", tags=["Reportes"])
 
-# Retiros Tempranos (ya tienen prefix="/api/..." en sus routers)
-app.include_router(autorizacion_router, tags=["Retiros Tempranos - Autorizaciones"])
-app.include_router(motivo_router, tags=["Retiros Tempranos - Motivos"])
-app.include_router(registro_router, tags=["Retiros Tempranos - Registros"])
-app.include_router(solicitud_router, tags=["Retiros Tempranos - Solicitudes"])
-app.include_router(estudiante_apoderado_router, tags=["Retiros Tempranos - Relaciones"])
-
-# Auth extensiones (registro/login/me/validate-token desde app/core/extensions.py)
-app.include_router(extensions_router, prefix="/api/auth-ext", tags=["Autenticación Ext"])
+# ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA
+app.include_router(
+    controllers_incidentes.router,
+    prefix="/api", 
+    tags=["Incidentes"]
+)
 
 # ========================= ROOT =========================
 @app.get("/")
@@ -107,19 +102,17 @@ async def startup_event():
 async def shutdown_event():
     logger.info("🛑 API cerrándose")
 
-# ========================= DEBUG TOKEN (Opcional para desarrollo) =========================
-from fastapi import Depends, Header
-from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.modules.auth.services.auth_service import AuthService
-
+# ========================= DEBUG TOKEN =========================
 @app.get("/debug-token")
-def debug_token(authorization: str = Header(None), db: Session = Depends(get_db)):
-    token = authorization.replace("Bearer ", "")
+def debug_token(
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    token = authorization.replace("Bearer ", "") if authorization else ""
     user = AuthService.get_current_user(db, token)
     return {"user": user.usuario}
 
-# ========================= RUN SERVER (dev) =========================
+# ========================= RUN SERVER =========================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
