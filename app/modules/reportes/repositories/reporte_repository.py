@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case, or_, and_
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela, EsquelaCodigo
 from app.modules.administracion.models.persona_models import (
-    Estudiante, Curso, estudiantes_cursos, Persona, Materia, profesores_cursos_materias
+    Estudiante, estudiantes_cursos, profesores_cursos_materias
 )
+from app.modules.estudiantes.models import Curso, Materia
+from app.shared.models.persona import Persona
 from datetime import date, datetime
 from typing import Optional, Literal, List
 
