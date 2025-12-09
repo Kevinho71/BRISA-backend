@@ -22,12 +22,16 @@ from app.modules.usuarios.controllers import usuario_controller
 from app.modules.bitacora.controllers import bitacora_controller
 from app.modules.esquelas.controllers import esquela_controller, codigo_esquela_controller
 from app.modules.administracion.controllers import curso_controller
+from app.modules.administracion.controllers import administrativo_controller
 from app.modules.reportes.controllers import reporte_controller
 # from app.modules.reportes.controllers import reportes_controller
 from app.modules.incidentes.controllers import controllers_incidentes
 
 # Servicios
 from app.modules.auth.services.auth_service import AuthService
+
+# Situaciones Áreas e Incidentes SIA
+from app.modules.incidentes.controllers import controllers_incidentes
 
 load_dotenv()
 
@@ -61,16 +65,10 @@ async def log_requests(request: Request, call_next):
     logger.info(f"Response status: {response.status_code}")
     return response
 
-# CORS
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -85,11 +83,14 @@ register_exception_handlers(app)
 app.include_router(auth_controller.router,    prefix="/api/auth",     tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
+# Routes SIA
+app.include_router(controllers_incidentes.router, prefix="/api/incidentes", tags=["Incidentes"])
 
 # Nuevos módulos
 app.include_router(esquela_controller.router, prefix="/api") 
 app.include_router(codigo_esquela_controller.router, prefix="/api")
 app.include_router(curso_controller.router, prefix="/api")
+app.include_router(administrativo_controller.router)
 app.include_router(reporte_controller.router, prefix="/api")
 
 # ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA

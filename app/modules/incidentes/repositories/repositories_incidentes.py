@@ -4,7 +4,10 @@ from app.modules.incidentes.models.models_incidentes import (
     Incidente,
     SituacionIncidente
 )
-from app.modules.administracion.models.persona_models import Persona, Estudiante
+
+from app.modules.administracion.models.persona_models import Estudiante
+from app.shared.models import Persona
+
 
 class IncidenteRepository:
 

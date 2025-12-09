@@ -268,4 +268,3 @@ def marcar_todas_leidas(
     service = NotificacionService(db)
     cantidad = service.marcar_todas_como_leidas(id_usuario)
     return {"mensaje": "Notificaciones marcadas como leídas", "cantidad": cantidad}
-#----NOTIFICACIONES----
