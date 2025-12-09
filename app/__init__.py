@@ -1,3 +1,4 @@
+# app\__init__.py
 import os
 from datetime import datetime
 from fastapi import FastAPI
@@ -54,7 +55,7 @@ def create_app(config_name=None):
 
 def register_routes(app):
     """Registrar todas las rutas de la aplicación"""
-    
+
     # Health check
     from app.modules.health.routes import health_router
     app.include_router(health_router, prefix="/api")
@@ -76,7 +77,11 @@ def register_routes(app):
     from app.modules.reportes.controllers.reporte_controller import router as reportes_router
     app.include_router(reportes_router, prefix="/api", tags=["Reports"])
     
-    # Administración (de main - Personas)
+    # Incidentes
+    from app.modules.incidentes.controllers.controllers_incidentes import router as reportes_router
+    app.include_router(reportes_router, prefix="/api", tags=["Incidentes"])
+    
+    # Administración (Personas)
     from app.modules.administracion import (
         estudiantes_router as admin_estudiantes_router,
         profesores_router,

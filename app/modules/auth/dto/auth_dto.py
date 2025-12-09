@@ -28,7 +28,7 @@ class RegistroDTO(BaseModel):
     password: str
     telefono: Optional[str] = None
     direccion: Optional[str] = None
-    tipo_persona: str = "administrativo"
+    tipo_persona: Literal["profesor", "administrativo"] = "administrativo"
     id_rol: Optional[int] = None
     
     @field_validator('password')

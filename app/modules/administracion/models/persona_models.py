@@ -10,7 +10,12 @@ from app.core.database import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, Date, Text, Table, ForeignKey
 
-# Tabla intermedia para relación muchos-a-muchos entre estudiantes y cursos
+
+# ============================================
+# TABLAS INTERMEDIAS
+# ============================================
+
+# Relación muchos-a-muchos entre estudiantes y cursos
 estudiantes_cursos = Table(
     'estudiantes_cursos',
     Base.metadata,
@@ -18,7 +23,7 @@ estudiantes_cursos = Table(
     Column('id_curso', Integer, ForeignKey('cursos.id_curso'), primary_key=True)
 )
 
-# Tabla intermedia para relación muchos-a-muchos entre profesores, cursos y materias
+# Relación muchos-a-muchos entre profesores, cursos y materias
 profesores_cursos_materias = Table(
     'profesores_cursos_materias',
     Base.metadata,
@@ -29,6 +34,9 @@ profesores_cursos_materias = Table(
 )
 
 
+# ============================================
+# MODELO: ESTUDIANTE
+# ============================================
 class Estudiante(Base):
     """Modelo para estudiantes - adaptado a la estructura existente"""
     __tablename__ = "estudiantes"
@@ -49,35 +57,76 @@ class Estudiante(Base):
     apellido_paterno_madre = Column(String(100), nullable=True)
     apellido_materno_madre = Column(String(100), nullable=True)
     telefono_madre = Column(String(15), nullable=True)
-    
+
     # Relaciones
     cursos = relationship("Curso", secondary=estudiantes_cursos, back_populates="estudiantes", overlaps="estudiantes_cursos")
     estudiantes_cursos = relationship("EstudianteCurso", back_populates="estudiante", overlaps="cursos")
     esquelas = relationship("Esquela", back_populates="estudiante")
-    
-    # Relaciones de retiros_tempranos
-    estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="estudiante", lazy="dynamic")
-    solicitudes_retiro = relationship("SolicitudRetiro", back_populates="estudiante", lazy="dynamic")
-    registros_salida = relationship("RegistroSalida", back_populates="estudiante", lazy="dynamic")
-    
-    def __repr__(self):
-        return f"<Estudiante(id={self.id_estudiante}, ci={self.ci}, nombres={self.nombres} {self.apellido_paterno})>"
-    
+
     @property
     def nombre_completo(self):
-        """Retorna el nombre completo"""
         apellidos = f"{self.apellido_paterno} {self.apellido_materno or ''}".strip()
         return f"{self.nombres} {apellidos}"
 
 
-# Persona class removed to avoid duplication with app.shared.models.persona.Persona
-# Please import Persona from app.shared.models.persona
+# ============================================
+# MODELO: PERSONA
+# ============================================
+class Persona(Base):
+    """Modelo para personas (profesores y administrativos)"""
+    __tablename__ = "personas"
+    __table_args__ = {'extend_existing': True}
 
+    id_persona = Column(Integer, primary_key=True, index=True)
+    ci = Column(String(20), unique=True, nullable=False, index=True)
+    nombres = Column(String(100), nullable=False)
+    apellido_paterno = Column(String(100), nullable=False)
+    apellido_materno = Column(String(100), nullable=True)
+    direccion = Column(Text, nullable=True)
+    telefono = Column(String(15), nullable=True)
+    correo = Column(String(120), nullable=True)
+    tipo_persona = Column(String(50), nullable=False)  # 'profesor' o 'administrativo'
+
+    # Relaciones
+    esquelas_profesor = relationship("Esquela", foreign_keys="Esquela.id_profesor", back_populates="profesor")
+    esquelas_registrador = relationship("Esquela", foreign_keys="Esquela.id_registrador", back_populates="registrador")
+
+    @property
+    def nombre_completo(self):
+        apellidos = f"{self.apellido_paterno} {self.apellido_materno or ''}".strip()
+        return f"{self.nombres} {apellidos}"
+
+
+# ============================================
+# MODELO: CURSO
+# ============================================
+class Curso(Base):
+    """Modelo para cursos"""
+    __tablename__ = "cursos"
+
+    id_curso = Column(Integer, primary_key=True, index=True)
+    nombre_curso = Column(String(50), nullable=False)
+    nivel = Column(String(50), nullable=False)  # 'inicial', 'primaria', 'secundaria'
+    gestion = Column(String(20), nullable=False)  # Ej: '2024'
+
+    estudiantes = relationship("Estudiante", secondary=estudiantes_cursos, back_populates="cursos")
+
+    def __repr__(self):
+        return f"<Curso {self.nombre_curso} - {self.gestion}>"
 
 # Curso class removed to avoid duplication with app.modules.estudiantes.models.Curso.Curso
 # Please import Curso from app.modules.estudiantes.models.Curso
 
+# ============================================
+# MODELO: MATERIA
+# ============================================
+class Materia(Base):
+    """Modelo para materias"""
+    __tablename__ = "materias"
 
-# Materia class removed to avoid duplication with app.modules.estudiantes.models.Materia.Materia
-# Please import Materia from app.modules.estudiantes.models.Materia
+    id_materia = Column(Integer, primary_key=True, index=True)
+    nombre_materia = Column(String(50), nullable=False)
+    nivel = Column(String(50), nullable=False)
 
+    def __repr__(self):
+        return f"<Materia {self.nombre_materia}>"
