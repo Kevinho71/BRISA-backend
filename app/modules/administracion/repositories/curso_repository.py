@@ -10,17 +10,18 @@ from typing import Optional
 class CursoRepository:
 
     @staticmethod
-    def get_all(db: Session, id_persona):
+    def get_all(db: Session):
         """Obtiene todos los cursos"""
         return db.query(Curso).order_by(Curso.nombre_curso).all()
-    @staticmethod
 
+    @staticmethod
     def get_by_profesor(db: Session, id_persona: int):
         """Obtiene los cursos asignados a un profesor específico"""
+        from app.shared.models.profesor_curso_materia import ProfesorCursoMateria
         return db.query(Curso).join(
-            'profesores_cursos_materias'
+            ProfesorCursoMateria
         ).filter(
-            db.text('profesores_cursos_materias.id_persona = :id_persona')
+            ProfesorCursoMateria.id_profesor == id_persona
         ).order_by(Curso.nombre_curso).all()
     
 

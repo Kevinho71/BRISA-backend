@@ -18,8 +18,8 @@ class Curso(Base):
     gestion = Column(String(20), nullable=False)
     
     # Relaciones
-    estudiantes = relationship("Estudiante", secondary="estudiantes_cursos", back_populates="cursos")
-    estudiantes_cursos = relationship("EstudianteCurso", back_populates="curso")
+    estudiantes = relationship("Estudiante", secondary="estudiantes_cursos", back_populates="cursos", overlaps="estudiantes_cursos")
+    estudiantes_cursos = relationship("EstudianteCurso", back_populates="curso", overlaps="estudiantes")
     profesores_cursos_materias = relationship("ProfesorCursoMateria", back_populates="curso")
     solicitudes_retiro_detalle = relationship("SolicitudRetiroDetalle", back_populates="curso")
     

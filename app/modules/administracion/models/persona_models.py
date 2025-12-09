@@ -59,8 +59,8 @@ class Estudiante(Base):
     telefono_madre = Column(String(15), nullable=True)
 
     # Relaciones
-    cursos = relationship("Curso", secondary=estudiantes_cursos, back_populates="estudiantes")
-    estudiantes_cursos = relationship("EstudianteCurso", back_populates="estudiante")
+    cursos = relationship("Curso", secondary=estudiantes_cursos, back_populates="estudiantes", overlaps="estudiantes_cursos")
+    estudiantes_cursos = relationship("EstudianteCurso", back_populates="estudiante", overlaps="cursos")
     esquelas = relationship("Esquela", back_populates="estudiante")
 
     @property
