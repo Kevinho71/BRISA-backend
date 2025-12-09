@@ -3,7 +3,8 @@
 
 from sqlalchemy.orm import Session
 from typing import List
-from app.modules.administracion.models.persona_models import Estudiante, Persona
+from app.modules.administracion.models.persona_models import Estudiante
+from app.shared.models.persona import Persona
 
 
 class EstudianteRepository:
@@ -43,7 +44,8 @@ class PersonaRepository:
     @staticmethod
     def get_cursos_by_profesor(db: Session, id_persona: int) -> List:
         """Obtiene los cursos donde el profesor imparte clases"""
-        from app.modules.administracion.models.persona_models import Curso, profesores_cursos_materias
+        from app.modules.estudiantes.models.Curso import Curso
+        from app.modules.administracion.models.persona_models import profesores_cursos_materias
         
         # Query usando la tabla intermedia
         cursos = db.query(Curso).join(

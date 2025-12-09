@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from app.shared.models.base_models import BaseModel
+from app.shared.models.persona import Persona as SharedPersona
 
 
 class ProfesorCursoMateria(BaseModel):
@@ -15,7 +16,7 @@ class ProfesorCursoMateria(BaseModel):
     id_materia = Column(Integer, ForeignKey("materias.id_materia", ondelete="CASCADE"), primary_key=True, nullable=False)
     
     # Relaciones
-    profesor = relationship("Persona", back_populates="profesores_cursos_materias")
+    profesor = relationship(SharedPersona, back_populates="profesores_cursos_materias")
     curso = relationship("Curso", back_populates="profesores_cursos_materias")
     materia = relationship("Materia", back_populates="profesores_cursos_materias")
     

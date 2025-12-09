@@ -113,4 +113,7 @@ def register_routes(app):
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela
 
 # Modelos de Administración (Personas, Cursos, Estudiantes)
-from app.modules.administracion.models.persona_models import Estudiante, Persona, Curso, Materia
+from app.modules.administracion.models.persona_models import Estudiante
+from app.shared.models.persona import Persona
+from app.modules.estudiantes.models.Curso import Curso
+from app.modules.estudiantes.models.Materia import Materia

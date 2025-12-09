@@ -3,8 +3,10 @@ app/modules/usuarios/models/usuario_models.py
 Modelos del Módulo de Usuarios - AJUSTADO A LA BD EXISTENTE
 """
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Enum, ForeignKey, Table, Text, Boolean
+    Column, Integer, String, DateTime, Date, Enum, ForeignKey, Table, Text, Boolean
 )
+# Registrar tabla cargos en el metadata para resolver FK
+from app.shared.models.cargo import Cargo  # noqa: F401
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -46,11 +48,17 @@ class Persona1(Base):
     ci = Column(String(20), unique=True, nullable=False, index=True)
     nombres = Column(String(50), nullable=False)
     apellido_paterno = Column(String(50), nullable=False)
-    apellido_materno = Column(String(50), nullable=False)
-    correo = Column(String(50), unique=True, nullable=True)
+    apellido_materno = Column(String(50), nullable=True)
+    correo = Column(String(120), nullable=True)
     telefono = Column(String(20), nullable=True)
     direccion = Column(Text, nullable=True)
-    tipo_persona = Column(Enum('profesor', 'administrativo', 'regente', name='tipo_persona_enum'), nullable=False)
+    tipo_persona = Column(String(50), nullable=False)
+    id_cargo = Column(Integer, ForeignKey('cargos.id_cargo'), nullable=True)
+    estado_laboral = Column(String(20), nullable=True, default='activo')
+    anos_experiencia = Column("años_experiencia", Integer, nullable=True, default=0)
+    fecha_ingreso = Column(Date, nullable=True)
+    fecha_retiro = Column(Date, nullable=True)
+    motivo_retiro = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     
     @property

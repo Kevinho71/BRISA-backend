@@ -23,6 +23,7 @@ from app.modules.retiros_tempranos.controllers.motivo_retiro_controller import r
 from app.modules.retiros_tempranos.controllers.registro_salida_controller import router as registro_router
 from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller import router as solicitud_router
 from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
+from app.core.extensions import router as extensions_router  # <- add this import
 
 load_dotenv()
 
@@ -77,6 +78,9 @@ app.include_router(motivo_router, tags=["Retiros Tempranos - Motivos"])
 app.include_router(registro_router, tags=["Retiros Tempranos - Registros"])
 app.include_router(solicitud_router, tags=["Retiros Tempranos - Solicitudes"])
 app.include_router(estudiante_apoderado_router, tags=["Retiros Tempranos - Relaciones"])
+
+# Auth extensiones (registro/login/me/validate-token desde app/core/extensions.py)
+app.include_router(extensions_router, prefix="/api/auth-ext", tags=["Autenticación Ext"])
 
 # ========================= ROOT =========================
 @app.get("/")

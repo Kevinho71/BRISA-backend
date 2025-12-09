@@ -498,8 +498,15 @@ class AuthService:
                     )
                 usuario.roles.append(rol)
             else:
-                # Rol por defecto
-                rol_default = db.query(Rol).filter(Rol.nombre == "Administrativo").first()
+                # Rol por defecto según tipo_persona
+                rol_map = {
+                    "profesor": "Profesor",
+                    "administrativo": "Administrativo",
+                    "regente": "Regente",
+                    "directivo": "Director",
+                }
+                rol_nombre = rol_map.get(registro.tipo_persona, "Administrativo")
+                rol_default = db.query(Rol).filter(Rol.nombre == rol_nombre).first()
                 if rol_default:
                     usuario.roles.append(rol_default)
 

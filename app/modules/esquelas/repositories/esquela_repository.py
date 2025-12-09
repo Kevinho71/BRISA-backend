@@ -2,7 +2,9 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text, func, and_, or_, extract
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela
-from app.modules.administracion.models.persona_models import Estudiante, Persona, Curso, estudiantes_cursos
+from app.modules.administracion.models.persona_models import Estudiante, estudiantes_cursos
+from app.shared.models.persona import Persona
+from app.modules.estudiantes.models.Curso import Curso
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 
