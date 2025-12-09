@@ -121,7 +121,6 @@ def eliminar_situacion(id_situacion: int, db: Session = Depends(get_db)):
 
 
 #----INCIDENTES----
-
 @router.get("/incidentes", response_model=List[IncidenteResponseDTO])
 def obtener_incidentes(db: Session = Depends(get_db)):
     service = IncidenteService(db)

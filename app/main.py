@@ -1,12 +1,16 @@
-# app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
 from dotenv import load_dotenv
 
+from sqlalchemy.orm import Session
+
 # Middleware JWT
 from app.core.middleware.jwt_middleware import JWTMiddleware
+
+# DB
+from app.core.database import get_db
 
 # Exception handlers
 from app.shared.exceptions.custom_exceptions import register_exception_handlers
@@ -17,6 +21,9 @@ from app.modules.usuarios.controllers import usuario_controller
 from app.modules.bitacora.controllers import bitacora_controller
 # from app.modules.reportes.controllers import reportes_controller
 from app.modules.incidentes.controllers import controllers_incidentes
+
+# Servicios
+from app.modules.auth.services.auth_service import AuthService
 
 load_dotenv()
 
@@ -37,8 +44,6 @@ app = FastAPI(
 )
 
 # ========================= MIDDLEWARE =========================
-
-# CORS
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -53,18 +58,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# JWT Middleware (DESPUÉS de CORS)
 app.add_middleware(JWTMiddleware)
 
 # ========================= EXCEPTION HANDLERS =========================
 register_exception_handlers(app)
 
 # ========================= ROUTERS =========================
-app.include_router(auth_controller.router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(auth_controller.router,    prefix="/api/auth",     tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
 # app.include_router(reportes_controller.router, prefix="/api/reportes", tags=["Reportes"])
-app.include_router(controllers_incidentes.router, prefix="/api/incidentes", tags=["Incidentes"])
+
+# ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA
+app.include_router(
+    controllers_incidentes.router,
+    prefix="/api", 
+    tags=["Incidentes"]
+)
 
 # ========================= ROOT =========================
 @app.get("/")
@@ -91,19 +101,17 @@ async def startup_event():
 async def shutdown_event():
     logger.info("🛑 API cerrándose")
 
-# ========================= DEBUG TOKEN (Opcional para desarrollo) =========================
-from fastapi import Depends, Header
-from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.modules.auth.services.auth_service import AuthService
-
+# ========================= DEBUG TOKEN =========================
 @app.get("/debug-token")
-def debug_token(authorization: str = Header(None), db: Session = Depends(get_db)):
-    token = authorization.replace("Bearer ", "")
+def debug_token(
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    token = authorization.replace("Bearer ", "") if authorization else ""
     user = AuthService.get_current_user(db, token)
     return {"user": user.usuario}
 
-# ========================= RUN SERVER (dev) =========================
+# ========================= RUN SERVER =========================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
