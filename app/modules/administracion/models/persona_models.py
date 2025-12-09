@@ -1,7 +1,11 @@
 # app/modules/administracion/models/persona_models.py
 """Modelos para estudiantes y personas (profesores/registradores)"""
 
-from sqlalchemy import Column, Integer, String, Date, Text
+from sqlalchemy import Column, Integer, String, Date, Text, Boolean
+from sqlalchemy import Table, ForeignKey
+# Registrar tabla cargos en el metadata para resolver FK
+from app.shared.models.cargo import Cargo  # noqa: F401
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, Date, Text, Table, ForeignKey
@@ -25,7 +29,8 @@ profesores_cursos_materias = Table(
     Base.metadata,
     Column('id_profesor', Integer, ForeignKey('personas.id_persona'), primary_key=True),
     Column('id_curso', Integer, ForeignKey('cursos.id_curso'), primary_key=True),
-    Column('id_materia', Integer, ForeignKey('materias.id_materia'), primary_key=True)
+    Column('id_materia', Integer, ForeignKey('materias.id_materia'), primary_key=True),
+    extend_existing=True
 )
 
 
@@ -35,9 +40,10 @@ profesores_cursos_materias = Table(
 class Estudiante(Base):
     """Modelo para estudiantes - adaptado a la estructura existente"""
     __tablename__ = "estudiantes"
+    __table_args__ = {'extend_existing': True}
 
-    id_estudiante = Column(Integer, primary_key=True, index=True)
-    ci = Column(String(20), unique=True, nullable=False, index=True)
+    id_estudiante = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    ci = Column(String(20), nullable=True, index=True)
     nombres = Column(String(100), nullable=False)
     apellido_paterno = Column(String(100), nullable=False)
     apellido_materno = Column(String(100), nullable=True)
@@ -54,6 +60,7 @@ class Estudiante(Base):
 
     # Relaciones
     cursos = relationship("Curso", secondary=estudiantes_cursos, back_populates="estudiantes")
+    estudiantes_cursos = relationship("EstudianteCurso", back_populates="estudiante")
     esquelas = relationship("Esquela", back_populates="estudiante")
 
     @property
@@ -107,6 +114,8 @@ class Curso(Base):
     def __repr__(self):
         return f"<Curso {self.nombre_curso} - {self.gestion}>"
 
+# Curso class removed to avoid duplication with app.modules.estudiantes.models.Curso.Curso
+# Please import Curso from app.modules.estudiantes.models.Curso
 
 # ============================================
 # MODELO: MATERIA

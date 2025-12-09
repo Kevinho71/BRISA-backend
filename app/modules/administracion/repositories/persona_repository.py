@@ -3,7 +3,8 @@
 
 from sqlalchemy.orm import Session
 from typing import List
-from app.modules.administracion.models.persona_models import Estudiante, Persona
+from app.modules.administracion.models.persona_models import Estudiante
+from app.shared.models.persona import Persona
 
 
 class EstudianteRepository:

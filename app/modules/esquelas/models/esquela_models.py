@@ -2,6 +2,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Table, Date
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.shared.models.persona import Persona as SharedPersona
 
 
 class CodigoEsquela(Base):
@@ -32,8 +33,8 @@ class Esquela(Base):
 
     # Relaciones
     estudiante = relationship("Estudiante", back_populates="esquelas")
-    profesor = relationship("Persona", foreign_keys=[id_profesor], back_populates="esquelas_profesor")
-    registrador = relationship("Persona", foreign_keys=[id_registrador], back_populates="esquelas_registrador")
+    profesor = relationship(SharedPersona, foreign_keys=[id_profesor], back_populates="esquelas_profesor")
+    registrador = relationship(SharedPersona, foreign_keys=[id_registrador], back_populates="esquelas_registrador")
     
     # Relación hacia códigos usando la tabla intermedia
     codigos = relationship(

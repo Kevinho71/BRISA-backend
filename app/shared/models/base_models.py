@@ -1,12 +1,8 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, DateTime, Boolean, ForeignKey
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import Session
-from app.core.database import get_db
+from sqlalchemy.orm import declarative_base, Session
+from app.core.database import Base
 
-
-Base = declarative_base()
 
 class BaseModel(Base):
     """
@@ -17,10 +13,9 @@ class BaseModel(Base):
     id = Column(Integer, primary_key=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    created_by = Column(Integer, ForeignKey('usuarios.id'), nullable=True)
-    updated_by = Column(Integer, ForeignKey('usuarios.id'), nullable=True)
+    created_by = Column(Integer, ForeignKey('usuarios.id_usuario'), nullable=True)
+    updated_by = Column(Integer, ForeignKey('usuarios.id_usuario'), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-
     def to_dict(self, include_relationships=False):
         """Convertir modelo a diccionario"""
         result = {}
@@ -66,5 +61,4 @@ class AuditMixin:
             'timestamp': datetime.utcnow().isoformat()
         }
 
-        
         print(f"AUDIT LOG: {audit_log}")

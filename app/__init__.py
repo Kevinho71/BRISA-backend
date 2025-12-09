@@ -60,20 +60,20 @@ def register_routes(app):
     from app.modules.health.routes import health_router
     app.include_router(health_router, prefix="/api")
     
-    # Esquelas
+    # Esquelas (de main)
     from app.modules.esquelas import esquelas_router, codigos_esquelas_router
     app.include_router(esquelas_router, prefix="/api", tags=["Esquelas"])
     app.include_router(codigos_esquelas_router, prefix="/api", tags=["Códigos de Esquela"])
     
-    # Cursos
+    # Cursos (de main)
     from app.modules.administracion.controllers.curso_controller import router as cursos_router
     app.include_router(cursos_router, prefix="/api", tags=["Courses"])
     
-    # Estudiantes (consultas de esquelas)
+    # Estudiantes (de main - consultas de esquelas)
     from app.modules.administracion.controllers.estudiante_controller import router as estudiantes_router
     app.include_router(estudiantes_router, prefix="/api", tags=["Students"])
     
-    # Reportes
+    # Reportes (de main)
     from app.modules.reportes.controllers.reporte_controller import router as reportes_router
     app.include_router(reportes_router, prefix="/api", tags=["Reports"])
     
@@ -83,13 +83,26 @@ def register_routes(app):
     
     # Administración (Personas)
     from app.modules.administracion import (
-        estudiantes_router,
+        estudiantes_router as admin_estudiantes_router,
         profesores_router,
         registradores_router
     )
-    app.include_router(estudiantes_router, prefix="/api", tags=["Estudiantes"])
+    app.include_router(admin_estudiantes_router, prefix="/api", tags=["Estudiantes"])
     app.include_router(profesores_router, prefix="/api", tags=["Profesores"])
     app.include_router(registradores_router, prefix="/api", tags=["Registradores"])
+    
+    # ✅ Retiros Tempranos (TU MÓDULO - CONSERVADO)
+    from app.modules.retiros_tempranos.controllers.autorizacion_retiro_controller import router as autorizacion_router
+    from app.modules.retiros_tempranos.controllers.motivo_retiro_controller import router as motivo_router
+    from app.modules.retiros_tempranos.controllers.registro_salida_controller import router as registro_router
+    from app.modules.retiros_tempranos.controllers.solicitud_retiro_controller import router as solicitud_router
+    from app.modules.retiros_tempranos.controllers.estudiante_apoderado_controller import router as estudiante_apoderado_router
+    
+    app.include_router(autorizacion_router, tags=["Retiros Tempranos - Autorizaciones"])
+    app.include_router(motivo_router, tags=["Retiros Tempranos - Motivos"])
+    app.include_router(registro_router, tags=["Retiros Tempranos - Registros"])
+    app.include_router(solicitud_router, tags=["Retiros Tempranos - Solicitudes"])
+    app.include_router(estudiante_apoderado_router, tags=["Retiros Tempranos - Relaciones"])
     
     # Los módulos específicos serán implementados por cada equipo
     # Ejemplo de cómo registrar un módulo:
@@ -105,4 +118,7 @@ def register_routes(app):
 from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela
 
 # Modelos de Administración (Personas, Cursos, Estudiantes)
-from app.modules.administracion.models.persona_models import Estudiante, Persona, Curso, Materia
+from app.modules.administracion.models.persona_models import Estudiante
+from app.shared.models.persona import Persona
+from app.modules.estudiantes.models.Curso import Curso
+from app.modules.estudiantes.models.Materia import Materia

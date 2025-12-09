@@ -1,7 +1,9 @@
 # app/modules/administracion/repositories/curso_repository.py
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
-from app.modules.administracion.models.persona_models import Curso, Estudiante, Persona
+from app.modules.administracion.models.persona_models import Estudiante
+from app.modules.estudiantes.models.Curso import Curso
+from app.shared.models.persona import Persona
 from typing import Optional
 
 
