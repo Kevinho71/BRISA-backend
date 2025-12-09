@@ -17,6 +17,7 @@ from app.modules.usuarios.controllers import usuario_controller
 from app.modules.bitacora.controllers import bitacora_controller
 from app.modules.esquelas.controllers import esquela_controller, codigo_esquela_controller
 from app.modules.administracion.controllers import curso_controller
+from app.modules.administracion.controllers import administrativo_controller
 from app.modules.reportes.controllers import reporte_controller
 
 # Retiros Tempranos
@@ -83,6 +84,7 @@ app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bi
 app.include_router(esquela_controller.router, prefix="/api") 
 app.include_router(codigo_esquela_controller.router, prefix="/api")
 app.include_router(curso_controller.router, prefix="/api")
+app.include_router(administrativo_controller.router)
 app.include_router(reporte_controller.router, prefix="/api")
 
 # Retiros Tempranos (ya tienen prefix="/api/..." en sus routers)
