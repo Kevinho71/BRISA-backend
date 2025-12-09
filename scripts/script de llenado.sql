@@ -1,27 +1,98 @@
-USE bienestar_estudiantil;
+
+-- ========================================
+-- 0. CARGOS
+-- ========================================
+INSERT INTO cargos (nombre_cargo, descripcion, nivel_jerarquico, is_active) VALUES
+('Director General','Máxima autoridad de la institución',1,true),
+('Regente','Autoridad pedagógica',2,true),
+('Coordinador Académico','Coordinación de actividades académicas',3,true),
+('Secretaria','Personal administrativo de secretaría',4,true),
+('Auxiliar Administrativo','Apoyo en tareas administrativas',5,true),
+('Recepcionista','Atención en recepción',5,true),
+('Contador','Gestión contable y financiera',4,true),
+('Psicólogo','Gabinete psicopedagógico',3,true),
+('Enfermero','Atención de salud escolar',4,true),
+('Bibliotecario','Gestión de biblioteca',5,true);
 
 -- ========================================
 -- 1. PERSONAS
 -- ========================================
-INSERT INTO personas (ci, nombres, apellido_paterno, apellido_materno, direccion, telefono, correo, tipo_persona) VALUES
-('1234567','Carlos','Pérez','Gómez','Calle Falsa 123','77712345','carlos.perez@mail.com','profesor'),
-('2345678','María','González','Lopez','Av. Siempre Viva 456','77723456','maria.gonzalez@mail.com','profesor'),
-('3456789','Juan','Ramírez','Diaz','Calle Sol 789','77734567','juan.ramirez@mail.com','profesor'),
-('4567890','Ana','Fernández','Martínez','Av. Luna 101','77745678','ana.fernandez@mail.com','administrativo'),
-('5678901','Pedro','Sánchez','Torres','Calle Estrella 202','77756789','pedro.sanchez@mail.com','profesor'),
-('6789012','Lucía','Morales','Vega','Av. Río 303','77767890','lucia.morales@mail.com','profesor'),
-('7890123','Jorge','Flores','Ríos','Calle Mar 404','77778901','jorge.flores@mail.com','profesor'),
-('8901234','Sofía','Castillo','Paredes','Av. Tierra 505','77789012','sofia.castillo@mail.com','profesor'),
-('9012345','Miguel','Ramón','Cabrera','Calle Cielo 606','77790123','miguel.ramon@mail.com','profesor'),
-('0123456','Elena','Vargas','Salinas','Av. Sol 707','77701234','elena.vargas@mail.com','profesor'),
-('1122334','Raúl','Meza','Alvarado','Calle Luna 808','77711223','raul.meza@mail.com','profesor'),
-('2233445','Isabel','Torrez','Quintana','Av. Río 909','77722334','isabel.torrez@mail.com','profesor'),
-('3344556','Andrés','Mendoza','Rojas','Calle Estrella 111','77733445','andres.mendoza@mail.com','profesor'),
-('4455667','Patricia','Loayza','Salcedo','Av. Mar 222','77744556','patricia.loayza@mail.com','profesor'),
-('5566778','Fernando','Cordero','Vargas','Calle Tierra 333','77755667','fernando.cordero@mail.com','administrativo');
+INSERT INTO personas (ci, nombres, apellido_paterno, apellido_materno, direccion, telefono, correo, tipo_persona, id_cargo, estado_laboral, años_experiencia, fecha_ingreso, is_active) VALUES
+-- Profesores (20 personas)
+('1234567','Carlos','Pérez','Gómez','Calle Falsa 123','77712345','carlos.perez@mail.com','profesor',NULL,'activo',15,'2010-02-01',true),
+('2345678','María','González','Lopez','Av. Siempre Viva 456','77723456','maria.gonzalez@mail.com','profesor',NULL,'activo',12,'2013-03-15',true),
+('3456789','Juan','Ramírez','Diaz','Calle Sol 789','77734567','juan.ramirez@mail.com','profesor',NULL,'activo',10,'2015-01-20',true),
+('5678901','Pedro','Sánchez','Torres','Calle Estrella 202','77756789','pedro.sanchez@mail.com','profesor',NULL,'activo',8,'2017-08-10',true),
+('6789012','Lucía','Morales','Vega','Av. Río 303','77767890','lucia.morales@mail.com','profesor',NULL,'activo',7,'2018-02-14',true),
+('7890123','Jorge','Flores','Ríos','Calle Mar 404','77778901','jorge.flores@mail.com','profesor',NULL,'activo',6,'2019-09-01',true),
+('8901234','Sofía','Castillo','Paredes','Av. Tierra 505','77789012','sofia.castillo@mail.com','profesor',NULL,'activo',9,'2016-03-12',true),
+('9012345','Miguel','Ramón','Cabrera','Calle Cielo 606','77790123','miguel.ramon@mail.com','profesor',NULL,'activo',11,'2014-05-22',true),
+('0123456','Elena','Vargas','Salinas','Av. Sol 707','77701234','elena.vargas@mail.com','profesor',NULL,'activo',13,'2012-07-18',true),
+('1122334','Raúl','Meza','Alvarado','Calle Luna 808','77711223','raul.meza@mail.com','profesor',NULL,'activo',5,'2020-01-10',true),
+('2233445','Isabel','Torrez','Quintana','Av. Río 909','77722334','isabel.torrez@mail.com','profesor',NULL,'activo',14,'2011-04-05',true),
+('3344556','Andrés','Mendoza','Rojas','Calle Estrella 111','77733445','andres.mendoza@mail.com','profesor',NULL,'activo',4,'2021-02-15',true),
+('4455667','Patricia','Loayza','Salcedo','Av. Mar 222','77744556','patricia.loayza@mail.com','profesor',NULL,'activo',16,'2009-09-01',true),
+('6677889','Roberto','Silva','Moreno','Calle Central 444','77766778','roberto.silva@mail.com','profesor',NULL,'activo',7,'2018-08-20',true),
+('7788990','Claudia','Quispe','Mamani','Av. Norte 555','77777889','claudia.quispe@mail.com','profesor',NULL,'activo',6,'2019-03-12',true),
+('8899001','Diego','Fernández','Castro','Calle Sur 666','77788990','diego.fernandez@mail.com','profesor',NULL,'activo',5,'2020-07-08',true),
+('9900112','Gabriela','López','Vargas','Av. Este 777','77799001','gabriela.lopez@mail.com','profesor',NULL,'activo',8,'2017-11-15',true),
+('1011121','Marcelo','Rojas','Pérez','Calle Oeste 888','77710111','marcelo.rojas@mail.com','profesor',NULL,'activo',10,'2015-05-20',true),
+('1112131','Valentina','Méndez','Torres','Av. Principal 999','77711213','valentina.mendez@mail.com','profesor',NULL,'activo',3,'2022-01-10',true),
+('1213141','Sebastián','Cortez','Ramírez','Calle Nueva 1010','77712131','sebastian.cortez@mail.com','profesor',NULL,'activo',4,'2021-09-01',true),
+-- Administrativos (10 personas)
+('4567890','Ana','Fernández','Martínez','Av. Luna 101','77745678','ana.fernandez@mail.com','administrativo',1,'activo',20,'2005-01-15',true),
+('5566778','Fernando','Cordero','Vargas','Calle Tierra 333','77755667','fernando.cordero@mail.com','administrativo',2,'activo',18,'2007-03-10',true),
+('2324252','Carmen','Gutierrez','Salazar','Av. Central 222','77723242','carmen.gutierrez@mail.com','administrativo',4,'activo',12,'2013-06-01',true),
+('3425262','Luis','Herrera','Campos','Calle Paz 333','77734252','luis.herrera@mail.com','administrativo',5,'activo',8,'2017-02-20',true),
+('4526272','Rosa','Jiménez','Vargas','Av. Libertad 444','77745262','rosa.jimenez@mail.com','administrativo',6,'activo',6,'2019-08-15',true),
+('5627282','Alberto','Castro','Moreno','Calle Unión 555','77756272','alberto.castro@mail.com','administrativo',7,'activo',15,'2010-11-01',true),
+('6728292','Silvia','Paredes','López','Av. Victoria 666','77767282','silvia.paredes@mail.com','administrativo',8,'activo',10,'2015-04-10',true),
+('7829303','Javier','Ortiz','Ramírez','Calle Esperanza 777','77778293','javier.ortiz@mail.com','administrativo',9,'activo',7,'2018-09-05',true),
+('8930313','Beatriz','Navarro','Torres','Av. Progreso 888','77789303','beatriz.navarro@mail.com','administrativo',10,'activo',9,'2016-12-01',true),
+('9031323','Ricardo','Molina','García','Calle Futuro 999','77790313','ricardo.molina@mail.com','administrativo',5,'activo',5,'2020-03-15',true);
 
 -- ========================================
--- 2. ROLES
+-- 2. PROFESORES
+-- ========================================
+INSERT INTO profesores (id_persona, especialidad, titulo_academico, nivel_enseñanza, observaciones) VALUES
+(1,'Matemáticas','Licenciado en Educación','primary',NULL),
+(2,'Lengua y Literatura','Licenciada en Educación','primary',NULL),
+(3,'Ciencias Naturales','Licenciado en Biología','secondary',NULL),
+(4,'Historia','Licenciado en Ciencias Sociales','secondary',NULL),
+(5,'Inglés','Licenciada en Lenguas','todos',NULL),
+(6,'Educación Física','Licenciado en Deportes','todos',NULL),
+(7,'Arte','Licenciada en Artes Plásticas','primary',NULL),
+(8,'Música','Licenciado en Música','todos',NULL),
+(9,'Informática','Ingeniero en Sistemas','secondary',NULL),
+(10,'Religión','Licenciado en Teología','todos',NULL),
+(11,'Geografía','Licenciada en Geografía','secondary',NULL),
+(12,'Química','Licenciado en Química','secondary',NULL),
+(13,'Física','Licenciada en Física','secondary',NULL),
+(14,'Matemáticas Avanzadas','Licenciado en Matemáticas','secondary',NULL),
+(15,'Literatura','Licenciada en Letras','secondary',NULL),
+(16,'Biología','Licenciado en Biología','secondary',NULL),
+(17,'Educación Inicial','Licenciada en Educación Inicial','foundation',NULL),
+(18,'Psicomotricidad','Licenciado en Educación Física','foundation',NULL),
+(19,'Lengua Extranjera','Licenciada en Idiomas','primary',NULL),
+(20,'Ciencias Sociales','Licenciado en Historia','primary',NULL);
+
+-- ========================================
+-- 3. ADMINISTRATIVOS
+-- ========================================
+INSERT INTO administrativos (id_persona, id_cargo, horario_entrada, horario_salida, area_trabajo, observaciones) VALUES
+(21,1,'07:30:00','16:30:00','Dirección','Director General de la institución'),
+(22,2,'08:00:00','16:00:00','Regencia','Regente académico'),
+(23,4,'08:00:00','16:00:00','Secretaría','Secretaria principal'),
+(24,5,'08:00:00','16:00:00','Administración','Auxiliar administrativo'),
+(25,6,'07:30:00','15:30:00','Recepción','Recepcionista turno mañana'),
+(26,7,'08:00:00','16:00:00','Contabilidad','Contador principal'),
+(27,8,'08:00:00','16:00:00','Gabinete Psicopedagógico','Psicólogo escolar'),
+(28,9,'08:00:00','16:00:00','Enfermería','Enfermero escolar'),
+(29,10,'08:00:00','16:00:00','Biblioteca','Bibliotecario'),
+(30,5,'08:00:00','16:00:00','Administración','Auxiliar administrativo 2');
+
+-- ========================================
+-- 4. ROLES
 -- ========================================
 INSERT INTO roles (nombre, descripcion, is_active, created_at, updated_at) VALUES
 ('Director','Acceso total al sistema', true, NOW(), NOW()),
@@ -33,7 +104,7 @@ INSERT INTO roles (nombre, descripcion, is_active, created_at, updated_at) VALUE
 ('Recepción','Acceso a retiros tempranos', true, NOW(), NOW());
 
 -- ========================================
--- 3. PERMISOS
+-- 5. PERMISOS
 -- ========================================
 INSERT INTO permisos (nombre, descripcion, modulo, is_active, created_at, updated_at) VALUES
 -- Módulo de Usuarios
@@ -79,7 +150,7 @@ INSERT INTO permisos (nombre, descripcion, modulo, is_active, created_at, update
 ('Eliminar', 'Puede eliminar información', 'administracion', true, NOW(), NOW());
 
 -- ========================================
--- 4. ROL_PERMISOS
+-- 6. ROL_PERMISOS
 -- ========================================
 INSERT INTO rol_permisos (id_rol,id_permiso) VALUES
 -- Director
@@ -114,35 +185,52 @@ INSERT INTO rol_permisos (id_rol,id_permiso) VALUES
 -- Recepción
 (7,13),(7,14);
 
-
 -- ========================================
--- 5. USUARIOS
+-- 7. USUARIOS
 -- ========================================
 INSERT INTO usuarios (id_persona, usuario, correo, password) VALUES
-(1,'cperez','carlos.perez@mail.com','1234'),
-(2,'mgonzalez','maria.gonzalez@mail.com','1234'),
-(3,'jramirez','juan.ramirez@mail.com','1234'),
-(4,'afernandez','ana.fernandez@mail.com','1234'),
-(5,'psanchez','pedro.sanchez@mail.com','1234'),
-(6,'lmorales','lucia.morales@mail.com','1234'),
-(7,'jflores','jorge.flores@mail.com','1234'),
-(8,'scastillo','sofia.castillo@mail.com','1234'),
-(9,'mramon','miguel.ramon@mail.com','1234'),
-(10,'evargas','elena.vargas@mail.com','1234'),
-(11,'rmeza','raul.meza@mail.com','1234'),
-(12,'itorrez','isabel.torrez@mail.com','1234'),
-(13,'amendoza','andres.mendoza@mail.com','1234'),
-(14,'ploayza','patricia.loayza@mail.com','1234'),
-(15,'fcordero','fernando.cordero@mail.com','1234');
+-- Profesores (20 usuarios)
+(1,'cperez','carlos.perez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(2,'mgonzalez','maria.gonzalez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(3,'jramirez','juan.ramirez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(4,'psanchez','pedro.sanchez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(5,'lmorales','lucia.morales@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(6,'jflores','jorge.flores@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(7,'scastillo','sofia.castillo@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(8,'mramon','miguel.ramon@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(9,'evargas','elena.vargas@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(10,'rmeza','raul.meza@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(11,'itorrez','isabel.torrez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(12,'amendoza','andres.mendoza@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(13,'ploayza','patricia.loayza@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(14,'rsilva','roberto.silva@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(15,'cquispe','claudia.quispe@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(16,'dfernandez','diego.fernandez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(17,'glopez','gabriela.lopez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(18,'mrojas','marcelo.rojas@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(19,'vmendez','valentina.mendez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(20,'scortez','sebastian.cortez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+-- Administrativos (10 usuarios)
+(21,'afernandez','ana.fernandez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(22,'fcordero','fernando.cordero@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(23,'cgutierrez','carmen.gutierrez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(24,'lherrera','luis.herrera@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(25,'rjimenez','rosa.jimenez@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(26,'acastro','alberto.castro@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(27,'sparedes','silvia.paredes@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(28,'jortiz','javier.ortiz@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(29,'bnavarro','beatriz.navarro@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy'),
+(30,'rmolina','ricardo.molina@mail.com','$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYILCPEMdLy');
 
 -- ========================================
--- 6. USUARIO_ROLES
+-- 8. USUARIO_ROLES
 -- ========================================
 INSERT INTO usuario_roles (id_usuario, id_rol, fecha_inicio, estado) VALUES
+-- Profesores (20 roles)
 (1,2,'2025-01-01','activo'),
 (2,2,'2025-01-01','activo'),
 (3,2,'2025-01-01','activo'),
-(4,6,'2025-01-01','activo'),
+(4,2,'2025-01-01','activo'),
 (5,2,'2025-01-01','activo'),
 (6,2,'2025-01-01','activo'),
 (7,2,'2025-01-01','activo'),
@@ -153,30 +241,51 @@ INSERT INTO usuario_roles (id_usuario, id_rol, fecha_inicio, estado) VALUES
 (12,2,'2025-01-01','activo'),
 (13,2,'2025-01-01','activo'),
 (14,2,'2025-01-01','activo'),
-(15,6,'2025-01-01','activo');
+(15,2,'2025-01-01','activo'),
+(16,2,'2025-01-01','activo'),
+(17,2,'2025-01-01','activo'),
+(18,2,'2025-01-01','activo'),
+(19,2,'2025-01-01','activo'),
+(20,2,'2025-01-01','activo'),
+-- Administrativos (10 roles)
+(21,1,'2025-01-01','activo'), -- Director
+(22,3,'2025-01-01','activo'), -- Regente
+(23,6,'2025-01-01','activo'), -- Administrativo
+(24,6,'2025-01-01','activo'), -- Administrativo
+(25,7,'2025-01-01','activo'), -- Recepción
+(26,6,'2025-01-01','activo'), -- Administrativo
+(27,4,'2025-01-01','activo'), -- Gabinete Psicopedagógico
+(28,6,'2025-01-01','activo'), -- Administrativo
+(29,6,'2025-01-01','activo'), -- Administrativo
+(30,6,'2025-01-01','activo'); -- Administrativo
 
 -- ========================================
--- 7. LOGIN_LOGS
+-- 9. LOGIN_LOGS
 -- ========================================
 INSERT INTO login_logs (id_usuario, fecha_hora, ip_address, user_agent, estado) VALUES
-(1,'2025-09-01 08:00:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(2,'2025-09-01 08:05:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(3,'2025-09-01 08:10:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(4,'2025-09-01 08:15:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(5,'2025-09-01 08:20:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(6,'2025-09-01 08:25:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(7,'2025-09-01 08:30:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(8,'2025-09-01 08:35:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(9,'2025-09-01 08:40:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(10,'2025-09-01 08:45:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(11,'2025-09-01 08:50:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(12,'2025-09-01 08:55:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(13,'2025-09-01 09:00:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(14,'2025-09-01 09:05:00','127.0.0.1','Mozilla/5.0','exitoso'),
-(15,'2025-09-01 09:10:00','127.0.0.1','Mozilla/5.0','exitoso');
+(1,'2025-09-01 08:00:00','192.168.1.101','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(2,'2025-09-01 08:05:00','192.168.1.102','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(3,'2025-09-01 08:10:00','192.168.1.103','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)','exitoso'),
+(21,'2025-09-01 07:30:00','192.168.1.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(22,'2025-09-01 07:45:00','192.168.1.2','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(25,'2025-09-01 07:30:00','192.168.1.5','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(4,'2025-09-01 08:15:00','192.168.1.104','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)','exitoso'),
+(5,'2025-09-01 08:20:00','192.168.1.105','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(1,'2025-09-02 08:00:00','192.168.1.101','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(2,'2025-09-02 08:05:00','192.168.1.102','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(21,'2025-09-02 07:30:00','192.168.1.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(3,'2025-09-02 08:15:00','192.168.1.103','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','fallido'),
+(3,'2025-09-02 08:16:00','192.168.1.103','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(27,'2025-09-01 08:00:00','192.168.1.27','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(28,'2025-09-01 08:00:00','192.168.1.28','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(6,'2025-09-03 08:00:00','192.168.1.106','Mozilla/5.0 (X11; Linux x86_64)','exitoso'),
+(7,'2025-09-03 08:05:00','192.168.1.107','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(8,'2025-09-03 08:10:00','192.168.1.108','Mozilla/5.0 (iPad; CPU OS 14_7_1 like Mac OS X)','exitoso'),
+(9,'2025-09-03 08:15:00','192.168.1.109','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','exitoso'),
+(10,'2025-09-03 08:20:00','192.168.1.110','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)','exitoso');
 
 -- ========================================
--- 8. ESTUDIANTES
+-- 10. ESTUDIANTES
 -- ========================================
 INSERT INTO estudiantes (ci, nombres, apellido_paterno, apellido_materno, fecha_nacimiento, direccion, nombre_padre, apellido_paterno_padre, apellido_materno_padre, telefono_padre, nombre_madre, apellido_paterno_madre, apellido_materno_madre, telefono_madre) VALUES
 ('100001','Luis','Ramirez','Cruz','2012-05-12','Calle A 1','José','Ramirez','Lopez','77711111','María','Cruz','Gómez','77711112'),
@@ -196,11 +305,14 @@ INSERT INTO estudiantes (ci, nombres, apellido_paterno, apellido_materno, fecha_
 ('100015','Andrés','Ramírez','Cruz','2012-09-19','Calle O 15','Jorge','Ramírez','Mendoza','77755553','Ana','Cruz','Gómez','77755554');
 
 -- ========================================
--- 9. CURSOS
+-- 11. CURSOS
 -- ========================================
 INSERT INTO cursos (nombre_curso, nivel, gestion) VALUES
+-- Inicial (3 cursos)
 ('Inicial A','inicial','2025'),
 ('Inicial B','inicial','2025'),
+('Inicial C','inicial','2025'),
+-- Primaria (12 cursos)
 ('Primaria 1A','primaria','2025'),
 ('Primaria 1B','primaria','2025'),
 ('Primaria 2A','primaria','2025'),
@@ -211,45 +323,112 @@ INSERT INTO cursos (nombre_curso, nivel, gestion) VALUES
 ('Primaria 4B','primaria','2025'),
 ('Primaria 5A','primaria','2025'),
 ('Primaria 5B','primaria','2025'),
+('Primaria 6A','primaria','2025'),
+('Primaria 6B','primaria','2025'),
+-- Secundaria (12 cursos)
 ('Secundaria 1A','secundaria','2025'),
 ('Secundaria 1B','secundaria','2025'),
-('Secundaria 2A','secundaria','2025');
+('Secundaria 2A','secundaria','2025'),
+('Secundaria 2B','secundaria','2025'),
+('Secundaria 3A','secundaria','2025'),
+('Secundaria 3B','secundaria','2025'),
+('Secundaria 4A','secundaria','2025'),
+('Secundaria 4B','secundaria','2025'),
+('Secundaria 5A','secundaria','2025'),
+('Secundaria 5B','secundaria','2025'),
+('Secundaria 6A','secundaria','2025'),
+('Secundaria 6B','secundaria','2025');
 
 -- ========================================
--- 10. ESTUDIANTES_CURSOS
+-- 12. ESTUDIANTES_CURSOS
 -- ========================================
 INSERT INTO estudiantes_cursos (id_estudiante, id_curso) VALUES
-(1,3),(2,3),(3,4),(4,4),(5,5),(6,5),(7,6),(8,6),(9,7),(10,7),(11,8),(12,8),(13,9),(14,9),(15,10);
+(1,4),(2,4),(3,5),(4,5),(5,6),(6,6),(7,7),(8,7),(9,8),(10,8),(11,9),(12,9),(13,10),(14,10),(15,11);
 
 -- ========================================
--- 11. MATERIAS
+-- 13. MATERIAS
 -- ========================================
 INSERT INTO materias (nombre_materia, nivel) VALUES
+-- Inicial (5 materias)
+('Psicomotricidad','inicial'),
+('Lenguaje','inicial'),
+('Matemática Inicial','inicial'),
+('Arte y Creatividad','inicial'),
+('Música y Expresión','inicial'),
+-- Primaria (11 materias)
 ('Matemáticas','primaria'),
-('Lengua','primaria'),
-('Ciencias','primaria'),
+('Lengua y Literatura','primaria'),
+('Ciencias Naturales','primaria'),
+('Ciencias Sociales','primaria'),
 ('Inglés','primaria'),
-('Historia','primaria'),
-('Geografía','primaria'),
-('Arte','primaria'),
 ('Educación Física','primaria'),
+('Arte','primaria'),
 ('Música','primaria'),
 ('Informática','primaria'),
 ('Religión','primaria'),
-('Valores','primaria'),
-('Tecnología','primaria'),
-('Educación Cívica','primaria'),
-('Literatura','primaria');
+('Valores y Ética','primaria'),
+-- Secundaria (13 materias)
+('Matemática Avanzada','secundaria'),
+('Física','secundaria'),
+('Química','secundaria'),
+('Biología','secundaria'),
+('Historia','secundaria'),
+('Geografía','secundaria'),
+('Literatura','secundaria'),
+('Inglés Avanzado','secundaria'),
+('Educación Física','secundaria'),
+('Informática y Tecnología','secundaria'),
+('Filosofía','secundaria'),
+('Economía','secundaria'),
+('Cívica y Ciudadanía','secundaria');
 
 -- ========================================
--- 12. PROFESORES_CURSOS_MATERIAS
+-- 14. PROFESORES_CURSOS_MATERIAS
 -- ========================================
 INSERT INTO profesores_cursos_materias (id_profesor,id_curso,id_materia) VALUES
-(1,3,1),(1,3,2),(2,4,1),(2,4,2),(3,5,1),(3,5,3),(4,6,4),(5,7,5),(6,8,6),(7,9,7),
-(8,10,8),(9,11,9),(10,12,10),(11,13,11),(12,14,12);
+-- Primaria 1A y 1B (cursos 4 y 5)
+(1,4,6),(1,5,6),   -- Matemáticas
+(2,4,7),(2,5,7),   -- Lengua
+(5,4,10),(5,5,10), -- Inglés
+(6,4,11),(6,5,11), -- Ed. Física
+(7,4,12),(7,5,12), -- Arte
+-- Primaria 2A y 2B (cursos 6 y 7)
+(1,6,6),(1,7,6),   -- Matemáticas
+(2,6,7),(2,7,7),   -- Lengua
+(3,6,8),(3,7,8),   -- Ciencias Naturales
+(5,6,10),(5,7,10), -- Inglés
+(8,6,13),(8,7,13), -- Música
+-- Primaria 3A y 3B (cursos 8 y 9)
+(1,8,6),(1,9,6),   -- Matemáticas
+(2,8,7),(2,9,7),   -- Lengua
+(3,8,8),(3,9,8),   -- Ciencias Naturales
+(4,8,9),(4,9,9),   -- Ciencias Sociales
+(9,8,14),(9,9,14), -- Informática
+-- Primaria 4A y 4B (cursos 10 y 11)
+(1,10,6),(1,11,6),  -- Matemáticas
+(2,10,7),(2,11,7),  -- Lengua
+(3,10,8),(3,11,8),  -- Ciencias Naturales
+(8,10,13),(8,11,13), -- Música
+(10,10,15),(10,11,15), -- Religión
+-- Secundaria 1A y 1B (cursos 16 y 17)
+(14,16,17),(14,17,17), -- Matemática Avanzada
+(13,16,18),(13,17,18), -- Física
+(12,16,19),(12,17,19), -- Química
+(16,16,20),(16,17,20), -- Biología
+(4,16,21),(4,17,21),   -- Historia
+-- Secundaria 2A y 2B (cursos 18 y 19)
+(14,18,17),(14,19,17), -- Matemática Avanzada
+(16,18,20),(16,19,20), -- Biología
+(11,18,22),(11,19,22), -- Geografía
+(15,18,23),(15,19,23), -- Literatura
+-- Secundaria 3A y 3B (cursos 20 y 21)
+(13,20,18),(13,21,18), -- Física
+(12,20,19),(12,21,19), -- Química
+(11,20,22),(11,21,22), -- Geografía
+(9,20,26),(9,21,26);   -- Informática y Tecnología
 
 -- ========================================
--- 13. APODERADOS
+-- 15. APODERADOS
 -- ========================================
 INSERT INTO apoderados (ci, nombres, apellidos, telefono, correo, direccion) VALUES
 ('5123456','José Antonio','García Quispe','70123456','jose.garcia@email.com','Calle Los Pinos #100'),
@@ -270,7 +449,7 @@ INSERT INTO apoderados (ci, nombres, apellidos, telefono, correo, direccion) VAL
 ('6678901','Ana Carolina','Cruz Gómez','71901234','ana.cruz@email.com','Calle Central #900');
 
 -- ========================================
--- 14. ESTUDIANTES_APODERADOS
+-- 16. ESTUDIANTES_APODERADOS
 -- ========================================
 INSERT INTO estudiantes_apoderados (id_estudiante, id_apoderado, parentesco, es_contacto_principal) VALUES
 -- Estudiante 1: Luis Ramirez Cruz
@@ -313,7 +492,7 @@ INSERT INTO estudiantes_apoderados (id_estudiante, id_apoderado, parentesco, es_
 (15,9,'Tío',true);
 
 -- ========================================
--- 15. MOTIVOS_RETIRO
+-- 17. MOTIVOS_RETIRO
 -- ========================================
 INSERT INTO motivos_retiro (nombre, descripcion, severidad, activo) VALUES
 ('Cita Médica','Estudiante tiene cita médica programada','leve',true),
@@ -323,7 +502,7 @@ INSERT INTO motivos_retiro (nombre, descripcion, severidad, activo) VALUES
 ('Otro','Otros motivos no especificados','leve',true);
 
 -- ========================================
--- 16. AREAS_INCIDENTE
+-- 18. AREAS_INCIDENTE
 -- ========================================
 INSERT INTO areas_incidente (nombre_area, descripcion) VALUES
 ('Emocional','Problemas de ansiedad, estrés o autoestima'),
@@ -333,7 +512,7 @@ INSERT INTO areas_incidente (nombre_area, descripcion) VALUES
 ('Académica','Problemas de rendimiento');
 
 -- ========================================
--- 17. SITUACIONES_INCIDENTE
+-- 19. SITUACIONES_INCIDENTE
 -- ========================================
 INSERT INTO situaciones_incidente (id_area, nombre_situacion, nivel_gravedad) VALUES
 (1,'Ansiedad','leve'),
@@ -353,7 +532,7 @@ INSERT INTO situaciones_incidente (id_area, nombre_situacion, nivel_gravedad) VA
 (5,'Desinterés académico','leve');
 
 -- ========================================
--- 18. INCIDENTES
+-- 20. INCIDENTES
 -- ========================================
 INSERT INTO incidentes (fecha, antecedentes, acciones_tomadas, seguimiento, estado) VALUES
 ('2025-09-01 10:00:00','Conflicto en clase','Llamado de atención','Seguimiento semanal','provisional'),
@@ -373,45 +552,62 @@ INSERT INTO incidentes (fecha, antecedentes, acciones_tomadas, seguimiento, esta
 ('2025-09-15 14:00:00','Rendimiento bajo','Tutoría','Evaluación quincenal','cerrado');
 
 -- ========================================
--- 19. INCIDENTES_ESTUDIANTES
+-- 21. INCIDENTES_ESTUDIANTES
 -- ========================================
 INSERT INTO incidentes_estudiantes (id_incidente, id_estudiante) VALUES
 (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(11,11),(12,12),(13,13),(14,14),(15,15);
 
 -- ========================================
--- 20. INCIDENTES_PROFESORES
+-- 22. INCIDENTES_PROFESORES
 -- ========================================
 INSERT INTO incidentes_profesores (id_incidente, id_profesor) VALUES
 (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10),(11,11),(12,12),(13,13),(14,14),(15,15);
 
 -- ========================================
--- 21. INCIDENTES_SITUACIONES
+-- 23. INCIDENTES_SITUACIONES
 -- ========================================
 INSERT INTO incidentes_situaciones (id_incidente, id_situacion) VALUES
 (1,1),(2,4),(3,14),(4,6),(5,13),(6,3),(7,7),(8,8),(9,12),(10,11),(11,2),(12,5),(13,9),(14,10),(15,15);
 
 -- ========================================
--- 22. CODIGOS_ESQUELAS
+-- 24. CODIGOS_ESQUELAS
 -- ========================================
 INSERT INTO codigos_esquelas (tipo, codigo, descripcion) VALUES
+-- Reconocimientos (15 códigos)
 ('reconocimiento','R01','Buen rendimiento académico'),
 ('reconocimiento','R02','Entrega puntual de tareas'),
 ('reconocimiento','R03','Buena actitud en clase'),
 ('reconocimiento','R04','Respeto a compañeros'),
 ('reconocimiento','R05','Participación activa'),
+('reconocimiento','R06','Ayuda a compañeros'),
+('reconocimiento','R07','Excelente comportamiento'),
+('reconocimiento','R08','Cumple con los reglamentos'),
+('reconocimiento','R09','Liderazgo positivo'),
+('reconocimiento','R10','Iniciativa propia'),
+('reconocimiento','R11','Creatividad destacada'),
+('reconocimiento','R12','Solidaridad con compañeros'),
+('reconocimiento','R13','Presentación personal impecable'),
+('reconocimiento','R14','Progreso académico notable'),
+('reconocimiento','R15','Colaboración en actividades escolares'),
+-- Orientaciones (15 códigos)
 ('orientacion','O01','No respetó normas'),
 ('orientacion','O02','Faltas frecuentes'),
 ('orientacion','O03','Problemas de convivencia'),
 ('orientacion','O04','Desinterés académico'),
 ('orientacion','O05','Falta de materiales'),
-('reconocimiento','R06','Ayuda a compañeros'),
-('reconocimiento','R07','Excelente comportamiento'),
 ('orientacion','O06','Contestó mal al profesor'),
 ('orientacion','O07','Llegó tarde a clases'),
-('reconocimiento','R08','Cumple con los reglamentos');
+('orientacion','O08','No realizó tareas'),
+('orientacion','O09','Uso inadecuado de celular'),
+('orientacion','O10','Uniforme incompleto'),
+('orientacion','O11','Distracción en clase'),
+('orientacion','O12','Falta de respeto'),
+('orientacion','O13','Vocabulario inapropiado'),
+('orientacion','O14','No trajo materiales solicitados'),
+('orientacion','O15','Desorden en el aula');
 
 -- ========================================
--- 23. ESQUELAS
+-- 25. ESQUELAS
 -- ========================================
 INSERT INTO esquelas (id_estudiante, id_profesor, id_registrador, fecha, observaciones) VALUES
 (1,1,1,'2025-09-01','Excelente desempeño'),
@@ -431,7 +627,7 @@ INSERT INTO esquelas (id_estudiante, id_profesor, id_registrador, fecha, observa
 (15,15,15,'2025-09-15','Buen comportamiento');
 
 -- ========================================
--- 24. ESQUELAS_CODIGOS
+-- 26. ESQUELAS_CODIGOS
 -- ========================================
 INSERT INTO esquelas_codigos (id_esquela, id_codigo) VALUES
 (1,1),(1,2),(2,2),(2,5),(3,6),(3,7),(4,3),(4,1),(5,4),(5,7),

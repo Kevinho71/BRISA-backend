@@ -1,14 +1,51 @@
+CREATE TABLE `cargos` (
+  `id_cargo` int PRIMARY KEY AUTO_INCREMENT,
+  `nombre_cargo` varchar(100) NOT NULL,
+  `descripcion` varchar(255),
+  `nivel_jerarquico` int DEFAULT 1,
+  `is_active` boolean NOT NULL DEFAULT true
+);
+
 CREATE TABLE `personas` (
   `id_persona` int PRIMARY KEY AUTO_INCREMENT,
   `ci` varchar(20) NOT NULL,
-  `nombres` varchar(50) NOT NULL,
-  `apellido_paterno` varchar(50) NOT NULL,
-  `apellido_materno` varchar(50) NOT NULL,
-  `direccion` varchar(100),
-  `telefono` varchar(20),
-  `correo` varchar(50) UNIQUE,
-  `tipo_persona` ENUM ('profesor', 'administrativo') NOT NULL,
+  `nombres` varchar(100) NOT NULL,
+  `apellido_paterno` varchar(100) NOT NULL,
+  `apellido_materno` varchar(100),
+  `direccion` text,
+  `telefono` varchar(15),
+  `correo` varchar(120),
+  `tipo_persona` varchar(50) NOT NULL,
+  `id_cargo` int DEFAULT NULL,
+  `estado_laboral` ENUM('activo','retirado','licencia','suspendido') DEFAULT 'activo',
+  `años_experiencia` int DEFAULT 0,
+  `fecha_ingreso` date DEFAULT NULL,
+  `fecha_retiro` date DEFAULT NULL,
+  `motivo_retiro` text DEFAULT NULL,
   `is_active` boolean NOT NULL DEFAULT true
+);
+
+CREATE TABLE `profesores` (
+  `id_profesor` int NOT NULL AUTO_INCREMENT,
+  `id_persona` int NOT NULL,
+  `especialidad` varchar(100) DEFAULT NULL,
+  `titulo_academico` varchar(100) DEFAULT NULL,
+  `nivel_enseñanza` ENUM('foundation','primary','secondary','todos') DEFAULT 'todos',
+  `observaciones` text DEFAULT NULL,
+  PRIMARY KEY (`id_profesor`),
+  UNIQUE KEY `id_persona` (`id_persona`)
+);
+
+CREATE TABLE `administrativos` (
+  `id_administrativo` int NOT NULL AUTO_INCREMENT,
+  `id_persona` int NOT NULL,
+  `id_cargo` int NOT NULL,
+  `horario_entrada` time DEFAULT '08:00:00',
+  `horario_salida` time DEFAULT '16:00:00',
+  `area_trabajo` varchar(100) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  PRIMARY KEY (`id_administrativo`),
+  UNIQUE KEY `id_persona` (`id_persona`)
 );
 
 CREATE TABLE `roles` (
@@ -90,26 +127,26 @@ CREATE TABLE `bitacora` (
 CREATE TABLE `estudiantes` (
   `id_estudiante` int PRIMARY KEY AUTO_INCREMENT,
   `ci` varchar(20),
-  `nombres` varchar(50) NOT NULL,
-  `apellido_paterno` varchar(50) NOT NULL,
-  `apellido_materno` varchar(50) NOT NULL,
+  `nombres` varchar(100) NOT NULL,
+  `apellido_paterno` varchar(100) NOT NULL,
+  `apellido_materno` varchar(100),
   `fecha_nacimiento` date,
-  `direccion` varchar(100),
-  `nombre_padre` varchar(50),
-  `apellido_paterno_padre` varchar(50),
-  `apellido_materno_padre` varchar(50),
-  `telefono_padre` varchar(20),
-  `nombre_madre` varchar(50),
-  `apellido_paterno_madre` varchar(50),
-  `apellido_materno_madre` varchar(50),
-  `telefono_madre` varchar(20)
+  `direccion` text,
+  `nombre_padre` varchar(100),
+  `apellido_paterno_padre` varchar(100),
+  `apellido_materno_padre` varchar(100),
+  `telefono_padre` varchar(15),
+  `nombre_madre` varchar(100),
+  `apellido_paterno_madre` varchar(100),
+  `apellido_materno_madre` varchar(100),
+  `telefono_madre` varchar(15)
 );
 
 CREATE TABLE `cursos` (
   `id_curso` int PRIMARY KEY AUTO_INCREMENT,
   `nombre_curso` varchar(50) NOT NULL,
-  `nivel` ENUM ('inicial', 'primaria', 'secundaria') NOT NULL,
-  `gestion` varchar(20) NOT NULL
+  `nivel` varchar(50) NOT NULL COMMENT 'inicial, primaria, secundaria',
+  `gestion` varchar(20) NOT NULL COMMENT 'Año de gestión, ej: 2024'
 );
 
 CREATE TABLE `estudiantes_cursos` (
@@ -132,14 +169,14 @@ CREATE TABLE `estudiantes_apoderados` (
   `id_estudiante` int NOT NULL,
   `id_apoderado` int NOT NULL,
   `parentesco` varchar(50) NOT NULL,
-  `es_contacto_principal` boolean DEFAULT false,
+  `es_contacto_principal` boolean,
   PRIMARY KEY (`id_estudiante`, `id_apoderado`)
 );
 
 CREATE TABLE `materias` (
   `id_materia` int PRIMARY KEY AUTO_INCREMENT,
   `nombre_materia` varchar(50) NOT NULL,
-  `nivel` ENUM ('inicial', 'primaria', 'secundaria') NOT NULL
+  `nivel` varchar(50) NOT NULL COMMENT 'inicial, primaria, secundaria'
 );
 
 CREATE TABLE `profesores_cursos_materias` (
@@ -159,7 +196,7 @@ CREATE TABLE `motivos_retiro` (
 
 CREATE TABLE `autorizaciones_retiro` (
   `id_autorizacion` int PRIMARY KEY AUTO_INCREMENT,
-  `decidido_por` int NOT NULL,
+  `id_usuario_aprobador` int NOT NULL,
   `decision` ENUM ('aprobado', 'rechazado', 'pendiente') NOT NULL,
   `motivo_decision` varchar(255),
   `fecha_decision` datetime NOT NULL
@@ -174,8 +211,12 @@ CREATE TABLE `solicitudes_retiro` (
   `fecha_hora_salida` datetime NOT NULL,
   `fecha_hora_retorno_previsto` datetime,
   `observacion` text,
-  `foto_retirante_url` varchar(300),
-  `fecha_creacion` datetime NOT NULL
+  `fecha_creacion` datetime NOT NULL,
+  `estado` ENUM ('recibida', 'derivada', 'aprobada', 'rechazada', 'cancelada') NOT NULL DEFAULT 'recibida',
+  `id_recepcionista` int,
+  `fecha_recepcion` datetime,
+  `id_regente` int,
+  `fecha_derivacion` datetime
 );
 
 CREATE TABLE `solicitudes_retiro_detalle` (
@@ -277,9 +318,9 @@ CREATE TABLE `notificaciones` (
 
 CREATE TABLE `codigos_esquelas` (
   `id_codigo` int PRIMARY KEY AUTO_INCREMENT,
-  `tipo` ENUM ('reconocimiento', 'orientacion') NOT NULL,
+  `tipo` varchar(50) NOT NULL COMMENT 'reconocimiento, orientacion',
   `codigo` varchar(10) NOT NULL,
-  `descripcion` varchar(255) NOT NULL
+  `descripcion` text NOT NULL
 );
 
 CREATE TABLE `esquelas` (
@@ -300,6 +341,14 @@ CREATE TABLE `esquelas_codigos` (
 ALTER TABLE `rol_permisos` ADD FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id_rol`);
 
 ALTER TABLE `rol_permisos` ADD FOREIGN KEY (`id_permiso`) REFERENCES `permisos` (`id_permiso`);
+
+ALTER TABLE `personas` ADD FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`);
+
+ALTER TABLE `profesores` ADD FOREIGN KEY (`id_persona`) REFERENCES `personas` (`id_persona`) ON DELETE CASCADE;
+
+ALTER TABLE `administrativos` ADD FOREIGN KEY (`id_persona`) REFERENCES `personas` (`id_persona`) ON DELETE CASCADE;
+
+ALTER TABLE `administrativos` ADD FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`);
 
 ALTER TABLE `usuarios` ADD FOREIGN KEY (`id_persona`) REFERENCES `personas` (`id_persona`);
 
@@ -331,7 +380,7 @@ ALTER TABLE `profesores_cursos_materias` ADD FOREIGN KEY (`id_curso`) REFERENCES
 
 ALTER TABLE `profesores_cursos_materias` ADD FOREIGN KEY (`id_materia`) REFERENCES `materias` (`id_materia`);
 
-ALTER TABLE `autorizaciones_retiro` ADD FOREIGN KEY (`decidido_por`) REFERENCES `personas` (`id_persona`);
+ALTER TABLE `autorizaciones_retiro` ADD FOREIGN KEY (`id_usuario_aprobador`) REFERENCES `usuarios` (`id_usuario`);
 
 ALTER TABLE `solicitudes_retiro` ADD FOREIGN KEY (`id_estudiante`) REFERENCES `estudiantes` (`id_estudiante`);
 
@@ -340,6 +389,10 @@ ALTER TABLE `solicitudes_retiro` ADD FOREIGN KEY (`id_apoderado`) REFERENCES `ap
 ALTER TABLE `solicitudes_retiro` ADD FOREIGN KEY (`id_motivo`) REFERENCES `motivos_retiro` (`id_motivo`);
 
 ALTER TABLE `solicitudes_retiro` ADD FOREIGN KEY (`id_autorizacion`) REFERENCES `autorizaciones_retiro` (`id_autorizacion`);
+
+ALTER TABLE `solicitudes_retiro` ADD FOREIGN KEY (`id_recepcionista`) REFERENCES `usuarios` (`id_usuario`);
+
+ALTER TABLE `solicitudes_retiro` ADD FOREIGN KEY (`id_regente`) REFERENCES `usuarios` (`id_usuario`);
 
 ALTER TABLE `solicitudes_retiro_detalle` ADD FOREIGN KEY (`id_solicitud`) REFERENCES `solicitudes_retiro` (`id_solicitud`);
 
@@ -403,6 +456,18 @@ CREATE INDEX `rol_historial_index_1` ON `rol_historial` (`id_rol`);
 
 CREATE INDEX `rol_historial_index_2` ON `rol_historial` (`created_at`);
 
+CREATE INDEX `personas_index_cargo` ON `personas` (`id_cargo`);
+
+CREATE INDEX `personas_index_estado_laboral` ON `personas` (`estado_laboral`);
+
+CREATE INDEX `personas_index_años_experiencia` ON `personas` (`años_experiencia`);
+
+CREATE INDEX `profesores_index_persona` ON `profesores` (`id_persona`);
+
+CREATE INDEX `administrativos_index_persona` ON `administrativos` (`id_persona`);
+
+CREATE INDEX `administrativos_index_cargo` ON `administrativos` (`id_cargo`);
+
 CREATE INDEX `bitacora_index_3` ON `bitacora` (`id_usuario_admin`);
 
 CREATE INDEX `bitacora_index_4` ON `bitacora` (`fecha_hora`);
@@ -416,6 +481,12 @@ CREATE INDEX `solicitudes_retiro_index_7` ON `solicitudes_retiro` (`id_estudiant
 CREATE INDEX `solicitudes_retiro_index_8` ON `solicitudes_retiro` (`id_apoderado`);
 
 CREATE INDEX `solicitudes_retiro_index_9` ON `solicitudes_retiro` (`fecha_hora_salida`);
+
+CREATE INDEX `solicitudes_retiro_index_estado` ON `solicitudes_retiro` (`estado`);
+
+CREATE INDEX `solicitudes_retiro_index_recepcionista` ON `solicitudes_retiro` (`id_recepcionista`);
+
+CREATE INDEX `solicitudes_retiro_index_regente` ON `solicitudes_retiro` (`id_regente`);
 
 CREATE UNIQUE INDEX `solicitudes_retiro_detalle_index_10` ON `solicitudes_retiro_detalle` (`id_solicitud`, `id_curso`, `id_materia`);
 
@@ -436,6 +507,14 @@ CREATE INDEX `adjuntos_index_17` ON `adjuntos` (`id_incidente`);
 CREATE INDEX `adjuntos_index_18` ON `adjuntos` (`fecha_subida`);
 
 ALTER TABLE `rol_historial` COMMENT = 'Tabla nueva. Registra cada vez que se asigna o revoca un rol a un usuario, con trazabilidad completa.';
+
+ALTER TABLE `cargos` COMMENT = 'Catálogo de cargos laborales con niveles jerárquicos.';
+
+ALTER TABLE `personas` COMMENT = 'Tabla principal de personas. Ahora incluye información laboral para profesores y administrativos.';
+
+ALTER TABLE `profesores` COMMENT = 'Información específica de profesores vinculada a personas.';
+
+ALTER TABLE `administrativos` COMMENT = 'Información específica de personal administrativo vinculada a personas.';
 
 ALTER TABLE `bitacora` COMMENT = 'Tabla nueva. Auditoría general del sistema. Registra acciones administrativas sobre cualquier entidad.';
 

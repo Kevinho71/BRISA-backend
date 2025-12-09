@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from app.modules.retiros_tempranos.models.Estudiante import Estudiante
+from app.modules.administracion.models.persona_models import Estudiante
 
 
 class IEstudianteRepository(ABC):
