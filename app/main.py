@@ -59,16 +59,10 @@ async def log_requests(request: Request, call_next):
     logger.info(f"Response status: {response.status_code}")
     return response
 
-# CORS
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
