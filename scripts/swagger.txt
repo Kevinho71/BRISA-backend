@@ -1,0 +1,5314 @@
+{
+"openapi": "3.1.0",
+"info": {
+"title": "API Bienestar Estudiantil",
+"description": "Sistema de gestión de usuarios, roles, permisos y bitácora",
+"version": "1.0.0"
+},
+"paths": {
+"/api/auth/login": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Login",
+"description": "HU-01: Endpoint de inicio de sesión",
+"operationId": "login_api_auth_login_post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/LoginDTO"
+}
+}
+},
+"required": true
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Login Api Auth Login Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/logout": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Logout",
+"description": "HU-02: Endpoint de cierre de sesión",
+"operationId": "logout_api_auth_logout_post",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+}
+}
+}
+},
+"/api/auth/me": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Usuario Actual",
+"description": "Obtener información del usuario autenticado",
+"operationId": "obtener_usuario_actual_api_auth_me_get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Obtener Usuario Actual Api Auth Me Get"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/refresh": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Refresh Token",
+"description": "Refrescar token JWT",
+"operationId": "refresh_token_api_auth_refresh_post",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Refresh Token Api Auth Refresh Post"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/usuarios": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Crear Usuario Para Persona",
+"description": "✅ Crear usuario para una persona existente Genera contraseña temporal automáticamente ⚠️ SEGURIDAD: Requiere permiso 'crear_usuario'",
+"operationId": "crear_usuario_para_persona_api_auth_usuarios_post",
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/UsuarioCreateDTO"
+}
+}
+}
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Listar Usuarios",
+"description": "Listar todos los usuarios con información de persona",
+"operationId": "listar_usuarios_api_auth_usuarios_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 1000,
+"minimum": 1,
+"default": 1000,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Usuarios Api Auth Usuarios Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/usuarios/{id_usuario}/restablecer-password": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Restablecer Password",
+"description": "✅ Restablecer contraseña de un usuario Genera una nueva contraseña temporal automáticamente (misma lógica que crear usuario) ⚠️ SEGURIDAD: Requiere permiso 'editar_usuario' ⚠️ Solo administradores pueden hacer esto",
+"operationId": "restablecer_password_api_auth_usuarios__id_usuario__restablecer_password_post",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/cambiar-password": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Cambiar Password",
+"description": "🔐 Cambiar contraseña del usuario autenticado **Requisitos de seguridad:** - Usuario debe estar autenticado (requiere token JWT válido) - Debe proporcionar su contraseña actual correcta - La nueva contraseña debe cumplir requisitos de complejidad: * Mínimo 8 caracteres * Al menos 1 mayúscula * Al menos 1 minúscula * Al menos 1 número * Al menos 1 carácter especial - La nueva contraseña debe ser diferente a la actual - Las contraseñas nueva y confirmación deben coincidir **Auditoría:** - Se registra en Bitácora el cambio exitoso - Se registra en LoginLog los intentos fallidos (contraseña actual incorrecta) **Ejemplo de uso:** ```json POST /api/auth/cambiar-password Headers: { "Authorization": "Bearer <tu_token>" } Body: { "password_actual": "Password123!", "password_nueva": "NuevaPassword456!", "confirmar_password_nueva": "NuevaPassword456!" } ``` ⚠️ **IMPORTANTE:** Después de cambiar la contraseña, el token actual sigue siendo válido. Se recomienda cerrar sesión y volver a iniciar con la nueva contraseña.",
+"operationId": "cambiar_password_api_auth_cambiar_password_post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/CambiarPasswordDTO"
+}
+}
+},
+"required": true
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/usuarios/{id_usuario}": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Usuario",
+"description": "Obtener detalles de usuario específico",
+"operationId": "obtener_usuario_api_auth_usuarios__id_usuario__get",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Usuario Api Auth Usuarios Id Usuario Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Autenticación"
+],
+"summary": "Actualizar Usuario",
+"description": "✅ Actualizar usuario ⚠️ SEGURIDAD: Requiere permiso 'editar_usuario' Puede cambiar: - Usuario (nombre de usuario) - Correo - Contraseña (opcional) - Estado activo/inactivo",
+"operationId": "actualizar_usuario_api_auth_usuarios__id_usuario__put",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/UsuarioUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Actualizar Usuario Api Auth Usuarios Id Usuario Put"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Autenticación"
+],
+"summary": "Eliminar Usuario",
+"description": "Eliminar usuario (borrado lógico)",
+"operationId": "eliminar_usuario_api_auth_usuarios__id_usuario__delete",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Eliminar Usuario Api Auth Usuarios Id Usuario Delete"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/roles": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Crear Rol",
+"description": "Crear nuevo rol",
+"operationId": "crear_rol_api_auth_roles_post",
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RolCreateDTO"
+}
+}
+}
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Crear Rol Api Auth Roles Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Listar Roles",
+"description": "Listar todos los roles",
+"operationId": "listar_roles_api_auth_roles_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 100,
+"minimum": 1,
+"default": 50,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Roles Api Auth Roles Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/roles/{id_rol}": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Rol",
+"description": "Obtener detalles de rol específico",
+"operationId": "obtener_rol_api_auth_roles__id_rol__get",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Rol Api Auth Roles Id Rol Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Autenticación"
+],
+"summary": "Actualizar Rol",
+"description": "Actualizar rol",
+"operationId": "actualizar_rol_api_auth_roles__id_rol__put",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RolUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Autenticación"
+],
+"summary": "Eliminar Rol",
+"description": "Eliminar rol del sistema (borrado lógico) ⚠ SEGURIDAD: Requiere permiso 'eliminar_rol'",
+"operationId": "eliminar_rol_api_auth_roles__id_rol__delete",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Eliminar Rol Api Auth Roles Id Rol Delete"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/usuarios/{id_usuario}/roles/{id_rol}": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Asignar Rol Usuario",
+"description": "Asignar rol a usuario",
+"operationId": "asignar_rol_usuario_api_auth_usuarios__id_usuario__roles__id_rol__post",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+},
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Asignar Rol Usuario Api Auth Usuarios Id Usuario Roles Id Rol Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/roles/{id_rol}/permisos": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Asignar Permisos Rol",
+"description": "Asignar permisos a rol",
+"operationId": "asignar_permisos_rol_api_auth_roles__id_rol__permisos_post",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"type": "integer"
+},
+"title": "Permisos Ids"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Asignar Permisos Rol Api Auth Roles Id Rol Permisos Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/roles/{id_rol}/usuarios": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Usuarios Rol",
+"description": "👥 Obtener usuarios asignados a un rol específico Retorna lista de usuarios con: - Información básica del usuario - Información de la persona asociada - Estado activo/inactivo",
+"operationId": "obtener_usuarios_rol_api_auth_roles__id_rol__usuarios_get",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Usuarios Rol Api Auth Roles Id Rol Usuarios Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/permisos": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Listar Permisos",
+"description": "Listar todos los permisos",
+"operationId": "listar_permisos_api_auth_permisos_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 200,
+"minimum": 1,
+"default": 100,
+"title": "Limit"
+}
+},
+{
+"name": "modulo",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Modulo"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Permisos Api Auth Permisos Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/permisos/{id_permiso}": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Permiso",
+"description": "Obtener detalles de permiso específico",
+"operationId": "obtener_permiso_api_auth_permisos__id_permiso__get",
+"parameters": [
+{
+"name": "id_permiso",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Permiso"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Permiso Api Auth Permisos Id Permiso Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/permisos/{id_permiso}/roles": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Roles Con Permiso",
+"description": "Obtener roles que tienen un permiso específico",
+"operationId": "obtener_roles_con_permiso_api_auth_permisos__id_permiso__roles_get",
+"parameters": [
+{
+"name": "id_permiso",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Permiso"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Roles Con Permiso Api Auth Permisos Id Permiso Roles Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/me/permisos": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Mis Permisos",
+"description": "📋 Obtener permisos detallados del usuario actual Retorna: - Lista de permisos con módulo - Permisos agrupados por módulo - Lista de módulos accesibles - Lista de acciones específicas disponibles - Información si es administrador Ejemplo de respuesta: ```json { "permisos": [ {"permiso": "Lectura", "modulo": "usuarios"}, {"permiso": "Agregar", "modulo": "incidentes"} ], "permisos_por_modulo": { "usuarios": ["Lectura", "Agregar"], "incidentes": ["Lectura", "Agregar", "Modificar"] }, "modulos_accesibles": ["usuarios", "incidentes"], "acciones_disponibles": ["ver_usuario", "crear_incidente"], "es_administrador": false } ```",
+"operationId": "obtener_mis_permisos_api_auth_me_permisos_get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Obtener Mis Permisos Api Auth Me Permisos Get"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/me/puede-acceder/{modulo}": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Verificar Acceso Modulo",
+"description": "🔍 Verificar si el usuario puede acceder a un módulo específico Parámetros: - modulo: Nombre del módulo (usuarios, incidentes, esquelas, etc) Ejemplo: GET /api/auth/me/puede-acceder/incidentes",
+"operationId": "verificar_acceso_modulo_api_auth_me_puede_acceder__modulo__get",
+"parameters": [
+{
+"name": "modulo",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"title": "Modulo"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Verificar Acceso Modulo Api Auth Me Puede Acceder Modulo Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/me/verificar-permiso": {
+"post": {
+"tags": [
+"Autenticación"
+],
+"summary": "Verificar Permiso Especifico",
+"description": "✅ Verificar si el usuario tiene permiso para una acción específica Body: ```json { "accion": "editar_usuario" } ``` Útil para el frontend antes de mostrar botones o permitir acciones",
+"operationId": "verificar_permiso_especifico_api_auth_me_verificar_permiso_post",
+"parameters": [
+{
+"name": "accion",
+"in": "query",
+"required": true,
+"schema": {
+"type": "string",
+"title": "Accion"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Verificar Permiso Especifico Api Auth Me Verificar Permiso Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/logs-acceso": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Listar Logs Acceso",
+"description": "Listar logs de acceso al sistema",
+"operationId": "listar_logs_acceso_api_auth_logs_acceso_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 200,
+"minimum": 1,
+"default": 100,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Logs Acceso Api Auth Logs Acceso Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/personas": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Listar Personas",
+"description": "Listar todas las personas con filtros opcionales",
+"operationId": "listar_personas_api_auth_personas_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"description": "Registros a saltar",
+"default": 0,
+"title": "Skip"
+},
+"description": "Registros a saltar"
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 1000,
+"minimum": 1,
+"description": "Límite de registros",
+"default": 50,
+"title": "Limit"
+},
+"description": "Límite de registros"
+},
+{
+"name": "tipo_persona",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Filtrar por tipo: 'profesor' o 'administrativo'",
+"title": "Tipo Persona"
+},
+"description": "Filtrar por tipo: 'profesor' o 'administrativo'"
+},
+{
+"name": "busqueda",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Buscar en: nombre, CI, correo, teléfono",
+"title": "Busqueda"
+},
+"description": "Buscar en: nombre, CI, correo, teléfono"
+},
+{
+"name": "estado",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Filtrar por estado: 'activo' o 'inactivo'",
+"title": "Estado"
+},
+"description": "Filtrar por estado: 'activo' o 'inactivo'"
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Personas Api Auth Personas Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/id/{persona_id}": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Persona Por Id",
+"description": "🔍 Obtener una persona específica por ID",
+"operationId": "obtener_persona_por_id_api_auth_id__persona_id__get",
+"parameters": [
+{
+"name": "persona_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Persona Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Persona Por Id Api Auth Id Persona Id Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/ci/{ci}": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Persona Por Ci",
+"description": "🔍 Obtener una persona específica por CI",
+"operationId": "obtener_persona_por_ci_api_auth_ci__ci__get",
+"parameters": [
+{
+"name": "ci",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"title": "Ci"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Persona Por Ci Api Auth Ci Ci Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/auth/personas/estadisticas": {
+"get": {
+"tags": [
+"Autenticación"
+],
+"summary": "Obtener Estadisticas",
+"description": "📊 Obtener estadísticas de personas Retorna: - Total de personas - Contador por tipo (profesor/administrativo) - Contador por estado (activo/inactivo) - Personas con/sin usuario",
+"operationId": "obtener_estadisticas_api_auth_personas_estadisticas_get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Obtener Estadisticas Api Auth Personas Estadisticas Get"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios": {
+"post": {
+"tags": [
+"Usuarios"
+],
+"summary": "Crear Usuario",
+"description": "Crear nuevo usuario (RF-01) ⚠️ SEGURIDAD: Requiere permiso 'crear_usuario'",
+"operationId": "crear_usuario_api_usuarios_post",
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/UsuarioCreateDTO"
+}
+}
+}
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Crear Usuario Api Usuarios Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Listar Usuarios",
+"description": "Listar todos los usuarios (RF-01)",
+"operationId": "listar_usuarios_api_usuarios_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 100,
+"minimum": 1,
+"default": 50,
+"title": "Limit"
+}
+},
+{
+"name": "estado",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Estado"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Usuarios Api Usuarios Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/{id_usuario}": {
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Obtener Usuario",
+"description": "Obtener detalles de usuario específico",
+"operationId": "obtener_usuario_api_usuarios__id_usuario__get",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Usuario Api Usuarios Id Usuario Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Usuarios"
+],
+"summary": "Actualizar Usuario",
+"description": "Actualizar usuario (RF-06) ⚠️ SEGURIDAD: Requiere permiso 'editar_usuario' Audita todos los cambios realizados",
+"operationId": "actualizar_usuario_api_usuarios__id_usuario__put",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/UsuarioUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Actualizar Usuario Api Usuarios Id Usuario Put"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Usuarios"
+],
+"summary": "Eliminar Usuario",
+"description": "Eliminar usuario (borrado lógico) (RF-06) ⚠️ SEGURIDAD: Requiere permiso 'eliminar_usuario' Marca el usuario como inactivo",
+"operationId": "eliminar_usuario_api_usuarios__id_usuario__delete",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Eliminar Usuario Api Usuarios Id Usuario Delete"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/roles": {
+"post": {
+"tags": [
+"Usuarios"
+],
+"summary": "Crear Rol",
+"description": "Crear nuevo rol (RF-03) ⚠️ SEGURIDAD: Requiere permiso 'crear_rol'",
+"operationId": "crear_rol_api_usuarios_roles_post",
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RolCreateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Crear Rol Api Usuarios Roles Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Listar Roles",
+"description": "Listar todos los roles",
+"operationId": "listar_roles_api_usuarios_roles_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 100,
+"minimum": 1,
+"default": 50,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Roles Api Usuarios Roles Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/roles/{id_rol}": {
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Obtener Rol",
+"description": "Obtener detalles de rol específico",
+"operationId": "obtener_rol_api_usuarios_roles__id_rol__get",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Rol Api Usuarios Roles Id Rol Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/roles/{id_rol}/usuarios": {
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Obtener Usuarios Rol",
+"description": "👥 Obtener usuarios asignados a un rol específico Retorna lista de usuarios con: - Información básica del usuario - Información de la persona asociada - Estado activo/inactivo",
+"operationId": "obtener_usuarios_rol_api_usuarios_roles__id_rol__usuarios_get",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Usuarios Rol Api Usuarios Roles Id Rol Usuarios Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/{id_usuario}/roles/{id_rol}": {
+"post": {
+"tags": [
+"Usuarios"
+],
+"summary": "Asignar Rol Usuario",
+"description": "Asignar rol a usuario (RF-02) ⚠️ SEGURIDAD: Requiere permiso 'asignar_permisos'",
+"operationId": "asignar_rol_usuario_api_usuarios__id_usuario__roles__id_rol__post",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+},
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Asignar Rol Usuario Api Usuarios Id Usuario Roles Id Rol Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Usuarios"
+],
+"summary": "Revocar Rol Usuario",
+"description": "Revocar rol de usuario (RF-02) ⚠️ SEGURIDAD: Requiere permiso 'asignar_permisos'",
+"operationId": "revocar_rol_usuario_api_usuarios__id_usuario__roles__id_rol__delete",
+"parameters": [
+{
+"name": "id_usuario",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Usuario"
+}
+},
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Revocar Rol Usuario Api Usuarios Id Usuario Roles Id Rol Delete"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/roles/{id_rol}/permisos": {
+"post": {
+"tags": [
+"Usuarios"
+],
+"summary": "Asignar Permisos Rol",
+"description": "Asignar permisos a rol (RF-04) ⚠️ SEGURIDAD: Requiere permiso 'asignar_permisos'",
+"operationId": "asignar_permisos_rol_api_usuarios_roles__id_rol__permisos_post",
+"parameters": [
+{
+"name": "id_rol",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Rol"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"type": "integer"
+},
+"title": "Permisos Ids"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Asignar Permisos Rol Api Usuarios Roles Id Rol Permisos Post"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/permisos": {
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Listar Permisos",
+"description": "Listar todos los permisos disponibles",
+"operationId": "listar_permisos_api_usuarios_permisos_get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 200,
+"minimum": 1,
+"default": 100,
+"title": "Limit"
+}
+},
+{
+"name": "modulo",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Modulo"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Listar Permisos Api Usuarios Permisos Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/usuarios/permisos/{id_permiso}": {
+"get": {
+"tags": [
+"Usuarios"
+],
+"summary": "Obtener Permiso",
+"description": "Obtener detalles de permiso específico",
+"operationId": "obtener_permiso_api_usuarios_permisos__id_permiso__get",
+"parameters": [
+{
+"name": "id_permiso",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Permiso"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Permiso Api Usuarios Permisos Id Permiso Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Raiz Bitacora",
+"description": "Rutas disponibles en el módulo de auditoría",
+"operationId": "raiz_bitacora_api_bitacora__get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Raiz Bitacora Api Bitacora Get"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/auditoria": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Consultar Auditoria",
+"description": "📋 CU-07: Consultar Auditoría General Muestra registros de la tabla Bitácora (acciones del sistema): - Creación/edición/eliminación de usuarios - Asignación/revocación de roles - Cambios de permisos - Todas las acciones administrativas",
+"operationId": "consultar_auditoria_api_bitacora_auditoria_get",
+"parameters": [
+{
+"name": "usuario_admin",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"description": "ID del usuario que ejecutó la acción",
+"title": "Usuario Admin"
+},
+"description": "ID del usuario que ejecutó la acción"
+},
+{
+"name": "accion",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Tipo de acción (LOGIN, CREAR_USUARIO, etc)",
+"title": "Accion"
+},
+"description": "Tipo de acción (LOGIN, CREAR_USUARIO, etc)"
+},
+{
+"name": "tipo_objetivo",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Tipo de objeto (Usuario, Rol, etc)",
+"title": "Tipo Objetivo"
+},
+"description": "Tipo de objeto (Usuario, Rol, etc)"
+},
+{
+"name": "id_objetivo",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"description": "ID del objeto afectado",
+"title": "Id Objetivo"
+},
+"description": "ID del objeto afectado"
+},
+{
+"name": "fecha_inicio",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Fecha inicio (YYYY-MM-DD)",
+"title": "Fecha Inicio"
+},
+"description": "Fecha inicio (YYYY-MM-DD)"
+},
+{
+"name": "fecha_fin",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"description": "Fecha fin (YYYY-MM-DD)",
+"title": "Fecha Fin"
+},
+"description": "Fecha fin (YYYY-MM-DD)"
+},
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 200,
+"minimum": 1,
+"default": 50,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Consultar Auditoria Api Bitacora Auditoria Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/auditoria/estadisticas": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Estadisticas Auditoria",
+"description": "📊 Estadísticas de auditoría general Muestra: - Acciones más frecuentes - Usuarios más activos - Distribución por tipo de acción",
+"operationId": "estadisticas_auditoria_api_bitacora_auditoria_estadisticas_get",
+"parameters": [
+{
+"name": "dias",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 365,
+"minimum": 1,
+"default": 7,
+"title": "Dias"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Estadisticas Auditoria Api Bitacora Auditoria Estadisticas Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/auditoria/acciones": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Listar Tipos Acciones",
+"description": "📝 Listar tipos de acciones disponibles Útil para los filtros en el frontend",
+"operationId": "listar_tipos_acciones_api_bitacora_auditoria_acciones_get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"additionalProperties": true,
+"type": "object",
+"title": "Response Listar Tipos Acciones Api Bitacora Auditoria Acciones Get"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/login-logs": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Obtener Login Logs",
+"description": "🔐 Logs de autenticación (LOGIN/LOGOUT) Vista específica para seguridad",
+"operationId": "obtener_login_logs_api_bitacora_login_logs_get",
+"parameters": [
+{
+"name": "usuario_id",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Usuario Id"
+}
+},
+{
+"name": "estado",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Estado"
+}
+},
+{
+"name": "ip_address",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Ip Address"
+}
+},
+{
+"name": "fecha_inicio",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Inicio"
+}
+},
+{
+"name": "fecha_fin",
+"in": "query",
+"required": false,
+"schema": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Fin"
+}
+},
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"minimum": 0,
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 500,
+"minimum": 1,
+"default": 50,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Login Logs Api Bitacora Login Logs Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/login-logs/estadisticas": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Obtener Estadisticas Login",
+"description": "📊 Estadísticas de autenticación",
+"operationId": "obtener_estadisticas_login_api_bitacora_login_logs_estadisticas_get",
+"parameters": [
+{
+"name": "dias",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 365,
+"minimum": 1,
+"default": 7,
+"title": "Dias"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Estadisticas Login Api Bitacora Login Logs Estadisticas Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/bitacora/login-logs/usuario/{usuario_id}": {
+"get": {
+"tags": [
+"Bitácora"
+],
+"summary": "Obtener Historial Login Usuario",
+"description": "👤 Historial de autenticación de un usuario",
+"operationId": "obtener_historial_login_usuario_api_bitacora_login_logs_usuario__usuario_id__get",
+"parameters": [
+{
+"name": "usuario_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Usuario Id"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"maximum": 200,
+"minimum": 1,
+"default": 50,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "object",
+"additionalProperties": true,
+"title": "Response Obtener Historial Login Usuario Api Bitacora Login Logs Usuario Usuario Id Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/autorizaciones-retiro/": {
+"get": {
+"tags": [
+"Retiros Tempranos - Autorizaciones",
+"autorizaciones-retiro"
+],
+"summary": "Get All Autorizaciones",
+"description": "Obtener todas las autorizaciones de retiro",
+"operationId": "get_all_autorizaciones_api_autorizaciones_retiro__get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"items": {
+"$ref": "#/components/schemas/AutorizacionRetiroResponseDTO"
+},
+"type": "array",
+"title": "Response Get All Autorizaciones Api Autorizaciones Retiro Get"
+}
+}
+}
+}
+}
+},
+"post": {
+"tags": [
+"Retiros Tempranos - Autorizaciones",
+"autorizaciones-retiro"
+],
+"summary": "Create Autorizacion",
+"description": "Crear una nueva autorización de retiro",
+"operationId": "create_autorizacion_api_autorizaciones_retiro__post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/AutorizacionRetiroCreateDTO"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/AutorizacionRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/autorizaciones-retiro/{autorizacion_id}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Autorizaciones",
+"autorizaciones-retiro"
+],
+"summary": "Get Autorizacion",
+"description": "Obtener una autorización de retiro por ID",
+"operationId": "get_autorizacion_api_autorizaciones_retiro__autorizacion_id__get",
+"parameters": [
+{
+"name": "autorizacion_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Autorizacion Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/AutorizacionRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Retiros Tempranos - Autorizaciones",
+"autorizaciones-retiro"
+],
+"summary": "Update Autorizacion",
+"description": "Actualizar una autorización de retiro",
+"operationId": "update_autorizacion_api_autorizaciones_retiro__autorizacion_id__put",
+"parameters": [
+{
+"name": "autorizacion_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Autorizacion Id"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/AutorizacionRetiroUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/AutorizacionRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Retiros Tempranos - Autorizaciones",
+"autorizaciones-retiro"
+],
+"summary": "Delete Autorizacion",
+"description": "Eliminar una autorización de retiro",
+"operationId": "delete_autorizacion_api_autorizaciones_retiro__autorizacion_id__delete",
+"parameters": [
+{
+"name": "autorizacion_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Autorizacion Id"
+}
+}
+],
+"responses": {
+"204": {
+"description": "Successful Response"
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/motivos-retiro/": {
+"post": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Create Motivo",
+"description": "Crear un nuevo motivo de retiro",
+"operationId": "create_motivo_api_motivos_retiro__post",
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/MotivoRetiroCreateDTO"
+}
+}
+}
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/MotivoRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"get": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Get All Motivos",
+"description": "Obtener todos los motivos de retiro con paginación",
+"operationId": "get_all_motivos_api_motivos_retiro__get",
+"parameters": [
+{
+"name": "skip",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"default": 0,
+"title": "Skip"
+}
+},
+{
+"name": "limit",
+"in": "query",
+"required": false,
+"schema": {
+"type": "integer",
+"default": 100,
+"title": "Limit"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/MotivoRetiroResponseDTO"
+},
+"title": "Response Get All Motivos Api Motivos Retiro Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/motivos-retiro/activos": {
+"get": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Get Motivos Activos",
+"description": "Obtener los motivos de retiro activos",
+"operationId": "get_motivos_activos_api_motivos_retiro_activos_get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"items": {
+"$ref": "#/components/schemas/MotivoRetiroResponseDTO"
+},
+"type": "array",
+"title": "Response Get Motivos Activos Api Motivos Retiro Activos Get"
+}
+}
+}
+}
+}
+}
+},
+"/api/motivos-retiro/severidad/{severidad}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Get Motivos By Severidad",
+"description": "Obtener motivos de retiro por nivel de severidad (alta, media, baja)",
+"operationId": "get_motivos_by_severidad_api_motivos_retiro_severidad__severidad__get",
+"parameters": [
+{
+"name": "severidad",
+"in": "path",
+"required": true,
+"schema": {
+"type": "string",
+"title": "Severidad"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/MotivoRetiroResponseDTO"
+},
+"title": "Response Get Motivos By Severidad Api Motivos Retiro Severidad Severidad Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/motivos-retiro/{motivo_id}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Get Motivo",
+"description": "Obtener un motivo de retiro por ID",
+"operationId": "get_motivo_api_motivos_retiro__motivo_id__get",
+"parameters": [
+{
+"name": "motivo_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Motivo Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/MotivoRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Update Motivo",
+"description": "Actualizar un motivo de retiro",
+"operationId": "update_motivo_api_motivos_retiro__motivo_id__put",
+"parameters": [
+{
+"name": "motivo_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Motivo Id"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/MotivoRetiroUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/MotivoRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Retiros Tempranos - Motivos",
+"motivos-retiro"
+],
+"summary": "Delete Motivo",
+"description": "Eliminar un motivo de retiro",
+"operationId": "delete_motivo_api_motivos_retiro__motivo_id__delete",
+"parameters": [
+{
+"name": "motivo_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Motivo Id"
+}
+}
+],
+"responses": {
+"204": {
+"description": "Successful Response"
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/registros-salida/": {
+"get": {
+"tags": [
+"Retiros Tempranos - Registros",
+"registros-salida"
+],
+"summary": "Get All Registros",
+"description": "Obtener todos los registros de salida",
+"operationId": "get_all_registros_api_registros_salida__get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"items": {
+"$ref": "#/components/schemas/RegistroSalidaResponseDTO"
+},
+"type": "array",
+"title": "Response Get All Registros Api Registros Salida Get"
+}
+}
+}
+}
+}
+},
+"post": {
+"tags": [
+"Retiros Tempranos - Registros",
+"registros-salida"
+],
+"summary": "Create Registro",
+"description": "Crear un nuevo registro de salida",
+"operationId": "create_registro_api_registros_salida__post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RegistroSalidaCreateDTO"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RegistroSalidaResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/registros-salida/{registro_id}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Registros",
+"registros-salida"
+],
+"summary": "Get Registro",
+"description": "Obtener un registro de salida por ID",
+"operationId": "get_registro_api_registros_salida__registro_id__get",
+"parameters": [
+{
+"name": "registro_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Registro Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RegistroSalidaResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Retiros Tempranos - Registros",
+"registros-salida"
+],
+"summary": "Update Registro",
+"description": "Actualizar un registro de salida",
+"operationId": "update_registro_api_registros_salida__registro_id__put",
+"parameters": [
+{
+"name": "registro_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Registro Id"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RegistroSalidaUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/RegistroSalidaResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Retiros Tempranos - Registros",
+"registros-salida"
+],
+"summary": "Delete Registro",
+"description": "Eliminar un registro de salida",
+"operationId": "delete_registro_api_registros_salida__registro_id__delete",
+"parameters": [
+{
+"name": "registro_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Registro Id"
+}
+}
+],
+"responses": {
+"204": {
+"description": "Successful Response"
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/registros-salida/estudiante/{estudiante_id}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Registros",
+"registros-salida"
+],
+"summary": "Get Registros By Estudiante",
+"description": "Obtener todos los registros de salida de un estudiante",
+"operationId": "get_registros_by_estudiante_api_registros_salida_estudiante__estudiante_id__get",
+"parameters": [
+{
+"name": "estudiante_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Estudiante Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/RegistroSalidaResponseDTO"
+},
+"title": "Response Get Registros By Estudiante Api Registros Salida Estudiante Estudiante Id Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/solicitudes-retiro/": {
+"get": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Get All Solicitudes",
+"description": "Obtener todas las solicitudes de retiro",
+"operationId": "get_all_solicitudes_api_solicitudes_retiro__get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"items": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+},
+"type": "array",
+"title": "Response Get All Solicitudes Api Solicitudes Retiro Get"
+}
+}
+}
+}
+}
+},
+"post": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Create Solicitud",
+"description": "Crear una nueva solicitud de retiro (estado inicial: recibida, automáticamente)",
+"operationId": "create_solicitud_api_solicitudes_retiro__post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroCreateDTO"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/solicitudes-retiro/estado/{estado}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Get Solicitudes By Estado",
+"description": "Obtener solicitudes por estado (recibida, derivada, aprobada, rechazada, cancelada)",
+"operationId": "get_solicitudes_by_estado_api_solicitudes_retiro_estado__estado__get",
+"parameters": [
+{
+"name": "estado",
+"in": "path",
+"required": true,
+"schema": {
+"$ref": "#/components/schemas/EstadoSolicitudEnum"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+},
+"title": "Response Get Solicitudes By Estado Api Solicitudes Retiro Estado Estado Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/solicitudes-retiro/{solicitud_id}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Get Solicitud",
+"description": "Obtener una solicitud de retiro por ID",
+"operationId": "get_solicitud_api_solicitudes_retiro__solicitud_id__get",
+"parameters": [
+{
+"name": "solicitud_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Solicitud Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Update Solicitud",
+"description": "Actualizar una solicitud de retiro",
+"operationId": "update_solicitud_api_solicitudes_retiro__solicitud_id__put",
+"parameters": [
+{
+"name": "solicitud_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Solicitud Id"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Delete Solicitud",
+"description": "Eliminar una solicitud de retiro",
+"operationId": "delete_solicitud_api_solicitudes_retiro__solicitud_id__delete",
+"parameters": [
+{
+"name": "solicitud_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Solicitud Id"
+}
+}
+],
+"responses": {
+"204": {
+"description": "Successful Response"
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/solicitudes-retiro/estudiante/{estudiante_id}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Get Solicitudes By Estudiante",
+"description": "Obtener todas las solicitudes de retiro de un estudiante",
+"operationId": "get_solicitudes_by_estudiante_api_solicitudes_retiro_estudiante__estudiante_id__get",
+"parameters": [
+{
+"name": "estudiante_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Estudiante Id"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+},
+"title": "Response Get Solicitudes By Estudiante Api Solicitudes Retiro Estudiante Estudiante Id Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/solicitudes-retiro/{solicitud_id}/derivar": {
+"post": {
+"tags": [
+"Retiros Tempranos - Solicitudes",
+"solicitudes-retiro"
+],
+"summary": "Derivar Solicitud",
+"description": "RECEPCIONISTA: Derivar solicitud a un regente específico (recibida → derivada)",
+"operationId": "derivar_solicitud_api_solicitudes_retiro__solicitud_id__derivar_post",
+"parameters": [
+{
+"name": "solicitud_id",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Solicitud Id"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroDerivarDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/SolicitudRetiroResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/estudiantes-apoderados/": {
+"post": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Create Relacion",
+"description": "Crear una nueva relación estudiante-apoderado",
+"operationId": "create_relacion_api_estudiantes_apoderados__post",
+"requestBody": {
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoCreateDTO"
+}
+}
+},
+"required": true
+},
+"responses": {
+"201": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/estudiantes-apoderados/estudiante/{id_estudiante}/apoderado/{id_apoderado}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Get Relacion",
+"description": "Obtener una relación específica estudiante-apoderado",
+"operationId": "get_relacion_api_estudiantes_apoderados_estudiante__id_estudiante__apoderado__id_apoderado__get",
+"parameters": [
+{
+"name": "id_estudiante",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Estudiante"
+}
+},
+{
+"name": "id_apoderado",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Apoderado"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"put": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Update Relacion",
+"description": "Actualizar una relación estudiante-apoderado",
+"operationId": "update_relacion_api_estudiantes_apoderados_estudiante__id_estudiante__apoderado__id_apoderado__put",
+"parameters": [
+{
+"name": "id_estudiante",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Estudiante"
+}
+},
+{
+"name": "id_apoderado",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Apoderado"
+}
+}
+],
+"requestBody": {
+"required": true,
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoUpdateDTO"
+}
+}
+}
+},
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+},
+"delete": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Delete Relacion",
+"description": "Eliminar una relación estudiante-apoderado",
+"operationId": "delete_relacion_api_estudiantes_apoderados_estudiante__id_estudiante__apoderado__id_apoderado__delete",
+"parameters": [
+{
+"name": "id_estudiante",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Estudiante"
+}
+},
+{
+"name": "id_apoderado",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Apoderado"
+}
+}
+],
+"responses": {
+"204": {
+"description": "Successful Response"
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/estudiantes-apoderados/estudiante/{id_estudiante}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Get Apoderados By Estudiante",
+"description": "Obtener todos los apoderados de un estudiante",
+"operationId": "get_apoderados_by_estudiante_api_estudiantes_apoderados_estudiante__id_estudiante__get",
+"parameters": [
+{
+"name": "id_estudiante",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Estudiante"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+},
+"title": "Response Get Apoderados By Estudiante Api Estudiantes Apoderados Estudiante Id Estudiante Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/estudiantes-apoderados/apoderado/{id_apoderado}": {
+"get": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Get Estudiantes By Apoderado",
+"description": "Obtener todos los estudiantes de un apoderado",
+"operationId": "get_estudiantes_by_apoderado_api_estudiantes_apoderados_apoderado__id_apoderado__get",
+"parameters": [
+{
+"name": "id_apoderado",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Apoderado"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+},
+"title": "Response Get Estudiantes By Apoderado Api Estudiantes Apoderados Apoderado Id Apoderado Get"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/estudiantes-apoderados/estudiante/{id_estudiante}/contacto-principal": {
+"get": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Get Contacto Principal",
+"description": "Obtener el apoderado de contacto principal de un estudiante",
+"operationId": "get_contacto_principal_api_estudiantes_apoderados_estudiante__id_estudiante__contacto_principal_get",
+"parameters": [
+{
+"name": "id_estudiante",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Estudiante"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/api/estudiantes-apoderados/estudiante/{id_estudiante}/apoderado/{id_apoderado}/contacto-principal": {
+"put": {
+"tags": [
+"Retiros Tempranos - Relaciones",
+"estudiantes-apoderados"
+],
+"summary": "Set Contacto Principal",
+"description": "Establecer un apoderado como contacto principal",
+"operationId": "set_contacto_principal_api_estudiantes_apoderados_estudiante__id_estudiante__apoderado__id_apoderado__contacto_principal_put",
+"parameters": [
+{
+"name": "id_estudiante",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Estudiante"
+}
+},
+{
+"name": "id_apoderado",
+"in": "path",
+"required": true,
+"schema": {
+"type": "integer",
+"title": "Id Apoderado"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/EstudianteApoderadoResponseDTO"
+}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+},
+"/": {
+"get": {
+"summary": "Root",
+"operationId": "root__get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+}
+}
+}
+},
+"/health": {
+"get": {
+"tags": [
+"Health"
+],
+"summary": "Health Check",
+"operationId": "health_check_health_get",
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+}
+}
+}
+},
+"/debug-token": {
+"get": {
+"summary": "Debug Token",
+"operationId": "debug_token_debug_token_get",
+"parameters": [
+{
+"name": "authorization",
+"in": "header",
+"required": false,
+"schema": {
+"type": "string",
+"title": "Authorization"
+}
+}
+],
+"responses": {
+"200": {
+"description": "Successful Response",
+"content": {
+"application/json": {
+"schema": {}
+}
+}
+},
+"422": {
+"description": "Validation Error",
+"content": {
+"application/json": {
+"schema": {
+"$ref": "#/components/schemas/HTTPValidationError"
+}
+}
+}
+}
+}
+}
+}
+},
+"components": {
+"schemas": {
+"AutorizacionRetiroCreateDTO": {
+"properties": {
+"id_solicitud": {
+"type": "integer",
+"title": "Id Solicitud",
+"description": "ID de la solicitud que se está autorizando"
+},
+"decision": {
+"$ref": "#/components/schemas/DecisionEnum",
+"description": "Decisión tomada (aprobado/rechazado)"
+},
+"motivo_decision": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 255
+},
+{
+"type": "null"
+}
+],
+"title": "Motivo Decision",
+"description": "Motivo de la decisión"
+}
+},
+"type": "object",
+"required": [
+"id_solicitud",
+"decision"
+],
+"title": "AutorizacionRetiroCreateDTO",
+"description": "DTO para crear una autorización de retiro"
+},
+"AutorizacionRetiroResponseDTO": {
+"properties": {
+"id_autorizacion": {
+"type": "integer",
+"title": "Id Autorizacion",
+"description": "ID de la autorización"
+},
+"id_usuario_aprobador": {
+"type": "integer",
+"title": "Id Usuario Aprobador",
+"description": "ID del usuario que aprobó/rechazó"
+},
+"decision": {
+"type": "string",
+"title": "Decision",
+"description": "Decisión tomada"
+},
+"motivo_decision": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Motivo Decision",
+"description": "Motivo de la decisión"
+},
+"fecha_decision": {
+"type": "string",
+"format": "date-time",
+"title": "Fecha Decision",
+"description": "Fecha y hora de la decisión"
+}
+},
+"type": "object",
+"required": [
+"id_autorizacion",
+"id_usuario_aprobador",
+"decision",
+"fecha_decision"
+],
+"title": "AutorizacionRetiroResponseDTO",
+"description": "DTO para respuesta de autorización de retiro"
+},
+"AutorizacionRetiroUpdateDTO": {
+"properties": {
+"decision": {
+"anyOf": [
+{
+"$ref": "#/components/schemas/DecisionEnum"
+},
+{
+"type": "null"
+}
+],
+"description": "Decisión tomada"
+},
+"motivo_decision": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 255
+},
+{
+"type": "null"
+}
+],
+"title": "Motivo Decision",
+"description": "Motivo de la decisión"
+}
+},
+"type": "object",
+"title": "AutorizacionRetiroUpdateDTO",
+"description": "DTO para actualizar una autorización de retiro"
+},
+"CambiarPasswordDTO": {
+"properties": {
+"password_actual": {
+"type": "string",
+"title": "Password Actual"
+},
+"password_nueva": {
+"type": "string",
+"title": "Password Nueva"
+},
+"confirmar_password_nueva": {
+"type": "string",
+"title": "Confirmar Password Nueva"
+}
+},
+"type": "object",
+"required": [
+"password_actual",
+"password_nueva",
+"confirmar_password_nueva"
+],
+"title": "CambiarPasswordDTO",
+"description": "DTO para cambio de contraseña del usuario El usuario debe proporcionar su contraseña actual para seguridad",
+"example": {
+"confirmar_password_nueva": "NuevaPassword456!",
+"password_actual": "Password123!",
+"password_nueva": "NuevaPassword456!"
+}
+},
+"DecisionEnum": {
+"type": "string",
+"enum": [
+"aprobado",
+"rechazado",
+"pendiente"
+],
+"title": "DecisionEnum",
+"description": "Decisiones posibles para autorizaciones"
+},
+"EstadoSolicitudEnum": {
+"type": "string",
+"enum": [
+"recibida",
+"derivada",
+"aprobada",
+"rechazada",
+"cancelada"
+],
+"title": "EstadoSolicitudEnum",
+"description": "Estados del flujo de aprobación de solicitudes"
+},
+"EstudianteApoderadoCreateDTO": {
+"properties": {
+"id_estudiante": {
+"type": "integer",
+"title": "Id Estudiante",
+"description": "ID del estudiante"
+},
+"id_apoderado": {
+"type": "integer",
+"title": "Id Apoderado",
+"description": "ID del apoderado"
+},
+"parentesco": {
+"type": "string",
+"maxLength": 50,
+"minLength": 1,
+"title": "Parentesco",
+"description": "Relación de parentesco"
+},
+"es_contacto_principal": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Es Contacto Principal",
+"description": "Indica si es el contacto principal",
+"default": false
+}
+},
+"type": "object",
+"required": [
+"id_estudiante",
+"id_apoderado",
+"parentesco"
+],
+"title": "EstudianteApoderadoCreateDTO",
+"description": "DTO para asociar un apoderado con un estudiante"
+},
+"EstudianteApoderadoResponseDTO": {
+"properties": {
+"id_estudiante": {
+"type": "integer",
+"title": "Id Estudiante",
+"description": "ID del estudiante"
+},
+"id_apoderado": {
+"type": "integer",
+"title": "Id Apoderado",
+"description": "ID del apoderado"
+},
+"parentesco": {
+"type": "string",
+"title": "Parentesco",
+"description": "Relación de parentesco"
+},
+"es_contacto_principal": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Es Contacto Principal",
+"description": "Es contacto principal"
+}
+},
+"type": "object",
+"required": [
+"id_estudiante",
+"id_apoderado",
+"parentesco"
+],
+"title": "EstudianteApoderadoResponseDTO",
+"description": "DTO para respuesta de relación estudiante-apoderado"
+},
+"EstudianteApoderadoUpdateDTO": {
+"properties": {
+"parentesco": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 50,
+"minLength": 1
+},
+{
+"type": "null"
+}
+],
+"title": "Parentesco",
+"description": "Relación de parentesco"
+},
+"es_contacto_principal": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Es Contacto Principal",
+"description": "Indica si es el contacto principal"
+}
+},
+"type": "object",
+"title": "EstudianteApoderadoUpdateDTO",
+"description": "DTO para actualizar la relación estudiante-apoderado"
+},
+"HTTPValidationError": {
+"properties": {
+"detail": {
+"items": {
+"$ref": "#/components/schemas/ValidationError"
+},
+"type": "array",
+"title": "Detail"
+}
+},
+"type": "object",
+"title": "HTTPValidationError"
+},
+"LoginDTO": {
+"properties": {
+"usuario": {
+"type": "string",
+"title": "Usuario"
+},
+"password": {
+"type": "string",
+"title": "Password"
+}
+},
+"type": "object",
+"required": [
+"usuario",
+"password"
+],
+"title": "LoginDTO",
+"description": "DTO para inicio de sesión",
+"example": {
+"password": "Password123!",
+"usuario": "jperez"
+}
+},
+"MotivoRetiroCreateDTO": {
+"properties": {
+"nombre": {
+"type": "string",
+"maxLength": 100,
+"minLength": 1,
+"title": "Nombre",
+"description": "Nombre único del motivo"
+},
+"descripcion": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 255
+},
+{
+"type": "null"
+}
+],
+"title": "Descripcion",
+"description": "Descripción del motivo"
+},
+"severidad": {
+"$ref": "#/components/schemas/SeveridadEnum",
+"description": "Nivel de severidad del motivo"
+},
+"activo": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Activo",
+"description": "Estado activo del motivo",
+"default": true
+}
+},
+"type": "object",
+"required": [
+"nombre",
+"severidad"
+],
+"title": "MotivoRetiroCreateDTO",
+"description": "DTO para crear un motivo de retiro"
+},
+"MotivoRetiroResponseDTO": {
+"properties": {
+"id_motivo": {
+"type": "integer",
+"title": "Id Motivo",
+"description": "ID del motivo"
+},
+"nombre": {
+"type": "string",
+"title": "Nombre",
+"description": "Nombre del motivo"
+},
+"descripcion": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Descripcion",
+"description": "Descripción del motivo"
+},
+"severidad": {
+"type": "string",
+"title": "Severidad",
+"description": "Nivel de severidad"
+},
+"activo": {
+"type": "boolean",
+"title": "Activo",
+"description": "Estado activo"
+}
+},
+"type": "object",
+"required": [
+"id_motivo",
+"nombre",
+"severidad",
+"activo"
+],
+"title": "MotivoRetiroResponseDTO",
+"description": "DTO para respuesta de motivo de retiro"
+},
+"MotivoRetiroUpdateDTO": {
+"properties": {
+"nombre": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 100,
+"minLength": 1
+},
+{
+"type": "null"
+}
+],
+"title": "Nombre",
+"description": "Nombre del motivo"
+},
+"descripcion": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 255
+},
+{
+"type": "null"
+}
+],
+"title": "Descripcion",
+"description": "Descripción del motivo"
+},
+"severidad": {
+"anyOf": [
+{
+"$ref": "#/components/schemas/SeveridadEnum"
+},
+{
+"type": "null"
+}
+],
+"description": "Nivel de severidad del motivo"
+},
+"activo": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Activo",
+"description": "Estado activo del motivo"
+}
+},
+"type": "object",
+"title": "MotivoRetiroUpdateDTO",
+"description": "DTO para actualizar un motivo de retiro"
+},
+"RegistroSalidaCreateDTO": {
+"properties": {
+"id_solicitud": {
+"type": "integer",
+"title": "Id Solicitud",
+"description": "ID de la solicitud de retiro aprobada"
+},
+"fecha_hora_salida_real": {
+"type": "string",
+"format": "date-time",
+"title": "Fecha Hora Salida Real",
+"description": "Fecha y hora real de salida"
+},
+"fecha_hora_retorno_real": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Retorno Real",
+"description": "Fecha y hora real de retorno"
+}
+},
+"type": "object",
+"required": [
+"id_solicitud",
+"fecha_hora_salida_real"
+],
+"title": "RegistroSalidaCreateDTO",
+"description": "DTO para crear un registro de salida"
+},
+"RegistroSalidaResponseDTO": {
+"properties": {
+"id_registro": {
+"type": "integer",
+"title": "Id Registro",
+"description": "ID del registro"
+},
+"id_solicitud": {
+"type": "integer",
+"title": "Id Solicitud",
+"description": "ID de la solicitud de retiro"
+},
+"id_estudiante": {
+"type": "integer",
+"title": "Id Estudiante",
+"description": "ID del estudiante"
+},
+"fecha_hora_salida_real": {
+"type": "string",
+"format": "date-time",
+"title": "Fecha Hora Salida Real",
+"description": "Fecha y hora real de salida"
+},
+"fecha_hora_retorno_real": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Retorno Real",
+"description": "Fecha y hora real de retorno"
+}
+},
+"type": "object",
+"required": [
+"id_registro",
+"id_solicitud",
+"id_estudiante",
+"fecha_hora_salida_real"
+],
+"title": "RegistroSalidaResponseDTO",
+"description": "DTO para respuesta de registro de salida"
+},
+"RegistroSalidaUpdateDTO": {
+"properties": {
+"fecha_hora_salida_real": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Salida Real",
+"description": "Fecha y hora real de salida"
+},
+"fecha_hora_retorno_real": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Retorno Real",
+"description": "Fecha y hora real de retorno"
+}
+},
+"type": "object",
+"title": "RegistroSalidaUpdateDTO",
+"description": "DTO para actualizar un registro de salida"
+},
+"RolCreateDTO": {
+"properties": {
+"nombre": {
+"type": "string",
+"maxLength": 50,
+"minLength": 3,
+"title": "Nombre"
+},
+"descripcion": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 255
+},
+{
+"type": "null"
+}
+],
+"title": "Descripcion"
+},
+"is_active": {
+"type": "boolean",
+"title": "Is Active",
+"default": true
+}
+},
+"type": "object",
+"required": [
+"nombre"
+],
+"title": "RolCreateDTO",
+"description": "DTO para crear rol"
+},
+"RolUpdateDTO": {
+"properties": {
+"nombre": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 50,
+"minLength": 3
+},
+{
+"type": "null"
+}
+],
+"title": "Nombre"
+},
+"descripcion": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 255
+},
+{
+"type": "null"
+}
+],
+"title": "Descripcion"
+},
+"is_active": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Is Active"
+}
+},
+"type": "object",
+"title": "RolUpdateDTO",
+"description": "DTO para actualizar rol"
+},
+"SeveridadEnum": {
+"type": "string",
+"enum": [
+"leve",
+"grave",
+"muy grave"
+],
+"title": "SeveridadEnum",
+"description": "Niveles de severidad para motivos de retiro"
+},
+"SolicitudRetiroCreateDTO": {
+"properties": {
+"id_estudiante": {
+"type": "integer",
+"title": "Id Estudiante",
+"description": "ID del estudiante"
+},
+"id_apoderado": {
+"type": "integer",
+"title": "Id Apoderado",
+"description": "ID del apoderado"
+},
+"id_motivo": {
+"type": "integer",
+"title": "Id Motivo",
+"description": "ID del motivo de retiro"
+},
+"fecha_hora_salida": {
+"type": "string",
+"format": "date-time",
+"title": "Fecha Hora Salida",
+"description": "Fecha y hora de salida"
+},
+"fecha_hora_retorno_previsto": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Retorno Previsto",
+"description": "Fecha y hora de retorno estimado"
+},
+"observacion": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Observacion",
+"description": "Observaciones adicionales"
+}
+},
+"type": "object",
+"required": [
+"id_estudiante",
+"id_apoderado",
+"id_motivo",
+"fecha_hora_salida"
+],
+"title": "SolicitudRetiroCreateDTO",
+"description": "DTO para crear una solicitud de retiro (fecha_creacion automática)"
+},
+"SolicitudRetiroDerivarDTO": {
+"properties": {
+"id_regente": {
+"type": "integer",
+"title": "Id Regente",
+"description": "ID del usuario regente al que se deriva"
+}
+},
+"type": "object",
+"required": [
+"id_regente"
+],
+"title": "SolicitudRetiroDerivarDTO",
+"description": "DTO para derivar una solicitud a un regente"
+},
+"SolicitudRetiroResponseDTO": {
+"properties": {
+"id_solicitud": {
+"type": "integer",
+"title": "Id Solicitud",
+"description": "ID de la solicitud"
+},
+"id_estudiante": {
+"type": "integer",
+"title": "Id Estudiante",
+"description": "ID del estudiante"
+},
+"id_apoderado": {
+"type": "integer",
+"title": "Id Apoderado",
+"description": "ID del apoderado"
+},
+"id_motivo": {
+"type": "integer",
+"title": "Id Motivo",
+"description": "ID del motivo"
+},
+"id_autorizacion": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Id Autorizacion",
+"description": "ID de la autorización"
+},
+"fecha_hora_salida": {
+"type": "string",
+"format": "date-time",
+"title": "Fecha Hora Salida",
+"description": "Fecha y hora de salida"
+},
+"fecha_hora_retorno_previsto": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Retorno Previsto",
+"description": "Fecha y hora de retorno previsto"
+},
+"observacion": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Observacion",
+"description": "Observaciones"
+},
+"fecha_creacion": {
+"type": "string",
+"format": "date-time",
+"title": "Fecha Creacion",
+"description": "Fecha de creación"
+},
+"estado": {
+"type": "string",
+"title": "Estado",
+"description": "Estado actual de la solicitud"
+},
+"id_recepcionista": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Id Recepcionista",
+"description": "ID del usuario recepcionista"
+},
+"fecha_recepcion": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Recepcion",
+"description": "Fecha de recepción"
+},
+"id_regente": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Id Regente",
+"description": "ID del usuario regente"
+},
+"fecha_derivacion": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Derivacion",
+"description": "Fecha de derivación"
+}
+},
+"type": "object",
+"required": [
+"id_solicitud",
+"id_estudiante",
+"id_apoderado",
+"id_motivo",
+"fecha_hora_salida",
+"fecha_creacion",
+"estado"
+],
+"title": "SolicitudRetiroResponseDTO",
+"description": "DTO para respuesta de solicitud de retiro"
+},
+"SolicitudRetiroUpdateDTO": {
+"properties": {
+"id_apoderado": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Id Apoderado",
+"description": "ID del apoderado"
+},
+"id_motivo": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Id Motivo",
+"description": "ID del motivo de retiro"
+},
+"id_autorizacion": {
+"anyOf": [
+{
+"type": "integer"
+},
+{
+"type": "null"
+}
+],
+"title": "Id Autorizacion",
+"description": "ID de la autorización"
+},
+"fecha_hora_salida": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Salida",
+"description": "Fecha y hora de salida"
+},
+"fecha_hora_retorno_previsto": {
+"anyOf": [
+{
+"type": "string",
+"format": "date-time"
+},
+{
+"type": "null"
+}
+],
+"title": "Fecha Hora Retorno Previsto",
+"description": "Fecha y hora de retorno estimado"
+},
+"observacion": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Observacion",
+"description": "Observaciones adicionales"
+},
+"estado": {
+"anyOf": [
+{
+"$ref": "#/components/schemas/EstadoSolicitudEnum"
+},
+{
+"type": "null"
+}
+],
+"description": "Estado de la solicitud"
+}
+},
+"type": "object",
+"title": "SolicitudRetiroUpdateDTO",
+"description": "DTO para actualizar una solicitud de retiro"
+},
+"UsuarioCreateDTO": {
+"properties": {
+"id_persona": {
+"type": "integer",
+"title": "Id Persona"
+},
+"usuario": {
+"type": "string",
+"maxLength": 50,
+"minLength": 3,
+"title": "Usuario"
+},
+"correo": {
+"type": "string",
+"title": "Correo"
+},
+"password": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Password"
+},
+"is_active": {
+"type": "boolean",
+"title": "Is Active",
+"default": true
+}
+},
+"type": "object",
+"required": [
+"id_persona",
+"usuario",
+"correo"
+],
+"title": "UsuarioCreateDTO",
+"description": "DTO para crear usuario"
+},
+"UsuarioUpdateDTO": {
+"properties": {
+"usuario": {
+"anyOf": [
+{
+"type": "string",
+"maxLength": 50,
+"minLength": 3
+},
+{
+"type": "null"
+}
+],
+"title": "Usuario"
+},
+"correo": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "null"
+}
+],
+"title": "Correo"
+},
+"password": {
+"anyOf": [
+{
+"type": "string",
+"minLength": 8
+},
+{
+"type": "null"
+}
+],
+"title": "Password"
+},
+"is_active": {
+"anyOf": [
+{
+"type": "boolean"
+},
+{
+"type": "null"
+}
+],
+"title": "Is Active"
+}
+},
+"type": "object",
+"title": "UsuarioUpdateDTO",
+"description": "DTO para actualizar usuario"
+},
+"ValidationError": {
+"properties": {
+"loc": {
+"items": {
+"anyOf": [
+{
+"type": "string"
+},
+{
+"type": "integer"
+}
+]
+},
+"type": "array",
+"title": "Location"
+},
+"msg": {
+"type": "string",
+"title": "Message"
+},
+"type": {
+"type": "string",
+"title": "Error Type"
+}
+},
+"type": "object",
+"required": [
+"loc",
+"msg",
+"type"
+],
+"title": "ValidationError"
+}
+}
+}
+}

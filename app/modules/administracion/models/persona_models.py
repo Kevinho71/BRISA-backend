@@ -49,14 +49,15 @@ class Estudiante(Base):
     
     # Relaciones
     cursos = relationship("Curso", secondary=estudiantes_cursos, back_populates="estudiantes")
-    # Relaciones de retiros_tempranos (se importarán cuando sea necesario)
-    # solicitudes_retiro = relationship("SolicitudRetiro", back_populates="estudiante", lazy="dynamic")
-    # registros_salida = relationship("RegistroSalida", back_populates="estudiante", lazy="dynamic")
-    # estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="estudiante", lazy="dynamic")
+    esquelas = relationship("Esquela", back_populates="estudiante")
+    
+    # Relaciones de retiros_tempranos
+    estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="estudiante", lazy="dynamic")
+    solicitudes_retiro = relationship("SolicitudRetiro", back_populates="estudiante", lazy="dynamic")
+    registros_salida = relationship("RegistroSalida", back_populates="estudiante", lazy="dynamic")
     
     def __repr__(self):
         return f"<Estudiante(id={self.id_estudiante}, ci={self.ci}, nombres={self.nombres} {self.apellido_paterno})>"
-    esquelas = relationship("Esquela", back_populates="estudiante")
     
     @property
     def nombre_completo(self):
