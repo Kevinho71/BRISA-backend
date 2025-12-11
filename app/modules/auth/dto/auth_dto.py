@@ -59,7 +59,8 @@ class RegistroDTO(BaseModel):
             "administrativo",
             "regente",
             "directivo",
-            "director"
+            "director",
+            "apoderado"
         }
         normalized = v.strip().lower()
         if normalized == "director":

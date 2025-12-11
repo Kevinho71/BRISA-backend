@@ -42,10 +42,10 @@ async def crear_solicitud_individual(
     - Estado inicial: 'pendiente'
     """
     # Obtener id_apoderado del usuario actual
-    apoderado = db.query(db.query(db.execute(
-        "SELECT id_apoderado FROM apoderados WHERE id_persona = :id_persona",
-        {"id_persona": current_user.id_persona}
-    ).fetchone()).scalar())
+    from app.modules.retiros_tempranos.models import Apoderado
+    apoderado = db.query(Apoderado).filter(
+        Apoderado.id_persona == current_user.id_persona
+    ).first()
     
     if not apoderado:
         raise HTTPException(
@@ -53,7 +53,7 @@ async def crear_solicitud_individual(
             detail="Usuario no tiene perfil de apoderado"
         )
     
-    return service.crear_solicitud(solicitud_dto, apoderado)
+    return service.crear_solicitud(solicitud_dto, apoderado.id_apoderado)
 
 
 @router.get("/mis-solicitudes", response_model=List[SolicitudRetiroResponseDTO])

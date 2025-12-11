@@ -24,7 +24,6 @@ class Materia(Base):
     
     # Relaciones
     profesores_cursos_materias = relationship("ProfesorCursoMateria", back_populates="materia")
-    solicitudes_retiro_detalle = relationship("SolicitudRetiroDetalle", back_populates="materia")
     
     def __repr__(self):
         return f"<Materia(id={self.id_materia}, nombre={self.nombre_materia}, nivel={self.nivel})>"

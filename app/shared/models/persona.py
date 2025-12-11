@@ -11,6 +11,7 @@ class TipoPersonaEnum(str, enum.Enum):
     """Enumeración para tipos de persona"""
     profesor = "profesor"
     administrativo = "administrativo"
+    apoderado = "apoderado"
 
 
 class EstadoLaboralEnum(str, enum.Enum):
@@ -48,7 +49,6 @@ class Persona(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     
     # Relaciones
-    autorizaciones_retiro = relationship("AutorizacionRetiro", back_populates="persona_decidio", foreign_keys="AutorizacionRetiro.decidido_por")
     profesores_cursos_materias = relationship("ProfesorCursoMateria", back_populates="profesor")
     
     # Relaciones con Esquelas
