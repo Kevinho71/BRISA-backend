@@ -4,6 +4,7 @@ from app.modules.administracion.models.persona_models import Estudiante
 from app.modules.incidentes.models.models_incidentes import SituacionIncidente
 from app.shared.models import Persona
 
+
 def get_estudiantes_repo(db: Session):
     estudiantes = db.query(Estudiante).all()
     return [

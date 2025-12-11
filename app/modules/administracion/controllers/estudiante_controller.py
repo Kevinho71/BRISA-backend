@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
 
-from app.core.extensions import get_db
+
+from app.core.database import get_db
 from app.modules.esquelas.services.esquela_service import EsquelaService
 from app.modules.esquelas.dto.esquela_dto import EstudianteEsquelasDTO
 

@@ -15,8 +15,8 @@ class EstudianteCurso(BaseModel):
     id_curso = Column(Integer, ForeignKey("cursos.id_curso", ondelete="CASCADE"), primary_key=True, nullable=False)
     
     # Relaciones
-    estudiante = relationship("Estudiante", back_populates="estudiantes_cursos")
-    curso = relationship("Curso", back_populates="estudiantes_cursos")
+    estudiante = relationship("Estudiante", back_populates="estudiantes_cursos", overlaps="cursos,estudiantes")
+    curso = relationship("Curso", back_populates="estudiantes_cursos", overlaps="cursos,estudiantes")
     
     def __repr__(self):
         return f"<EstudianteCurso(estudiante_id={self.id_estudiante}, curso_id={self.id_curso})>"
