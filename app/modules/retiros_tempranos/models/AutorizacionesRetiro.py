@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-from app.shared.models.persona import Persona as SharedPersona
 import enum
 
 
@@ -25,12 +24,10 @@ class AutorizacionRetiro(Base):
     decision = Column(Enum(DecisionEnum), nullable=False)
     motivo_decision = Column(String(255), nullable=True)
     fecha_decision = Column(DateTime, nullable=False)
-    decidido_por = Column(Integer, ForeignKey("personas.id_persona", ondelete="SET NULL"), nullable=True)
     
     # Relaciones
-    usuario_aprobador = relationship("Usuario", foreign_keys=[id_usuario_aprobador])
-    persona_decidio = relationship(SharedPersona, foreign_keys=[decidido_por])
-    solicitud = relationship("SolicitudRetiro", back_populates="autorizacion", uselist=False)  # Relación 1:1
+    usuario_aprobador = relationship("Usuario", foreign_keys=[id_usuario_aprobador], viewonly=True)
+    # Nota: No usar back_populates para evitar conflictos - las relaciones se definen desde SolicitudRetiro/SolicitudRetiroMasivo
     
     def __repr__(self):
         return f"<AutorizacionRetiro(id={self.id_autorizacion}, decision={self.decision})>"

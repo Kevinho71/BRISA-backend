@@ -1,74 +1,148 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.modules.retiros_tempranos.services.registro_salida_service import RegistroSalidaService
 from app.modules.retiros_tempranos.dto import (
     RegistroSalidaCreateDTO,
+    RegistroSalidaMasivoCreateDTO,
     RegistroSalidaUpdateDTO,
     RegistroSalidaResponseDTO
 )
 from app.core.database import get_db
-from app.modules.retiros_tempranos.repositories import RegistroSalidaRepository, SolicitudRetiroRepository
+from app.shared.decorators.auth_decorators import require_permissions
 
-router = APIRouter(prefix="/api/registros-salida", tags=["registros-salida"])
-
-
-def get_registro_salida_service(db: Session = Depends(get_db)) -> RegistroSalidaService:
-    repo = RegistroSalidaRepository(db)
-    solicitud_repo = SolicitudRetiroRepository(db)
-    return RegistroSalidaService(repo, solicitud_repo)
+router = APIRouter(prefix="/api/retiros-tempranos/registros-salida", tags=["Registros de Salida"])
 
 
-@router.post("/", response_model=RegistroSalidaResponseDTO, status_code=status.HTTP_201_CREATED)
-async def create_registro(
+def get_service(db: Session = Depends(get_db)) -> RegistroSalidaService:
+    """Inyección de dependencia del servicio"""
+    return RegistroSalidaService(db)
+
+
+# ============================================================================
+# ENDPOINTS PARA CREAR REGISTROS DE SALIDA
+# ============================================================================
+
+@router.post("/individual", response_model=RegistroSalidaResponseDTO, status_code=status.HTTP_201_CREATED)
+@require_permissions("recepcion")
+async def crear_registro_individual(
     registro_dto: RegistroSalidaCreateDTO,
-    service: RegistroSalidaService = Depends(get_registro_salida_service)
+    service: RegistroSalidaService = Depends(get_service)
 ) -> RegistroSalidaResponseDTO:
-    """Crear un nuevo registro de salida"""
-    return service.create_registro(registro_dto)
+    """
+    **[RECEPCIONISTA]** Crear un registro de salida individual
+    
+    - Requiere solicitud aprobada
+    - Registra la hora de salida del estudiante
+    - Un registro por solicitud individual
+    """
+    return service.crear_registro_individual(registro_dto)
 
 
-@router.get("/{registro_id}", response_model=RegistroSalidaResponseDTO)
-async def get_registro(
-    registro_id: int,
-    service: RegistroSalidaService = Depends(get_registro_salida_service)
+@router.post("/masivo", response_model=List[RegistroSalidaResponseDTO], status_code=status.HTTP_201_CREATED)
+@require_permissions("recepcion")
+async def crear_registros_masivos(
+    registro_dto: RegistroSalidaMasivoCreateDTO,
+    service: RegistroSalidaService = Depends(get_service)
+) -> List[RegistroSalidaResponseDTO]:
+    """
+    **[RECEPCIONISTA]** Crear registros de salida masivos
+    
+    - Requiere solicitud masiva aprobada
+    - Crea un registro para cada estudiante de la solicitud
+    - Todos con la misma hora de salida
+    """
+    return service.crear_registros_masivos(registro_dto)
+
+
+# ============================================================================
+# ENDPOINTS PARA REGISTRAR RETORNOS
+# ============================================================================
+
+@router.put("/{id_registro}/retorno", response_model=RegistroSalidaResponseDTO)
+@require_permissions("recepcion")
+async def registrar_retorno(
+    id_registro: int,
+    retorno_dto: RegistroSalidaUpdateDTO,
+    service: RegistroSalidaService = Depends(get_service)
 ) -> RegistroSalidaResponseDTO:
-    """Obtener un registro de salida por ID"""
-    return service.get_registro(registro_id)
+    """
+    **[RECEPCIONISTA]** Registrar el retorno de un estudiante
+    
+    - Marca la hora de retorno del estudiante
+    - Solo se puede registrar una vez
+    """
+    return service.registrar_retorno(id_registro, retorno_dto)
 
+
+# ============================================================================
+# ENDPOINTS DE CONSULTA
+# ============================================================================
 
 @router.get("/", response_model=List[RegistroSalidaResponseDTO])
-async def get_all_registros(
-    service: RegistroSalidaService = Depends(get_registro_salida_service)
+@require_permissions("recepcion", "regente", "admin")
+async def listar_registros(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
-    """Obtener todos los registros de salida"""
-    return service.get_all_registros()
+    """**[RECEPCIÓN/REGENTE/ADMIN]** Listar todos los registros de salida"""
+    return service.listar_registros(skip, limit)
 
 
-@router.get("/estudiante/{estudiante_id}", response_model=List[RegistroSalidaResponseDTO])
-async def get_registros_by_estudiante(
-    estudiante_id: int,
-    service: RegistroSalidaService = Depends(get_registro_salida_service)
-) -> List[RegistroSalidaResponseDTO]:
-    """Obtener todos los registros de salida de un estudiante"""
-    return service.get_registros_by_estudiante(estudiante_id)
-
-
-@router.put("/{registro_id}", response_model=RegistroSalidaResponseDTO)
-async def update_registro(
-    registro_id: int,
-    registro_dto: RegistroSalidaUpdateDTO,
-    service: RegistroSalidaService = Depends(get_registro_salida_service)
+@router.get("/{id_registro}", response_model=RegistroSalidaResponseDTO)
+async def obtener_registro(
+    id_registro: int,
+    service: RegistroSalidaService = Depends(get_service)
 ) -> RegistroSalidaResponseDTO:
-    """Actualizar un registro de salida"""
-    return service.update_registro(registro_id, registro_dto)
+    """Obtener un registro de salida por ID"""
+    return service.obtener_registro(id_registro)
 
 
-@router.delete("/{registro_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_registro(
-    registro_id: int,
-    service: RegistroSalidaService = Depends(get_registro_salida_service)
-):
-    """Eliminar un registro de salida"""
-    if not service.delete_registro(registro_id):
-        raise HTTPException(status_code=404, detail="Registro de salida no encontrado")
+@router.get("/estudiante/{id_estudiante}", response_model=List[RegistroSalidaResponseDTO])
+@require_permissions("recepcion", "regente", "admin", "apoderado")
+async def listar_registros_por_estudiante(
+    id_estudiante: int,
+    service: RegistroSalidaService = Depends(get_service)
+) -> List[RegistroSalidaResponseDTO]:
+    """Listar registros de salida de un estudiante específico"""
+    return service.listar_por_estudiante(id_estudiante)
+
+
+@router.get("/solicitud/{id_solicitud}", response_model=List[RegistroSalidaResponseDTO])
+@require_permissions("recepcion", "regente", "admin")
+async def listar_registros_por_solicitud(
+    id_solicitud: int,
+    service: RegistroSalidaService = Depends(get_service)
+) -> List[RegistroSalidaResponseDTO]:
+    """Listar registros de una solicitud individual específica"""
+    return service.listar_por_solicitud(id_solicitud)
+
+
+@router.get("/solicitud-masiva/{id_solicitud_masiva}", response_model=List[RegistroSalidaResponseDTO])
+@require_permissions("recepcion", "regente", "admin")
+async def listar_registros_por_solicitud_masiva(
+    id_solicitud_masiva: int,
+    service: RegistroSalidaService = Depends(get_service)
+) -> List[RegistroSalidaResponseDTO]:
+    """Listar registros de una solicitud masiva específica"""
+    return service.listar_por_solicitud_masiva(id_solicitud_masiva)
+
+
+# ============================================================================
+# ENDPOINTS DE ADMINISTRACIÓN
+# ============================================================================
+
+@router.delete("/{id_registro}")
+@require_permissions("admin")
+async def eliminar_registro(
+    id_registro: int,
+    service: RegistroSalidaService = Depends(get_service)
+) -> dict:
+    """**[ADMIN]** Eliminar un registro de salida"""
+    eliminado = service.eliminar_registro(id_registro)
+    
+    if eliminado:
+        return {"message": "Registro eliminado exitosamente"}
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro no encontrado")
+

@@ -27,6 +27,7 @@ class MotivoRetiro(Base):
     
     # Relaciones
     solicitudes_retiro = relationship("SolicitudRetiro", back_populates="motivo")
+    solicitudes_masivas = relationship("SolicitudRetiroMasivo", back_populates="motivo")
     
     def __repr__(self):
         return f"<MotivoRetiro(id={self.id_motivo}, nombre={self.nombre}, severidad={self.severidad})>"

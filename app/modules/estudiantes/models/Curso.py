@@ -21,7 +21,6 @@ class Curso(Base):
     estudiantes = relationship("Estudiante", secondary="estudiantes_cursos", back_populates="cursos", overlaps="estudiantes_cursos")
     estudiantes_cursos = relationship("EstudianteCurso", back_populates="curso", overlaps="estudiantes")
     profesores_cursos_materias = relationship("ProfesorCursoMateria", back_populates="curso")
-    solicitudes_retiro_detalle = relationship("SolicitudRetiroDetalle", back_populates="curso")
     
     def __repr__(self):
         return f"<Curso(id={self.id_curso}, nombre={self.nombre_curso}, nivel={self.nivel})>"
