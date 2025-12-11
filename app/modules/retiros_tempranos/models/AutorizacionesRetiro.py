@@ -26,8 +26,8 @@ class AutorizacionRetiro(Base):
     fecha_decision = Column(DateTime, nullable=False)
     
     # Relaciones
-    usuario_aprobador = relationship("Usuario", foreign_keys=[id_usuario_aprobador])
-    solicitud = relationship("SolicitudRetiro", back_populates="autorizacion", uselist=False)  # Relación 1:1
+    usuario_aprobador = relationship("Usuario", foreign_keys=[id_usuario_aprobador], viewonly=True)
+    # Nota: No usar back_populates para evitar conflictos - las relaciones se definen desde SolicitudRetiro/SolicitudRetiroMasivo
     
     def __repr__(self):
         return f"<AutorizacionRetiro(id={self.id_autorizacion}, decision={self.decision})>"
