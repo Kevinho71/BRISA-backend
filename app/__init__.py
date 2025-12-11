@@ -4,7 +4,6 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.config import config
-from app.core.extensions import init_extensions
 from app.modules.esquelas import esquelas_router
 def create_app(config_name=None):
     """
@@ -45,8 +44,7 @@ def create_app(config_name=None):
         allow_headers=["*"],
     )
     
-    # Inicializar extensiones (base de datos, etc) usando la configuración cargada
-    init_extensions(app)
+
     
     # Registrar rutas
     register_routes(app)

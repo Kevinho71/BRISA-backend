@@ -28,7 +28,7 @@ class RegistroDTO(BaseModel):
     password: str
     telefono: Optional[str] = None
     direccion: Optional[str] = None
-    tipo_persona: Literal["profesor", "administrativo"] = "administrativo"
+    tipo_persona: str = "administrativo"
     id_rol: Optional[int] = None
     
     @field_validator('password')
@@ -53,20 +53,17 @@ class RegistroDTO(BaseModel):
     @field_validator('tipo_persona')
     @classmethod
     def validate_tipo_persona(cls, v: str):
-        """Admite valores de tipo_persona compatibles con la BD y roles."""
-        allowed = {
-            "profesor",
-            "administrativo",
-            "regente",
-            "directivo",
-            "director"
-        }
-        normalized = v.strip().lower()
-        if normalized == "director":
-            normalized = "directivo"
-        if normalized not in allowed:
-            raise ValueError(f"tipo_persona debe ser uno de {sorted(allowed)}")
-        return normalized
+        """✅ Valida tipo_persona - SOLO profesor o administrativo"""
+        tipos_validos = ['profesor', 'administrativo']
+        v_limpio = v.strip().lower()
+        
+        if v_limpio not in tipos_validos:
+            raise ValueError(
+                f"tipo_persona inválido: '{v}'. "
+                f"Solo se permite 'profesor' o 'administrativo'"
+            )
+        
+        return v_limpio
     
     model_config = {
         "json_schema_extra": {

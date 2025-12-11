@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.core.extensions import get_db
+
+from app.core.database import get_db
 from app.modules.esquelas.services.codigo_esquela_service import CodigoEsquelaService
 from app.modules.esquelas.dto.codigo_esquela_dto import (
     CodigoEsquelaCreateDTO,

@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 import os, shutil
 from typing import Optional, List
 import traceback
-from app.core.extensions import get_db
 
+
+from app.core.database import get_db
 from app.modules.incidentes.dto.dto_areas import AreaCreateDTO, AreaUpdateDTO
 from app.modules.incidentes.dto.dto_situaciones import SituacionCreateDTO, SituacionUpdateDTO
 from app.modules.incidentes.dto.dto_incidentes import IncidenteCreateDTO, IncidenteResponseDTO

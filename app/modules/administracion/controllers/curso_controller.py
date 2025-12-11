@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.core.extensions import get_db
+
+from app.core.database import get_db
 from app.modules.administracion.services.curso_service import CursoService
 from app.modules.administracion.dto.curso_dto import (
     CursoDTO,

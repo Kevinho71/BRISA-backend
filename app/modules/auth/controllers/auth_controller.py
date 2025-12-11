@@ -1151,7 +1151,7 @@ async def listar_logs_acceso(
 async def listar_personas(
     # Paginación
     skip: int = Query(0, ge=0, description="Registros a saltar"),
-    limit: int = Query(50, ge=1, le=1000, description="Límite de registros"),  
+    limit: int = Query(50, ge=1, le=100, description="Límite de registros"),  
     
     # Filtros
     tipo_persona: Optional[str] = Query(
