@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from sqlalchemy import text
 
 
 from app.core.database import get_db
@@ -37,10 +38,24 @@ def listar_cursos(
         return CursoService.listar_cursos(db)
 
     # Si es profesor, retornar solo sus cursos
-    return CursoService.listar_cursos_por_profesor(db, current_user.id_persona)
+    rows = db.execute(
+        text(
+            """
+            SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
+            FROM profesores p
+            JOIN profesores_cursos_materias pcm ON pcm.id_profesor = p.id_profesor
+            JOIN cursos c ON c.id_curso = pcm.id_curso
+            WHERE p.id_persona = :id_persona
+            ORDER BY c.nombre_curso
+            """
+        ),
+        {"id_persona": current_user.id_persona},
+    ).mappings().all()
+    return [dict(r) for r in rows]
 
 @router.get("/mis_cursos/{id_persona}", response_model=List[CursoDTO])
 def listar_mis_cursos(
+    id_persona: int,
         current_user: Usuario = Depends(get_current_user_dependency),
         db: Session = Depends(get_db)
     ):
@@ -50,9 +65,20 @@ def listar_mis_cursos(
         **Uso:** Para que un profesor vea sus propios cursos asignados.
         Solo muestra los cursos donde el profesor tiene asignadas materias.
         """
-        print("ID del profesor autenticado:", current_user.id_persona)
-        print(CursoService.listar_cursos_por_profesor(db, current_user.id_persona))
-        return CursoService.listar_cursos_por_profesor(db, current_user.id_persona)
+        rows = db.execute(
+            text(
+                """
+                SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
+                FROM profesores p
+                JOIN profesores_cursos_materias pcm ON pcm.id_profesor = p.id_profesor
+                JOIN cursos c ON c.id_curso = pcm.id_curso
+                WHERE p.id_persona = :id_persona
+                ORDER BY c.nombre_curso
+                """
+            ),
+            {"id_persona": current_user.id_persona},
+        ).mappings().all()
+        return [dict(r) for r in rows]
 
 
 
@@ -92,7 +118,19 @@ def listar_estudiantes_por_curso(
         # Es profesor, verificar que imparte clases en este curso
         from app.modules.administracion.repositories.persona_repository import PersonaRepository
 
-        if not PersonaRepository.es_profesor_del_curso(db, current_user.id_persona, curso_id):
+        row = db.execute(
+            text("SELECT id_profesor FROM profesores WHERE id_persona = :id_persona"),
+            {"id_persona": current_user.id_persona},
+        ).first()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para ver estudiantes de este curso."
+            )
+
+        id_profesor = int(row[0])
+
+        if not PersonaRepository.es_profesor_del_curso(db, id_profesor, curso_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"No tiene permisos para ver estudiantes de este curso. Solo puede ver estudiantes de los cursos donde imparte clases."

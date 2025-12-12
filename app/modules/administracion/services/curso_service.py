@@ -1,6 +1,7 @@
 # app/modules/administracion/services/curso_service.py
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.modules.administracion.repositories.curso_repository import CursoRepository
 from typing import Optional
 
@@ -22,8 +23,19 @@ class CursoService:
 
     @staticmethod
     def listar_cursos_por_profesor(db: Session, id_persona: int):
-        """Lista los cursos donde un profesor imparte clases"""
-        return CursoRepository.get_by_profesor(db, id_persona)
+        """Lista los cursos donde un profesor imparte clases.
+
+        Recibe `id_persona` (frontend/auth) y lo traduce a `id_profesor` (tabla profesores).
+        """
+        row = db.execute(
+            text("SELECT id_profesor FROM profesores WHERE id_persona = :id_persona"),
+            {"id_persona": id_persona},
+        ).first()
+        if not row:
+            return []
+
+        id_profesor = int(row[0])
+        return CursoRepository.get_by_profesor(db, id_profesor)
     
     
     @staticmethod

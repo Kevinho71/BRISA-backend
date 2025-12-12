@@ -1,6 +1,6 @@
 # app/modules/administracion/repositories/curso_repository.py
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from app.modules.administracion.models.persona_models import Estudiante
 from app.modules.estudiantes.models.Curso import Curso
 from app.shared.models.persona import Persona
@@ -15,14 +15,23 @@ class CursoRepository:
         return db.query(Curso).order_by(Curso.nombre_curso).all()
 
     @staticmethod
-    def get_by_profesor(db: Session, id_persona: int):
-        """Obtiene los cursos asignados a un profesor específico"""
-        from app.shared.models.profesor_curso_materia import ProfesorCursoMateria
-        return db.query(Curso).join(
-            ProfesorCursoMateria
-        ).filter(
-            ProfesorCursoMateria.id_profesor == id_persona
-        ).order_by(Curso.nombre_curso).all()
+    def get_by_profesor(db: Session, id_profesor: int):
+        """Obtiene los cursos asignados a un profesor específico (usa `profesores.id_profesor`)."""
+        rows = db.execute(
+            text(
+                """
+                SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
+                FROM cursos c
+                JOIN profesores_cursos_materias pcm ON pcm.id_curso = c.id_curso
+                WHERE pcm.id_profesor = :id_profesor
+                ORDER BY c.nombre_curso
+                """
+            ),
+            {"id_profesor": id_profesor},
+        ).mappings().all()
+
+        # Devolver dicts compatibles con CursoDTO
+        return [dict(r) for r in rows]
     
 
     def get_by_id(db: Session, curso_id: int):
@@ -95,15 +104,17 @@ class CursoRepository:
         """
         Obtiene los profesores de un curso con filtro opcional por nombre
         """
-        # Consulta usando la tabla intermedia profesores_cursos_materias
+        # Consulta usando profesores_cursos_materias (id_profesor -> profesores.id_profesor)
+        # y luego profesores.id_persona -> personas.id_persona
+        from app.modules.administracion.models.persona_models import profesores_cursos_materias
+        from app.modules.profesores.models.profesor_models import Profesor
+
         query = db.query(Persona).join(
-            'profesores_cursos_materias'
+            Profesor, Profesor.id_persona == Persona.id_persona
+        ).join(
+            profesores_cursos_materias, profesores_cursos_materias.c.id_profesor == Profesor.id_profesor
         ).filter(
-            Persona.tipo_persona == 'profesor'
-        ).filter(
-            db.query(Persona).join('profesores_cursos_materias').filter(
-                db.text('profesores_cursos_materias.id_curso = :curso_id')
-            ).exists()
+            profesores_cursos_materias.c.id_curso == curso_id
         )
 
         # Filtro por nombre

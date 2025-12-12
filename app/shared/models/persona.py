@@ -49,11 +49,8 @@ class Persona(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     
     # Relaciones
-    profesores_cursos_materias = relationship("ProfesorCursoMateria", back_populates="profesor")
-    
-    # Relaciones con Esquelas
-    esquelas_profesor = relationship("Esquela", foreign_keys="Esquela.id_profesor", back_populates="profesor")
-    esquelas_registrador = relationship("Esquela", foreign_keys="Esquela.id_registrador", back_populates="registrador")
+    # Nota: las asignaciones profesor-curso-materia se enlazan desde la tabla `profesores`
+    # (porque `profesores_cursos_materias.id_profesor` referencia `profesores.id_profesor`).
     
     def __repr__(self):
         return f"<Persona(id={self.id_persona}, nombres={self.nombres} {self.apellido_paterno}, tipo={self.tipo_persona})>"

@@ -29,7 +29,7 @@ profesores_cursos_materias = Table(
     'profesores_cursos_materias',
     Base.metadata,
     Column('id_profesor', Integer, ForeignKey(
-        'personas.id_persona'), primary_key=True),
+        'profesores.id_profesor'), primary_key=True),
     Column('id_curso', Integer, ForeignKey(
         'cursos.id_curso'), primary_key=True),
     Column('id_materia', Integer, ForeignKey(
