@@ -64,19 +64,6 @@ class EsquelaService:
         id_profesor_filtro = None
         if not puede_ver_todas_esquelas(current_user):
             id_profesor_filtro = current_user.id_persona
-        print(EsquelaRepository.get_with_filters(
-            db=db,
-            name=name,
-            course_id=course_id,
-            tipo=tipo,
-            fecha_desde=fecha_desde,
-            fecha_hasta=fecha_hasta,
-            year=year,
-            month=month,
-            page=page,
-            page_size=page_size,
-            id_profesor=id_profesor_filtro
-        ))
 
         return EsquelaRepository.get_with_filters(
             db=db,
