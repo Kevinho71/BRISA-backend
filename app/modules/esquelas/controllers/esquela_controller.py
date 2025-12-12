@@ -44,7 +44,8 @@ async def listar_esquelas(
     month: Optional[int] = Query(
         None, ge=1, le=12, description="Filtrar por mes (1-12)"),
     page: int = Query(1, ge=1, description="Número de página"),
-    page_size: int = Query(10, ge=1, description="Tamaño de página (sin límite máximo, enviar valor alto para obtener todo)"),
+    page_size: int = Query(
+        10, ge=1, description="Tamaño de página (sin límite máximo, enviar valor alto para obtener todo)"),
     current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
@@ -56,7 +57,7 @@ async def listar_esquelas(
     1. Haces la petición normal (por defecto `page_size=10`).
     2. Lees el `total` de la respuesta (ej. 150 registros).
     3. Si el usuario quiere ver "Todo", haces una nueva petición con `page_size=150`.
-    
+
     **Permisos:**
     - **Admin/Regente**: Ve todas las esquelas
     - **Profesor**: Ve solo las esquelas que él asignó
