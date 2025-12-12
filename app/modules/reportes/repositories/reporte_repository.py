@@ -569,6 +569,11 @@ class ReporteRepository:
         resultado = []
 
         for prof in profesores:
+            from app.modules.profesores.models.profesor_models import Profesor
+            profesor_row = db.query(Profesor).filter(Profesor.id_persona == prof.id_persona).first()
+            if not profesor_row:
+                continue
+
             # Obtener asignaciones del profesor
             asig_query = db.query(
                 Curso.nombre_curso,
@@ -582,7 +587,7 @@ class ReporteRepository:
                 Materia,
                 Materia.id_materia == profesores_cursos_materias.c.id_materia
             ).filter(
-                profesores_cursos_materias.c.id_profesor == prof.id_persona
+                profesores_cursos_materias.c.id_profesor == profesor_row.id_profesor
             )
 
             if gestion:
@@ -607,7 +612,7 @@ class ReporteRepository:
             nombre_completo = f"{prof.nombres} {prof.apellido_paterno} {prof.apellido_materno or ''}".strip()
 
             resultado.append({
-                "id_profesor": prof.id_persona,
+                "id_profesor": profesor_row.id_profesor,
                 "ci": prof.ci,
                 "nombre_completo": nombre_completo,
                 "telefono": prof.telefono,

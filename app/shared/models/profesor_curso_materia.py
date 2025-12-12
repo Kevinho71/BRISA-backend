@@ -1,25 +1,26 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
-from app.shared.models.persona import Persona as SharedPersona
+from app.core.database import Base
+from app.modules.profesores.models.profesor_models import Profesor
 
 # 👇 Importaciones explícitas de los modelos relacionados
 from app.modules.estudiantes.models.Curso import Curso
 from app.modules.estudiantes.models.Materia import Materia
 
-class ProfesorCursoMateria(BaseModel):
+class ProfesorCursoMateria(Base):
     """
     Modelo de Profesor-Curso-Materia (tabla intermedia)
     Relación entre profesores, cursos y materias que imparten
     """
     __tablename__ = "profesores_cursos_materias"
+    __table_args__ = {"extend_existing": True}
     
-    id_profesor = Column(Integer, ForeignKey("personas.id_persona", ondelete="CASCADE"), primary_key=True, nullable=False)
+    id_profesor = Column(Integer, ForeignKey("profesores.id_profesor", ondelete="CASCADE"), primary_key=True, nullable=False)
     id_curso = Column(Integer, ForeignKey("cursos.id_curso", ondelete="CASCADE"), primary_key=True, nullable=False)
     id_materia = Column(Integer, ForeignKey("materias.id_materia", ondelete="CASCADE"), primary_key=True, nullable=False)
     
     # Relaciones
-    profesor = relationship(SharedPersona, back_populates="profesores_cursos_materias")
+    profesor = relationship(Profesor)
     # 👇 Se usa la clase Curso importada, no una cadena
     curso = relationship(Curso, back_populates="profesores_cursos_materias")
     # 👇 Se usa la clase Materia importada, no una cadena
