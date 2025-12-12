@@ -120,4 +120,5 @@ from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela
 from app.modules.administracion.models.persona_models import Estudiante
 from app.shared.models.persona import Persona
 from app.modules.estudiantes.models.Curso import Curso
+
 from app.modules.estudiantes.models.Materia import Materia
