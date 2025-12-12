@@ -1,5 +1,7 @@
 """Controlador (router) para el módulo de Esquelas."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -23,6 +25,9 @@ from app.modules.esquelas.dto.esquela_dto import (
     EsquelaAggregateByYearDTO,
     EsquelaAggregateByMonthDTO
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/esquelas", tags=["Esquelas"])
@@ -215,7 +220,35 @@ async def crear_esquela(
     }
     ```
     """
-    return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
+    # Debug: imprime qué llega y quién llama (sin token)
+    try:
+        roles = [r.nombre for r in (getattr(current_user, "roles", []) or []) if getattr(r, "is_active", True)]
+        logger.info(
+            "Crear esquela request by id_usuario=%s id_persona=%s roles=%s payload=%s",
+            getattr(current_user, "id_usuario", None),
+            getattr(current_user, "id_persona", None),
+            roles,
+            esquela_data.model_dump(),
+        )
+    except Exception:
+        logger.info("Crear esquela request (no se pudo serializar debug)")
+
+    try:
+        return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
+    except Exception as exc:
+        # Loguea el error específico
+        from fastapi import HTTPException
+
+        if isinstance(exc, HTTPException):
+            logger.warning(
+                "Crear esquela HTTPException status=%s detail=%s",
+                exc.status_code,
+                exc.detail,
+            )
+            raise
+
+        logger.exception("Crear esquela error no controlado")
+        raise
 
 
 @router.delete("/{id}")

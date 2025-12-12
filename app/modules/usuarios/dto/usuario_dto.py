@@ -34,11 +34,16 @@ class PersonaCreateDTO(BaseModel):
     @field_validator('tipo_persona')
     @classmethod
     def validar_tipo_persona(cls, v: str) -> str:
-        """Validar tipo de persona - solo profesor o administrativo"""
-        tipos_validos = ['profesor', 'administrativo']
-        if v.lower() not in tipos_validos:
-            raise ValueError(f"tipo_persona debe ser 'profesor' o 'administrativo'")
-        return v.lower()
+        """Validar tipo de persona (valores compatibles con la BD)."""
+        normalized = v.strip().lower()
+        # Alias para compatibilidad con BD (ENUM) y/o frontend
+        if normalized == 'regente':
+            return 'administrativo'
+
+        tipos_validos = ['profesor', 'administrativo', 'regente']
+        if normalized not in tipos_validos:
+            raise ValueError("tipo_persona debe ser uno de: profesor, administrativo, regente")
+        return normalized
     
     @field_validator('correo')
     @classmethod
@@ -106,10 +111,15 @@ class PersonaUpdateDTO(BaseModel):
         """Validar tipo de persona"""
         if v is None:
             return v
-        tipos_validos = ['profesor', 'administrativo']
-        if v.lower() not in tipos_validos:
-            raise ValueError(f"tipo_persona debe ser 'profesor' o 'administrativo'")
-        return v.lower()
+        normalized = v.strip().lower()
+        # Alias para compatibilidad con BD (ENUM) y/o frontend
+        if normalized == 'regente':
+            return 'administrativo'
+
+        tipos_validos = ['profesor', 'administrativo', 'regente', 'apoderado']
+        if normalized not in tipos_validos:
+            raise ValueError("tipo_persona debe ser uno de: profesor, administrativo, regente, apoderado")
+        return normalized
     
     @field_validator('correo')
     @classmethod
