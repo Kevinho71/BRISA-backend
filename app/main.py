@@ -24,14 +24,13 @@ from app.modules.esquelas.controllers import esquela_controller, codigo_esquela_
 from app.modules.administracion.controllers import curso_controller
 from app.modules.administracion.controllers import administrativo_controller
 from app.modules.reportes.controllers import reporte_controller
-# from app.modules.reportes.controllers import reportes_controller
 from app.modules.incidentes.controllers import controllers_incidentes
+
+# ✅ NUEVO: Router de profesores
+from app.modules.profesores.controllers import profesor_controller
 
 # Servicios
 from app.modules.auth.services.auth_service import AuthService
-
-# Situaciones Áreas e Incidentes SIA
-from app.modules.incidentes.controllers import controllers_incidentes
 
 load_dotenv()
 
@@ -52,8 +51,6 @@ app = FastAPI(
 )
 
 from fastapi import Request
-
-# ... (existing imports)
 
 # ========================= MIDDLEWARE =========================
 
@@ -83,6 +80,7 @@ register_exception_handlers(app)
 app.include_router(auth_controller.router,    prefix="/api/auth",     tags=["Autenticación"])
 app.include_router(usuario_controller.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(bitacora_controller.router, prefix="/api/bitacora", tags=["Bitácora"])
+
 # Routes SIA
 app.include_router(controllers_incidentes.router, prefix="/api/incidentes", tags=["Incidentes"])
 
@@ -92,6 +90,9 @@ app.include_router(codigo_esquela_controller.router, prefix="/api")
 app.include_router(curso_controller.router, prefix="/api")
 app.include_router(administrativo_controller.router)
 app.include_router(reporte_controller.router, prefix="/api")
+
+# ✅ NUEVO: Profesores
+app.include_router(profesor_controller.router, prefix="/api", tags=["Profesores"])
 
 # ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA
 app.include_router(
@@ -120,6 +121,7 @@ async def startup_event():
     logger.info("🚀 Iniciando API Bienestar Estudiantil")
     logger.info("🔐 Middleware JWT cargado")
     logger.info("📦 Routers cargados correctamente")
+    logger.info("👨‍🏫 Módulo de Profesores cargado")
 
 @app.on_event("shutdown")
 async def shutdown_event():

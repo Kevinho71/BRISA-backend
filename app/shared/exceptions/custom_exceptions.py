@@ -64,6 +64,17 @@ class BusinessLogicException(BRISAException):
     def __init__(self, message):
         super().__init__(message, "BUSINESS_LOGIC_ERROR", 422)
 
+class NotFoundException(BRISAException):
+    """Excepción para recursos no encontrados (alias compatible)"""
+    def __init__(self, message: str):
+        super().__init__(message, "NOT_FOUND", 404)
+
+
+class BadRequestException(BRISAException):
+    """Excepción para peticiones inválidas (alias compatible)"""
+    def __init__(self, message: str):
+        super().__init__(message, "BAD_REQUEST", 400)
+
 
 class DatabaseException(BRISAException):
     """Excepción para errores de base de datos"""
