@@ -53,13 +53,23 @@ class RegistroDTO(BaseModel):
     @field_validator('tipo_persona')
     @classmethod
     def validate_tipo_persona(cls, v: str):
-        """Admite valores de tipo_persona compatibles con la BD."""
+        """Admite valores de tipo_persona compatibles con la BD.
+
+        Nota: En algunos despliegues la BD no incluye 'regente' en el ENUM
+        de `personas.tipo_persona`. Para evitar errores de inserción, se
+        normaliza 'regente' -> 'administrativo'.
+        """
         allowed = {
             "profesor",
             "administrativo",
-            "apoderado"
+            "apoderado",
+            "regente",
         }
         normalized = v.strip().lower()
+
+        # Alias para compatibilidad con BD (ENUM) y/o frontend
+        if normalized == "regente":
+            return "administrativo"
         
         if normalized not in allowed:
             raise ValueError(f"tipo_persona debe ser uno de: {', '.join(sorted(allowed))}")

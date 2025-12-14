@@ -9,9 +9,12 @@ from app.shared.permission_mapper import puede_ver_todas_esquelas
 from app.modules.profesores.models.profesor_models import Profesor
 from datetime import date
 from typing import Optional
+import logging
 
 
 class EsquelaService:
+
+    logger = logging.getLogger(__name__)
 
     @staticmethod
     def _resolve_profesor_id(db: Session, id_persona_or_profesor: int) -> Optional[int]:
@@ -181,44 +184,65 @@ class EsquelaService:
         id_registrador_prof = EsquelaService._resolve_profesor_id(db, current_user.id_persona)
         id_registrador = id_registrador_prof if id_registrador_prof else current_user.id_persona
 
-        # Determinar id_profesor según rol
-        if puede_ver_todas_esquelas(current_user):
-            # Admin/Regente puede especificar cualquier profesor
+        EsquelaService.logger.info(
+            "Esquela crear: current_user.id_persona=%s -> id_registrador=%s",
+            current_user.id_persona,
+            id_registrador,
+        )
+
+        # Determinar si el usuario autenticado es profesor (por existencia en tabla `profesores`)
+        id_profesor_usuario = EsquelaService._resolve_profesor_id(db, current_user.id_persona)
+
+        EsquelaService.logger.info(
+            "Esquela crear: resolve profesor usuario id_persona=%s -> id_profesor_usuario=%s; payload.id_profesor=%s",
+            current_user.id_persona,
+            id_profesor_usuario,
+            getattr(esquela_data, "id_profesor", None),
+        )
+
+        # Regla principal: si el usuario es profesor, puede crear esquelas en su nombre
+        if id_profesor_usuario:
+            if esquela_data.id_profesor:
+                # Puede venir id_persona o id_profesor; lo resolvemos y exigimos que sea el mismo profesor
+                id_profesor_solicitado = EsquelaService._resolve_profesor_id(db, esquela_data.id_profesor)
+                if id_profesor_solicitado and id_profesor_solicitado != id_profesor_usuario:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Solo puede asignar esquelas en su propio nombre"
+                    )
+            id_profesor = id_profesor_usuario
+        else:
+            # No es profesor: solo Admin/Regente pueden crear y deben especificar profesor
+            if not puede_ver_todas_esquelas(current_user):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Solo los profesores o personal autorizado pueden registrar esquelas"
+                )
             if not esquela_data.id_profesor:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Debe especificar el profesor para esta esquela"
                 )
-            # El frontend puede enviar id_persona o id_profesor; resolvemos al id_profesor real
+
             id_profesor = EsquelaService._resolve_profesor_id(db, esquela_data.id_profesor)
             if not id_profesor:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="El profesor especificado no existe"
                 )
-        else:
-            # Profesor solo puede crear esquelas en su nombre
-            id_profesor_real = EsquelaService._resolve_profesor_id(db, current_user.id_persona)
-            if not id_profesor_real:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Solo los profesores pueden registrar esquelas"
-                )
-            
-            # Si se envía un id_profesor, debe coincidir con el real
-            if esquela_data.id_profesor and esquela_data.id_profesor != id_profesor_real:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Solo puede asignar esquelas en su propio nombre"
-                )
-            id_profesor = id_profesor_real
+
+            EsquelaService.logger.info("Esquela crear: id_profesor final=%s", id_profesor)
 
         # Obtener curso del estudiante
         from app.modules.administracion.repositories.curso_repository import CursoRepository
-        curso = CursoRepository.get_curso_by_estudiante(
-            db, esquela_data.id_estudiante)
+        cursos_estudiante = CursoRepository.get_cursos_by_estudiante(db, esquela_data.id_estudiante)
+        EsquelaService.logger.info(
+            "Esquela crear: id_estudiante=%s -> cursos=%s",
+            esquela_data.id_estudiante,
+            [getattr(c, "id_curso", None) for c in cursos_estudiante],
+        )
 
-        if not curso:
+        if not cursos_estudiante:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El estudiante no está asignado a ningún curso"
@@ -226,11 +250,22 @@ class EsquelaService:
 
         # Validar que el profesor imparte clases en el curso del estudiante
         from app.modules.administracion.repositories.persona_repository import PersonaRepository
-        if not PersonaRepository.es_profesor_del_curso(db, id_profesor, curso.id_curso):
+        curso_match = None
+        for c in cursos_estudiante:
+            if PersonaRepository.es_profesor_del_curso(db, id_profesor, c.id_curso):
+                curso_match = c
+                break
+
+        EsquelaService.logger.info(
+            "Esquela crear: profesor=%s match_curso=%s",
+            id_profesor,
+            getattr(curso_match, "id_curso", None),
+        )
+
+        if not curso_match:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"El profesor no imparte clases en el curso {
-                    curso.nombre_curso} del estudiante"
+                detail="El profesor no imparte clases en ningún curso asignado del estudiante"
             )
 
         # Crear esquela

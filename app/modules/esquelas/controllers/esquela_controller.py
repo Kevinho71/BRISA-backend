@@ -1,5 +1,7 @@
 """Controlador (router) para el módulo de Esquelas."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -25,6 +27,9 @@ from app.modules.esquelas.dto.esquela_dto import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 router = APIRouter(prefix="/esquelas", tags=["Esquelas"])
 
 
@@ -44,7 +49,8 @@ async def listar_esquelas(
     month: Optional[int] = Query(
         None, ge=1, le=12, description="Filtrar por mes (1-12)"),
     page: int = Query(1, ge=1, description="Número de página"),
-    page_size: int = Query(10, ge=1, description="Tamaño de página (sin límite máximo, enviar valor alto para obtener todo)"),
+    page_size: int = Query(
+        10, ge=1, description="Tamaño de página (sin límite máximo, enviar valor alto para obtener todo)"),
     current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
@@ -56,7 +62,7 @@ async def listar_esquelas(
     1. Haces la petición normal (por defecto `page_size=10`).
     2. Lees el `total` de la respuesta (ej. 150 registros).
     3. Si el usuario quiere ver "Todo", haces una nueva petición con `page_size=150`.
-    
+
     **Permisos:**
     - **Admin/Regente**: Ve todas las esquelas
     - **Profesor**: Ve solo las esquelas que él asignó
@@ -214,7 +220,35 @@ async def crear_esquela(
     }
     ```
     """
-    return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
+    # Debug: imprime qué llega y quién llama (sin token)
+    try:
+        roles = [r.nombre for r in (getattr(current_user, "roles", []) or []) if getattr(r, "is_active", True)]
+        logger.info(
+            "Crear esquela request by id_usuario=%s id_persona=%s roles=%s payload=%s",
+            getattr(current_user, "id_usuario", None),
+            getattr(current_user, "id_persona", None),
+            roles,
+            esquela_data.model_dump(),
+        )
+    except Exception:
+        logger.info("Crear esquela request (no se pudo serializar debug)")
+
+    try:
+        return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
+    except Exception as exc:
+        # Loguea el error específico
+        from fastapi import HTTPException
+
+        if isinstance(exc, HTTPException):
+            logger.warning(
+                "Crear esquela HTTPException status=%s detail=%s",
+                exc.status_code,
+                exc.detail,
+            )
+            raise
+
+        logger.exception("Crear esquela error no controlado")
+        raise
 
 
 @router.delete("/{id}")

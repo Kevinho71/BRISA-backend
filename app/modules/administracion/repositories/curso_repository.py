@@ -148,7 +148,13 @@ class CursoRepository:
     
     @staticmethod
     def get_curso_by_estudiante(db: Session, id_estudiante: int) -> Optional[Curso]:
-        """Obtiene el curso de un estudiante (asume que el estudiante está en un solo curso)"""
+        """Obtiene el curso de un estudiante.
+
+        Nota: Históricamente se asumía 1 curso por estudiante. Si existen múltiples
+        asignaciones en `estudiantes_cursos`, este método retorna uno de forma
+        determinística (por id_curso asc). Para validar contra *todos* los cursos,
+        usar `get_cursos_by_estudiante`.
+        """
         from app.modules.administracion.models.persona_models import estudiantes_cursos
         
         curso = db.query(Curso).join(
@@ -156,6 +162,19 @@ class CursoRepository:
             Curso.id_curso == estudiantes_cursos.c.id_curso
         ).filter(
             estudiantes_cursos.c.id_estudiante == id_estudiante
-        ).first()
+        ).order_by(Curso.id_curso.asc()).first()
         
         return curso
+
+    @staticmethod
+    def get_cursos_by_estudiante(db: Session, id_estudiante: int) -> list[Curso]:
+        """Obtiene todos los cursos asociados a un estudiante."""
+        from app.modules.administracion.models.persona_models import estudiantes_cursos
+
+        return (
+            db.query(Curso)
+            .join(estudiantes_cursos, Curso.id_curso == estudiantes_cursos.c.id_curso)
+            .filter(estudiantes_cursos.c.id_estudiante == id_estudiante)
+            .order_by(Curso.id_curso.asc())
+            .all()
+        )
