@@ -13,6 +13,7 @@ from typing import Optional, Literal, List
 
 from app.shared.models.profesor_curso_materia import ProfesorCursoMateria
 
+
 class ReporteRepository:
 
     @staticmethod
@@ -152,7 +153,6 @@ class ReporteRepository:
 
         return ranking
 
-
     # ================================
     # Métodos para Reportes de Estudiantes
     # ================================
@@ -200,14 +200,15 @@ class ReporteRepository:
             cursos_query = db.query(Curso).join(
                 estudiantes_cursos, Curso.id_curso == estudiantes_cursos.c.id_curso
             ).filter(estudiantes_cursos.c.id_estudiante == est.id_estudiante)
-            
+
             if nivel:
                 cursos_query = cursos_query.filter(Curso.nivel == nivel)
             if gestion:
                 cursos_query = cursos_query.filter(Curso.gestion == gestion)
-            
+
             cursos = cursos_query.all()
-            cursos_nombres = [f"{c.nombre_curso} ({c.gestion})" for c in cursos]
+            cursos_nombres = [
+                f"{c.nombre_curso} ({c.gestion})" for c in cursos]
 
             resultado.append({
                 "id_estudiante": est.id_estudiante,
@@ -246,17 +247,19 @@ class ReporteRepository:
 
             # Construir lista de apoderados
             apoderados = []
-            
+
             if tiene_padre:
-                nombre_padre = f"{est.nombre_padre or ''} {est.apellido_paterno_padre or ''} {est.apellido_materno_padre or ''}".strip()
+                nombre_padre = f"{est.nombre_padre or ''} {est.apellido_paterno_padre or ''} {
+                    est.apellido_materno_padre or ''}".strip()
                 apoderados.append({
                     "tipo": "padre",
                     "nombre_completo": nombre_padre if nombre_padre else None,
                     "telefono": est.telefono_padre
                 })
-            
+
             if tiene_madre:
-                nombre_madre = f"{est.nombre_madre or ''} {est.apellido_paterno_madre or ''} {est.apellido_materno_madre or ''}".strip()
+                nombre_madre = f"{est.nombre_madre or ''} {est.apellido_paterno_madre or ''} {
+                    est.apellido_materno_madre or ''}".strip()
                 apoderados.append({
                     "tipo": "madre",
                     "nombre_completo": nombre_madre if nombre_madre else None,
@@ -292,14 +295,14 @@ class ReporteRepository:
             ).join(
                 Curso, Curso.id_curso == estudiantes_cursos.c.id_curso
             )
-            
+
             if id_curso:
                 query = query.filter(Curso.id_curso == id_curso)
             if nivel:
                 query = query.filter(Curso.nivel == nivel)
             if gestion:
                 query = query.filter(Curso.gestion == gestion)
-            
+
             query = query.distinct()
 
         estudiantes = query.all()
@@ -308,7 +311,8 @@ class ReporteRepository:
         for est in estudiantes:
             # Agregar contacto del padre si existe
             if est.nombre_padre and est.telefono_padre:
-                nombre_padre = f"{est.nombre_padre or ''} {est.apellido_paterno_padre or ''} {est.apellido_materno_padre or ''}".strip()
+                nombre_padre = f"{est.nombre_padre or ''} {est.apellido_paterno_padre or ''} {
+                    est.apellido_materno_padre or ''}".strip()
                 contactos.append({
                     "id_estudiante": est.id_estudiante,
                     "estudiante_nombre": est.nombre_completo,
@@ -320,7 +324,8 @@ class ReporteRepository:
 
             # Agregar contacto de la madre si existe
             if est.nombre_madre and est.telefono_madre:
-                nombre_madre = f"{est.nombre_madre or ''} {est.apellido_paterno_madre or ''} {est.apellido_materno_madre or ''}".strip()
+                nombre_madre = f"{est.nombre_madre or ''} {est.apellido_paterno_madre or ''} {
+                    est.apellido_materno_madre or ''}".strip()
                 contactos.append({
                     "id_estudiante": est.id_estudiante,
                     "estudiante_nombre": est.nombre_completo,
@@ -351,14 +356,14 @@ class ReporteRepository:
             ).join(
                 Curso, Curso.id_curso == estudiantes_cursos.c.id_curso
             )
-            
+
             if id_curso:
                 query = query.filter(Curso.id_curso == id_curso)
             if nivel:
                 query = query.filter(Curso.nivel == nivel)
             if gestion:
                 query = query.filter(Curso.gestion == gestion)
-            
+
             query = query.distinct()
 
         estudiantes = query.all()
@@ -400,7 +405,7 @@ class ReporteRepository:
 
         total = len(estudiantes)
         distribucion = []
-        
+
         for rango, cantidad in rangos.items():
             if cantidad > 0:  # Solo incluir rangos con estudiantes
                 porcentaje = (cantidad / total * 100) if total > 0 else 0
@@ -425,7 +430,7 @@ class ReporteRepository:
         Si no se especifica id_estudiante, retorna historial de todos
         """
         query = db.query(Estudiante)
-        
+
         if id_estudiante:
             query = query.filter(Estudiante.id_estudiante == id_estudiante)
 
@@ -459,7 +464,6 @@ class ReporteRepository:
 
         return historiales
 
-
     # ================================
     # Métodos para Reportes Académicos
     # ================================
@@ -487,13 +491,13 @@ class ReporteRepository:
             Curso.gestion,
             Materia.nombre_materia
         ).select_from(Persona).join(
-            ProfesorCursoMateria, 
+            ProfesorCursoMateria,
             Persona.id_persona == ProfesorCursoMateria.id_profesor
         ).join(
-            Curso, 
+            Curso,
             Curso.id_curso == ProfesorCursoMateria.id_curso
         ).join(
-            Materia, 
+            Materia,
             Materia.id_materia == ProfesorCursoMateria.id_materia
         ).filter(
             Persona.tipo_persona == 'profesor'
@@ -510,7 +514,7 @@ class ReporteRepository:
             query = query.filter(Curso.gestion == gestion)
 
         resultados = query.all()
-        
+
         profesores = []
         for id_p, ci, nombres, ap_pat, ap_mat, tel, correo, nom_curso, gest, nom_mat in resultados:
             nombre_completo = f"{nombres} {ap_pat} {ap_mat or ''}".strip()
@@ -570,7 +574,8 @@ class ReporteRepository:
 
         for prof in profesores:
             from app.modules.profesores.models.profesor_models import Profesor
-            profesor_row = db.query(Profesor).filter(Profesor.id_persona == prof.id_persona).first()
+            profesor_row = db.query(Profesor).filter(
+                Profesor.id_persona == prof.id_persona).first()
             if not profesor_row:
                 continue
 
@@ -609,7 +614,8 @@ class ReporteRepository:
                 cursos_set.add(f"{nom_curso}-{gest}")
                 materias_set.add(nom_mat)
 
-            nombre_completo = f"{prof.nombres} {prof.apellido_paterno} {prof.apellido_materno or ''}".strip()
+            nombre_completo = f"{prof.nombres} {prof.apellido_paterno} {
+                prof.apellido_materno or ''}".strip()
 
             resultado.append({
                 "id_profesor": profesor_row.id_profesor,
@@ -639,7 +645,8 @@ class ReporteRepository:
             Curso.nombre_curso,
             Curso.nivel,
             Curso.gestion,
-            func.count(estudiantes_cursos.c.id_estudiante).label('total_estudiantes')
+            func.count(estudiantes_cursos.c.id_estudiante).label(
+                'total_estudiantes')
         ).outerjoin(
             estudiantes_cursos,
             Curso.id_curso == estudiantes_cursos.c.id_curso
@@ -671,7 +678,6 @@ class ReporteRepository:
 
         return cursos
 
-
     # ================================
     # Métodos para Reportes de Esquelas
     # ================================
@@ -679,14 +685,16 @@ class ReporteRepository:
     @staticmethod
     def get_esquelas_por_profesor(
         db: Session,
-        id_profesor: Optional[int] = None, # en realidad es por emisor, falta refactorizar los nombres
+        # en realidad es por emisor, falta refactorizar los nombres
+        id_profesor: Optional[int] = None,
         fecha_desde: Optional[date] = None,
         fecha_hasta: Optional[date] = None
     ):
         """
         Obtiene esquelas agrupadas por profesor emisor
         """
-        query = db.query(Persona).filter((Persona.tipo_persona == 'profesor') | (Persona.tipo_persona == 'regente') | (Persona.tipo_persona == 'administrativo'))
+        query = db.query(Persona).filter((Persona.tipo_persona == 'profesor') | (
+            Persona.tipo_persona == 'regente') | (Persona.tipo_persona == 'administrativo'))
 
         if id_profesor:
             query = query.filter(Persona.ci == id_profesor)
@@ -717,13 +725,19 @@ class ReporteRepository:
             for esq in esquelas:
                 # Obtener estudiante
                 estudiante = esq.estudiante
-                est_nombre = f"{estudiante.nombres} {estudiante.apellido_paterno} {estudiante.apellido_materno or ''}".strip()
+                est_nombre = f"{estudiante.nombres} {estudiante.apellido_paterno} {
+                    estudiante.apellido_materno or ''}".strip()
 
                 # Obtener registrador
-                registrador = esq.registrador
-                reg_nombre = f"{registrador.nombres} {registrador.apellido_paterno} {registrador.apellido_materno or ''}".strip()
+                # Obtener registrador desde Persona
+                registrador = db.query(Persona).filter(
+                    Persona.id_persona == esq.id_registrador).first()
+                if registrador:
+                    reg_nombre = f"{registrador.nombres} {registrador.apellido_paterno} {
+                        registrador.apellido_materno or ''}".strip()
+                else:
+                    reg_nombre = "Sin registrador"               # Obtener códigos
 
-                # Obtener códigos
                 codigos_query = db.query(CodigoEsquela).join(
                     EsquelaCodigo,
                     CodigoEsquela.id_codigo == EsquelaCodigo.id_codigo
@@ -731,7 +745,7 @@ class ReporteRepository:
 
                 codigos_objs = codigos_query.all()
                 codigos = []
-                
+
                 for cod in codigos_objs:
                     codigos.append(f"{cod.codigo} - {cod.descripcion}")
                     if cod.tipo == 'reconocimiento':
@@ -750,7 +764,8 @@ class ReporteRepository:
                     "observaciones": esq.observaciones
                 })
 
-            prof_nombre = f"{prof.nombres} {prof.apellido_paterno} {prof.apellido_materno or ''}".strip()
+            prof_nombre = f"{prof.nombres} {prof.apellido_paterno} {
+                prof.apellido_materno or ''}".strip()
 
             resultado.append({
                 "id_profesor": prof.id_persona,
@@ -790,16 +805,26 @@ class ReporteRepository:
         for esq in esquelas:
             # Obtener estudiante
             estudiante = esq.estudiante
-            est_nombre = f"{estudiante.nombres} {estudiante.apellido_paterno} {estudiante.apellido_materno or ''}".strip()
+            est_nombre = f"{estudiante.nombres} {estudiante.apellido_paterno} {
+                estudiante.apellido_materno or ''}".strip()
 
             # Obtener profesor
-            profesor = esq.profesor
-            prof_nombre = f"{profesor.nombres} {profesor.apellido_paterno} {profesor.apellido_materno or ''}".strip()
-
+            # Obtener profesor
+            profesor = db.query(Persona).filter(
+                Persona.id_persona == esq.id_profesor).first()
+            if profesor:
+                prof_nombre = f"{profesor.nombres} {profesor.apellido_paterno} {
+                    profesor.apellido_materno or ''}".strip()
+            else:
+                prof_nombre = "Sin profesor"            # Obtener registrador
             # Obtener registrador
-            registrador = esq.registrador
-            reg_nombre = f"{registrador.nombres} {registrador.apellido_paterno} {registrador.apellido_materno or ''}".strip()
-
+            registrador = db.query(Persona).filter(
+                Persona.id_persona == esq.id_registrador).first()
+            if registrador:
+                reg_nombre = f"{registrador.nombres} {registrador.apellido_paterno} {
+                    registrador.apellido_materno or ''}".strip()
+            else:
+                reg_nombre = "Sin registrador"
             # Obtener códigos
             codigos_query = db.query(CodigoEsquela).join(
                 EsquelaCodigo,
@@ -808,10 +833,11 @@ class ReporteRepository:
 
             # Filtrar por tipo si se especifica
             if tipo:
-                codigos_query = codigos_query.filter(CodigoEsquela.tipo == tipo)
+                codigos_query = codigos_query.filter(
+                    CodigoEsquela.tipo == tipo)
 
             codigos_objs = codigos_query.all()
-            
+
             # Si se filtró por tipo y no hay códigos de ese tipo, saltar esta esquela
             if tipo and not codigos_objs:
                 continue
@@ -901,7 +927,8 @@ class ReporteRepository:
 
         codigos = []
         for id_cod, cod, desc, tip, total in resultados:
-            porcentaje = (total / total_aplicaciones * 100) if total_aplicaciones > 0 else 0
+            porcentaje = (total / total_aplicaciones *
+                          100) if total_aplicaciones > 0 else 0
             codigos.append({
                 "id_codigo": id_cod,
                 "codigo": cod,
@@ -915,4 +942,3 @@ class ReporteRepository:
             "codigos": codigos,
             "total_aplicaciones": total_aplicaciones
         }
-
