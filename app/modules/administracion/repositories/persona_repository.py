@@ -42,24 +42,24 @@ class PersonaRepository:
         return db.query(Persona).filter(Persona.id_persona == id_persona).first()
     
     @staticmethod
-    def get_cursos_by_profesor(db: Session, id_persona: int) -> List:
-        """Obtiene los cursos donde el profesor imparte clases"""
-        from app.modules.estudiantes.models.Curso import Curso
+    def get_cursos_by_profesor(db: Session, id_profesor: int) -> List:
+        """Obtiene los cursos donde el profesor imparte clases (usa `profesores.id_profesor`)."""
         from app.modules.administracion.models.persona_models import profesores_cursos_materias
+        from app.modules.estudiantes.models.Curso import Curso
         
         # Query usando la tabla intermedia
         cursos = db.query(Curso).join(
             profesores_cursos_materias,
             Curso.id_curso == profesores_cursos_materias.c.id_curso
         ).filter(
-            profesores_cursos_materias.c.id_profesor == id_persona
+            profesores_cursos_materias.c.id_profesor == id_profesor
         ).distinct().order_by(Curso.nombre_curso).all()
         
         return cursos
     
     @staticmethod
     def es_profesor_del_curso(db: Session, id_profesor: int, id_curso: int) -> bool:
-        """Verifica si el profesor imparte clases en el curso especificado"""
+        """Verifica si el profesor imparte clases en el curso especificado (usa `profesores.id_profesor`)."""
         from app.modules.administracion.models.persona_models import profesores_cursos_materias
         
         result = db.query(profesores_cursos_materias).filter(

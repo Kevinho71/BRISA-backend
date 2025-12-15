@@ -1,5 +1,5 @@
 """
-app/shared/security
+app/shared/security.py
 Módulo de seguridad con manejo robusto de contraseñas
 """
 
@@ -19,7 +19,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "tu_clave_secreta_cambiar_en_produccion")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-# Límite de bcrypt (72 bytes menos margen de seguridad)
+# Límite de bcrypt
 BCRYPT_MAX_BYTES = 72
 
 # Contexto para hash de contraseñas
@@ -31,26 +31,17 @@ def _normalize_password(password: str) -> str:
     """
     Normalizar contraseña para bcrypt.
     Si excede 72 bytes, usar SHA256 para reducir tamaño.
-    
-    IMPORTANTE: SHA256 es criptográficamente seguro y produce
-    un hash de longitud fija (64 caracteres hex) sin importar
-    la longitud de entrada.
     """
     password_bytes = password.encode('utf-8')
     
-    # Si la contraseña es muy larga, usar SHA256 primero
     if len(password_bytes) > BCRYPT_MAX_BYTES:
-        # SHA256 reduce cualquier longitud a 64 caracteres hex
         return hashlib.sha256(password_bytes).hexdigest()
     
     return password
 
 
 def hash_password(password: str) -> str:
-    """
-    Encriptar contraseña con bcrypt.
-    Maneja automáticamente contraseñas largas usando SHA256 pre-hash.
-    """
+    """Encriptar contraseña con bcrypt"""
     try:
         normalized_password = _normalize_password(password)
         return pwd_context.hash(normalized_password)
@@ -60,11 +51,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verificar contraseña contra hash.
-    Maneja automáticamente contraseñas largas con el mismo
-    pre-procesamiento que hash_password.
-    """
+    """Verificar contraseña contra hash"""
     try:
         normalized_password = _normalize_password(plain_password)
         return pwd_context.verify(normalized_password, hashed_password)
@@ -84,11 +71,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     
     # Manejar sub y usuario_id para compatibilidad
     if "sub" in to_encode:
-        # JWT spec requiere sub como string
         to_encode["sub"] = str(to_encode["sub"])
-        # Mantener usuario_id como int para uso interno
         if "usuario_id" not in to_encode:
-            to_encode["usuario_id"] = int(to_encode["sub"]) if to_encode["sub"].isdigit() else to_encode["sub"]
+            to_encode["usuario_id"] = int(to_encode["sub"]) if str(to_encode["sub"]).isdigit() else to_encode["sub"]
     elif "usuario_id" in to_encode:
         to_encode["sub"] = str(to_encode["usuario_id"])
 
@@ -97,9 +82,78 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     return encoded_jwt
 
 
-async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """Verificar y decodificar token JWT"""
+def verify_token(token: str) -> dict:
+    """
+    ✅ FUNCIÓN PARA EL MIDDLEWARE (recibe string)
+    Verificar y decodificar token JWT
     
+    Args:
+        token: String del token JWT
+    
+    Returns:
+        dict con payload decodificado
+        
+    Raises:
+        HTTPException si el token es inválido
+    """
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token no proporcionado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    try:
+        # Decodificar token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        # Buscar usuario_id en payload
+        usuario_id = payload.get("usuario_id") or payload.get("sub")
+        
+        # Convertir a int si es string
+        if isinstance(usuario_id, str) and usuario_id.isdigit():
+            usuario_id = int(usuario_id)
+        
+        if usuario_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido: falta identificador de usuario",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        return payload
+    
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token JWT expirado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expirado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    except JWTError as e:
+        logger.warning(f"Token JWT inválido: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+
+async def verify_token_dependency(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """
+    ✅ FUNCIÓN PARA DEPENDENCY INJECTION (recibe HTTPAuthorizationCredentials)
+    Verificar y decodificar token JWT para uso en endpoints
+    
+    Args:
+        credentials: Credenciales extraídas por FastAPI Security
+    
+    Returns:
+        dict: {"usuario_id": int, "payload": dict}
+        
+    Raises:
+        HTTPException si el token es inválido
+    """
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -108,10 +162,11 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         )
     
     token = credentials.credentials
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
-        # Buscar usuario_id en payload (puede estar en 'sub' o 'usuario_id')
+        # Buscar usuario_id en payload
         usuario_id = payload.get("usuario_id") or payload.get("sub")
         
         # Convertir a int si es string
@@ -127,11 +182,19 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         
         return {"usuario_id": usuario_id, "payload": payload}
     
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token JWT expirado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expirado",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
     except JWTError as e:
         logger.warning(f"Token JWT inválido: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expirado o inválido",
+            detail="Token inválido",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
@@ -177,11 +240,6 @@ def validate_password_strength(password: str) -> tuple[bool, list[str]]:
     
     if not any(c.isdigit() for c in password):
         errores.append("La contraseña debe contener al menos un número")
-    
-    # Opcional: validar caracteres especiales
-    if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password):
-        # No es error, solo advertencia
-        pass
     
     # Opcional: verificar contraseñas comunes
     contraseñas_comunes = ["password", "12345678", "qwerty", "admin"]

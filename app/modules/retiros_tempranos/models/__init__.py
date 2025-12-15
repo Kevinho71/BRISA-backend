@@ -8,9 +8,10 @@ from .Apoderado import Apoderado
 from .EstudianteApoderado import EstudianteApoderado
 from .MotivoRetiro import MotivoRetiro, SeveridadEnum
 from .AutorizacionesRetiro import AutorizacionRetiro, DecisionEnum
-from .SolicitudRetiro import SolicitudRetiro
-from .SoliticitudRetiroDetalle import SolicitudRetiroDetalle
-from .RegistroSalida import RegistroSalida
+from .SolicitudRetiro import SolicitudRetiro, EstadoSolicitudEnum, TipoSolicitudEnum
+from .SolicitudRetiroMasivo import SolicitudRetiroMasivo, EstadoSolicitudMasivaEnum
+from .DetalleSolicitudRetiroMasivo import DetalleSolicitudRetiroMasivo
+from .RegistroSalida import RegistroSalida, TipoRegistroEnum
 
 __all__ = [
     "Estudiante",
@@ -21,6 +22,12 @@ __all__ = [
     "AutorizacionRetiro",
     "DecisionEnum",
     "SolicitudRetiro",
-    "SolicitudRetiroDetalle",
+    "EstadoSolicitudEnum",
+    "TipoSolicitudEnum",
+    "SolicitudRetiroMasivo",
+    "EstadoSolicitudMasivaEnum",
+    "DetalleSolicitudRetiroMasivo",
     "RegistroSalida",
+    "TipoRegistroEnum",
 ]
+

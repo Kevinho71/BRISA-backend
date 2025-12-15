@@ -1,10 +1,11 @@
-# app/modules/incidentes/repositories/repositories_incidentes.py
-from sqlalchemy.orm import Session, joinedload
-
-from app.modules.incidentes.models.models_incidentes import Incidente, SituacionIncidente
+# app\modules\incidentes\repositories\repositories_incidentes.py
+from sqlalchemy.orm import Session
+from app.modules.incidentes.models.models_incidentes import (
+    Incidente,
+    SituacionIncidente
+)
 from app.modules.administracion.models.persona_models import Estudiante
-from app.modules.usuarios.models.usuario_models import Persona1
-
+from app.shared.models import Persona
 
 class IncidenteRepository:
 

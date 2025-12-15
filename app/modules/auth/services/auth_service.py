@@ -498,15 +498,8 @@ class AuthService:
                     )
                 usuario.roles.append(rol)
             else:
-                # Rol por defecto según tipo_persona
-                rol_map = {
-                    "profesor": "Profesor",
-                    "administrativo": "Administrativo",
-                    "regente": "Regente",
-                    "directivo": "Director",
-                }
-                rol_nombre = rol_map.get(registro.tipo_persona, "Administrativo")
-                rol_default = db.query(Rol).filter(Rol.nombre == rol_nombre).first()
+                # Rol por defecto
+                rol_default = db.query(Rol).filter(Rol.nombre == "Administrativo").first()
                 if rol_default:
                     usuario.roles.append(rol_default)
 
@@ -637,26 +630,90 @@ class AuthService:
 # DEPENDENCIA PARA FASTAPI
 # ============================================
 
+# ============================================
+# DEPENDENCIA PARA FASTAPI (FINAL DEL ARCHIVO)
+# ============================================
+
+from sqlalchemy.orm import joinedload, selectinload
+
 def get_current_user_dependency(
     request: Request,
     db: Session = Depends(get_db)
 ) -> Usuario:
-
+    """
+    ✅ DEPENDENCIA CORREGIDA
+    Obtener usuario actual desde el token JWT con eager loading
+    
+    Esta función:
+    1. Extrae el token del header Authorization
+    2. Valida el token usando AuthService.decode_token()
+    3. Carga el usuario con TODAS sus relaciones (persona, roles, permisos)
+    4. Inyecta metadata útil (_token, _ip)
+    
+    Returns:
+        Usuario: Objeto Usuario con relaciones cargadas
+        
+    Raises:
+        HTTPException 401: Si el token es inválido o el usuario no existe
+    """
+    # 1️⃣ Extraer token del header
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.replace("Bearer ", "").strip()
     
     if not token:
+        logger.warning("❌ Token no proporcionado en request")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token no proporcionado",
             headers={"WWW-Authenticate": "Bearer"}
         )
-
-    usuario = AuthService.get_current_user(db, token)
-
-    usuario._token = token
-    usuario._ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or (
-        request.client.host if request.client else "unknown"
-    )
     
-    return usuario
+    try:
+        # 2️⃣ Validar token y extraer usuario_id
+        payload = AuthService.decode_token(token)
+        usuario_id: int = payload.get("usuario_id") or payload.get("sub")
+        
+        if not usuario_id:
+            logger.error("❌ Token no contiene usuario_id")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido: falta identificador de usuario"
+            )
+        
+        # 3️⃣ Cargar usuario con EAGER LOADING (crítico para permisos)
+        # ✅ CORRECCIÓN: Usar Rol.permisos en vez de string 'permisos'
+        usuario = db.query(Usuario).options(
+            joinedload(Usuario.persona),  # Cargar persona
+            selectinload(Usuario.roles).selectinload(Rol.permisos)  # ← CORREGIDO: Usar Rol.permisos
+        ).filter(
+            Usuario.id_usuario == usuario_id,
+            Usuario.is_active == True
+        ).first()
+        
+        if not usuario:
+            logger.warning(f"❌ Usuario {usuario_id} no encontrado o inactivo")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no encontrado o inactivo"
+            )
+        
+        # 4️⃣ Inyectar metadata útil
+        usuario._token = token
+        usuario._ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or (
+            request.client.host if request.client else "unknown"
+        )
+        
+        logger.debug(f"✅ Usuario cargado correctamente: {usuario.usuario} (ID: {usuario.id_usuario})")
+        logger.debug(f"   Roles: {[r.nombre for r in usuario.roles if r.is_active]}")
+        
+        return usuario
+        
+    except HTTPException:
+        # Re-lanzar HTTPException sin modificar
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error al obtener usuario del token: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Error al validar token"
+        )

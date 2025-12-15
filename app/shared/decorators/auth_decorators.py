@@ -376,7 +376,7 @@ def require_esquela_access(allow_owner: bool = True):
             
             # Si solo puede ver las propias, verificar que tenga el permiso básico
             if allow_owner:
-                if not tiene_permiso(current_user, 'ver_esquelas'):
+                if not tiene_permiso(current_user, 'ver_esquela'):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="No tiene permisos para ver esquelas"

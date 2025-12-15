@@ -10,7 +10,8 @@ from .motivo_retiro_repository_interface import IMotivoRetiroRepository
 from .autorizacion_retiro_repository_interface import IAutorizacionRetiroRepository
 from .registro_salida_repository_interface import IRegistroSalidaRepository
 from .solicitud_retiro_repository_interface import ISolicitudRetiroRepository
-from .solicitud_retiro_detalle_repository_interface import ISolicitudRetiroDetalleRepository
+from .solicitud_retiro_masivo_repository_interface import SolicitudRetiroMasivoRepositoryInterface
+from .detalle_solicitud_retiro_masivo_repository_interface import DetalleSolicitudRetiroMasivoRepositoryInterface
 
 # Implementaciones
 from .estudiante_repository import EstudianteRepository
@@ -20,7 +21,8 @@ from .motivo_retiro_repository import MotivoRetiroRepository
 from .autorizacion_retiro_repository import AutorizacionRetiroRepository
 from .registro_salida_repository import RegistroSalidaRepository
 from .solicitud_retiro_repository import SolicitudRetiroRepository
-from .solicitud_retiro_detalle_repository import SolicitudRetiroDetalleRepository
+from .solicitud_retiro_masivo_repository import SolicitudRetiroMasivoRepository
+from .detalle_solicitud_retiro_masivo_repository import DetalleSolicitudRetiroMasivoRepository
 
 __all__ = [
     # Interfaces
@@ -31,7 +33,8 @@ __all__ = [
     "IAutorizacionRetiroRepository",
     "IRegistroSalidaRepository",
     "ISolicitudRetiroRepository",
-    "ISolicitudRetiroDetalleRepository",
+    "SolicitudRetiroMasivoRepositoryInterface",
+    "DetalleSolicitudRetiroMasivoRepositoryInterface",
     
     # Implementaciones
     "EstudianteRepository",
@@ -41,5 +44,6 @@ __all__ = [
     "AutorizacionRetiroRepository",
     "RegistroSalidaRepository",
     "SolicitudRetiroRepository",
-    "SolicitudRetiroDetalleRepository",
+    "SolicitudRetiroMasivoRepository",
+    "DetalleSolicitudRetiroMasivoRepository",
 ]

@@ -67,7 +67,7 @@ class ReporteService:
         # Obtener información del filtro aplicado
         curso_info = None
         if id_curso:
-            from app.modules.estudiantes.models.Curso import Curso
+            from app.modules.administracion.models.persona_models import Curso
             curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
             if curso:
                 curso_info = f"{curso.nombre_curso} ({curso.gestion})"
@@ -172,13 +172,13 @@ class ReporteService:
         materia_info = None
 
         if id_curso:
-            from app.modules.estudiantes.models.Curso import Curso
+            from app.modules.administracion.models.persona_models import Curso
             curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
             if curso:
                 curso_info = f"{curso.nombre_curso} ({curso.gestion})"
 
         if id_materia:
-            from app.modules.estudiantes.models.Materia import Materia
+            from app.modules.administracion.models.persona_models import Materia
             materia = db.query(Materia).filter(Materia.id_materia == id_materia).first()
             if materia:
                 materia_info = materia.nombre_materia

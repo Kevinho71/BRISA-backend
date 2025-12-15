@@ -1,22 +1,24 @@
+# app/shared/models/profesor_curso_materia.py
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from app.shared.models.base_models import BaseModel
-from app.shared.models.persona import Persona as SharedPersona
+from app.core.database import Base
 
 
-class ProfesorCursoMateria(BaseModel):
+class ProfesorCursoMateria(Base):
     """
     Modelo de Profesor-Curso-Materia (tabla intermedia)
     Relación entre profesores, cursos y materias que imparten
     """
     __tablename__ = "profesores_cursos_materias"
+    __table_args__ = {"extend_existing": True}
     
-    id_profesor = Column(Integer, ForeignKey("personas.id_persona", ondelete="CASCADE"), primary_key=True, nullable=False)
-    id_curso = Column(Integer, ForeignKey("cursos.id_curso", ondelete="CASCADE"), primary_key=True, nullable=False)
-    id_materia = Column(Integer, ForeignKey("materias.id_materia", ondelete="CASCADE"), primary_key=True, nullable=False)
+    # Define las columnas sin usar Column() en el nombre de variable
+    id_profesor = Column("id_profesor", Integer, ForeignKey("profesores.id_profesor", ondelete="CASCADE"), primary_key=True, nullable=False)
+    id_curso = Column("id_curso", Integer, ForeignKey("cursos.id_curso", ondelete="CASCADE"), primary_key=True, nullable=False)
+    id_materia = Column("id_materia", Integer, ForeignKey("materias.id_materia", ondelete="CASCADE"), primary_key=True, nullable=False)
     
-    # Relaciones
-    profesor = relationship(SharedPersona, back_populates="profesores_cursos_materias")
+    # Relaciones usando strings para lazy loading
+    profesor = relationship("Profesor", back_populates="asignaciones")
     curso = relationship("Curso", back_populates="profesores_cursos_materias")
     materia = relationship("Materia", back_populates="profesores_cursos_materias")
     

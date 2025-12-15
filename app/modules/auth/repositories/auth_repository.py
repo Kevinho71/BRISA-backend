@@ -1,11 +1,11 @@
 """
-auth_repository.py - VERSIÓN COMPLETA
-Repositorio de autenticación con todos los métodos necesarios
+auth_repository.py - VERSIÓN OPTIMIZADA
+
 """
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import and_, func
 from app.modules.usuarios.models.usuario_models import (
-    Usuario, Persona1, LoginLog, Bitacora
+    Usuario, Persona1, LoginLog, Bitacora, Rol
 )
 from typing import Optional
 from datetime import datetime, timedelta
@@ -19,30 +19,42 @@ TIEMPO_BLOQUEO_MINUTOS = 10
 
 
 class AuthRepository:
-    """Repositorio para operaciones de autenticación"""
+    """Repositorio optimizado para operaciones de autenticación"""
     
     # ==================== BÚSQUEDAS DE USUARIO ====================
     
     @staticmethod
     def buscar_usuario_por_nombre(db: Session, usuario: str) -> Optional[Usuario]:
-        """Buscar usuario por nombre de usuario"""
-        return db.query(Usuario).filter(
+        """
+        🚀 OPTIMIZADO: Buscar usuario con eager loading de relaciones
+        Carga persona, roles y permisos en 1 query en vez de 3-5
+        """
+        return db.query(Usuario).options(
+            joinedload(Usuario.persona),
+            selectinload(Usuario.roles).selectinload(Rol.permisos)
+        ).filter(
             Usuario.usuario == usuario,
             Usuario.is_active == True
         ).first()
     
     @staticmethod
     def buscar_usuario_por_correo(db: Session, correo: str) -> Optional[Usuario]:
-        """Buscar usuario por correo"""
-        return db.query(Usuario).filter(
+        """🚀 OPTIMIZADO: Buscar usuario por correo con eager loading"""
+        return db.query(Usuario).options(
+            joinedload(Usuario.persona),
+            selectinload(Usuario.roles).selectinload(Rol.permisos)
+        ).filter(
             Usuario.correo == correo,
             Usuario.is_active == True
         ).first()
     
     @staticmethod
     def buscar_usuario_por_id(db: Session, usuario_id: int) -> Optional[Usuario]:
-        """Buscar usuario por ID"""
-        return db.query(Usuario).filter(
+        """🚀 OPTIMIZADO: Buscar usuario por ID con eager loading"""
+        return db.query(Usuario).options(
+            joinedload(Usuario.persona),
+            selectinload(Usuario.roles).selectinload(Rol.permisos)
+        ).filter(
             Usuario.id_usuario == usuario_id,
             Usuario.is_active == True
         ).first()
@@ -78,6 +90,8 @@ class AuthRepository:
         """
         Registrar intento de login en LoginLog
         USA FLUSH, NO COMMIT (commit lo hace el servicio)
+        
+        🚀 OPTIMIZADO: Logs reducidos (solo loggea fallos)
         """
         if estado not in ['exitoso', 'fallido']:
             estado = 'fallido'
@@ -91,7 +105,11 @@ class AuthRepository:
         )
         db.add(login_log)
         db.flush()
-        logger.info(f"LoginLog registrado para usuario {id_usuario}: {estado}")
+        
+        # 🚀 Solo loggear fallos (reducir ruido)
+        if estado == 'fallido':
+            logger.warning(f"❌ Login fallido: usuario {id_usuario} desde {ip_address}")
+        
         return login_log
     
     @staticmethod
@@ -106,6 +124,8 @@ class AuthRepository:
         """
         Registrar acción en Bitácora
         USA FLUSH, NO COMMIT
+        
+        🚀 OPTIMIZADO: Solo loggea acciones críticas
         """
         bitacora = Bitacora(
             id_usuario_admin=usuario_id,
@@ -117,7 +137,15 @@ class AuthRepository:
         )
         db.add(bitacora)
         db.flush()
-        logger.info(f"Bitácora registrada: {accion} por usuario {usuario_id}")
+        
+        # 🚀 Solo loggear acciones críticas
+        acciones_criticas = [
+            'LOGIN', 'LOGOUT', 'CREAR_USUARIO', 'ELIMINAR_USUARIO',
+            'CAMBIAR_PASSWORD', 'ASIGNAR_ROL', 'REVOCAR_ROL'
+        ]
+        if accion in acciones_criticas:
+            logger.info(f"📝 Bitácora: {accion} por usuario {usuario_id}")
+        
         return bitacora
     
     # ==================== CONTROL DE INTENTOS FALLIDOS ====================
@@ -128,17 +156,7 @@ class AuthRepository:
         usuario_id: int,
         minutos: int = TIEMPO_BLOQUEO_MINUTOS
     ) -> int:
-        """
-        Contar intentos fallidos de login en los últimos N minutos
-        
-        Args:
-            db: Sesión de base de datos
-            usuario_id: ID del usuario
-            minutos: Ventana de tiempo a revisar (default 10 minutos)
-        
-        Returns:
-            Número de intentos fallidos en la ventana de tiempo
-        """
+        """Contar intentos fallidos - SIN logging innecesario"""
         tiempo_limite = datetime.now() - timedelta(minutes=minutos)
         
         intentos = db.query(LoginLog).filter(
@@ -149,7 +167,10 @@ class AuthRepository:
             )
         ).count()
         
-        logger.info(f"Usuario {usuario_id} tiene {intentos} intentos fallidos en últimos {minutos} min")
+        # ✅ SOLO loggear si hay 3+ intentos (posible ataque)
+        if intentos >= 3:
+            logger.warning(f"🚨 ALERTA: Usuario {usuario_id} tiene {intentos} intentos fallidos")
+        
         return intentos
     
     @staticmethod
@@ -198,7 +219,7 @@ class AuthRepository:
             if ultimo_intento:
                 fecha_desbloqueo = ultimo_intento.fecha_hora + timedelta(minutes=minutos_bloqueo)
                 if datetime.now() < fecha_desbloqueo:
-                    logger.warning(f"Usuario {usuario_id} está bloqueado hasta {fecha_desbloqueo}")
+                    logger.warning(f"🔒 Usuario {usuario_id} bloqueado hasta {fecha_desbloqueo}")
                     return True, fecha_desbloqueo
         
         return False, None
@@ -213,7 +234,7 @@ class AuthRepository:
         """
         # No es necesario eliminar, solo registrar el éxito
         # Los intentos fallidos antiguos serán ignorados por la ventana de tiempo
-        logger.info(f"Intentos fallidos limpiados para usuario {usuario_id} (por login exitoso)")
+        # logger.info(f"Intentos fallidos limpiados para usuario {usuario_id}")
         pass
     
     # ==================== BLACKLIST DE TOKENS ====================
@@ -225,7 +246,8 @@ class AuthRepository:
     def agregar_token_blacklist(token: str):
         """Agregar token a la blacklist (logout)"""
         AuthRepository._token_blacklist.add(token)
-        logger.info(f"Token agregado a blacklist. Total: {len(AuthRepository._token_blacklist)}")
+        # Solo loggear en desarrollo/debug
+        # logger.debug(f"Token agregado a blacklist. Total: {len(AuthRepository._token_blacklist)}")
     
     @staticmethod
     def verificar_token_blacklist(token: str) -> bool:
@@ -236,4 +258,4 @@ class AuthRepository:
     def limpiar_blacklist():
         """Limpiar blacklist (para tests o mantenimiento)"""
         AuthRepository._token_blacklist.clear()
-        logger.info("Blacklist de tokens limpiada")
+        logger.info("🗑️ Blacklist de tokens limpiada")
