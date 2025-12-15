@@ -1,10 +1,9 @@
 # app/modules/incidentes/controllers/controllers_incidentes.py
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-import os, shutil
-from typing import Optional, List
-import traceback
+import os
+from typing import List
 from app.core.extensions import get_db
 
 from app.modules.incidentes.dto.dto_areas import AreaCreateDTO, AreaUpdateDTO
@@ -30,6 +29,12 @@ from app.modules.incidentes.dto.dto_temporal import ProfesorSimple
 from app.modules.incidentes.services.services_temporal import get_situaciones_service
 from app.modules.incidentes.dto.dto_temporal import SituacionSimple
 
+from app.modules.incidentes.services.services_temporal import get_roles_service
+from app.modules.incidentes.dto.dto_temporal import RolSimple
+
+from app.modules.incidentes.services.services_temporal import get_usuarios_por_rol_service
+from app.modules.incidentes.dto.dto_temporal import UsuarioSimple
+
 from app.modules.incidentes.dto.dto_modificaciones import (
     IncidenteUpdateDTO,
     ModificacionResponseDTO
@@ -49,14 +54,36 @@ from app.modules.incidentes.dto.dto_derivaciones import DerivacionCreate, Deriva
 
 from app.modules.incidentes.services.services_notificaciones import NotificacionService
 from app.modules.incidentes.dto.dto_notificaiones import (
-    NotificacionCreateDTO,
     NotificacionOutDTO
 )
+
+from app.modules.auth.services.auth_service import get_current_user_dependency
 
 router = APIRouter(prefix="/Incidentes", tags=["Incidentes"])
 
 MEDIA_DIR = os.getenv("MEDIA_DIR", "uploads")
 os.makedirs(MEDIA_DIR, exist_ok=True)
+
+DIRECTOR_ROLE_ID = 1
+
+def require_director(current_user=Depends(get_current_user_dependency)):
+    roles = getattr(current_user, "roles", []) or []
+
+    es_director = any(
+        (getattr(r, "id_rol", None) == DIRECTOR_ROLE_ID)
+        or (str(getattr(r, "nombre", "")).strip().lower() == "director")
+        for r in roles
+        if getattr(r, "is_active", True)
+    )
+
+    if not es_director:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el Director puede realizar esta acción"
+        )
+
+    return current_user
+
 
 #----AREAS----
 
@@ -65,27 +92,36 @@ def obtener_areas(db: Session = Depends(get_db)):
     svc = AreaService()
     return svc.listar_areas(db)
 
-
 @router.get("/areas/{id_area}")
 def obtener_area(id_area: int, db: Session = Depends(get_db)):
     svc = AreaService()
     return svc.obtener_area(db, id_area)
 
-
 @router.post("/areas", status_code=201)
-def crear_area(dto: AreaCreateDTO, db: Session = Depends(get_db)):
+def crear_area(
+    dto: AreaCreateDTO,
+    db: Session = Depends(get_db),
+    _user=Depends(require_director)
+):
     svc = AreaService()
     return svc.crear_area(db, dto)
 
-
 @router.put("/areas/{id_area}")
-def actualizar_area(id_area: int, dto: AreaUpdateDTO, db: Session = Depends(get_db)):
+def actualizar_area(
+    id_area: int,
+    dto: AreaUpdateDTO,
+    db: Session = Depends(get_db),
+    _user=Depends(require_director)
+):
     svc = AreaService()
     return svc.actualizar_area(db, id_area, dto)
 
-
 @router.delete("/areas/{id_area}")
-def eliminar_area(id_area: int, db: Session = Depends(get_db)):
+def eliminar_area(
+    id_area: int,
+    db: Session = Depends(get_db),
+    _user=Depends(require_director)
+):
     svc = AreaService()
     return svc.eliminar_area(db, id_area)
 
@@ -105,15 +141,25 @@ def crear_situacion(dto: SituacionCreateDTO, db: Session = Depends(get_db)):
     svc = SituacionService(db)
     return svc.crear(dto)
 
-# PATCH — actualizar una situación
+# PATCH — actualizar una situación (SOLO DIRECTOR)
 @router.patch("/situaciones/{id_situacion}")
-def actualizar_situacion(id_situacion: int, dto: SituacionUpdateDTO, db: Session = Depends(get_db)):
+def actualizar_situacion(
+    id_situacion: int,
+    dto: SituacionUpdateDTO,
+    db: Session = Depends(get_db),
+    _user=Depends(require_director)
+):
     svc = SituacionService(db)
     return svc.actualizar(id_situacion, dto)
 
-# DELETE — eliminar una situación
+
+# DELETE — eliminar una situación (SOLO DIRECTOR)
 @router.delete("/situaciones/{id_situacion}")
-def eliminar_situacion(id_situacion: int, db: Session = Depends(get_db)):
+def eliminar_situacion(
+    id_situacion: int,
+    db: Session = Depends(get_db),
+    _user=Depends(require_director)
+):
     svc = SituacionService(db)
     return svc.eliminar(id_situacion)
 
@@ -130,7 +176,17 @@ def obtener_incidentes(db: Session = Depends(get_db)):
 def crear_incidente(dto: IncidenteCreateDTO, db: Session = Depends(get_db)):
     service = IncidenteService(db)
     nuevo = service.crear_incidente(dto)
-    return nuevo
+    # Map to DTO to include responsable_usuario
+    return IncidenteResponseDTO(
+        id_incidente=nuevo.id_incidente,
+        fecha=nuevo.fecha,
+        antecedentes=nuevo.antecedentes,
+        acciones_tomadas=nuevo.acciones_tomadas,
+        seguimiento=nuevo.seguimiento,
+        estado=nuevo.estado,
+        id_responsable=nuevo.id_responsable,
+        responsable_usuario=nuevo.responsable.usuario if nuevo.responsable else None
+    )
 #----INCIDENTES----
 
 
@@ -148,7 +204,6 @@ def obtener_detalles(id_incidente: int, db: Session = Depends(get_db)):
 
 
 #----TEMPORALES----
-
 # --- Estudiantes ---
 @router.get("/estudiantes-temporal", response_model=list[EstudianteSimple])
 def listar_estudiantes(db: Session = Depends(get_db)):
@@ -164,7 +219,15 @@ def listar_profesores(db: Session = Depends(get_db)):
 def listar_situaciones(db: Session = Depends(get_db)):
     return get_situaciones_service(db)
 
+# --- Roles ---
+@router.get("/roles-temporal", response_model=list[RolSimple])
+def listar_roles(db: Session = Depends(get_db)):
+    return get_roles_service(db)
 
+# --- Usuarios por Rol ---
+@router.get("/usuarios-por-rol-temporal/{rol_nombre}", response_model=list[UsuarioSimple])
+def listar_usuarios_por_rol(rol_nombre: str, db: Session = Depends(get_db)):
+    return get_usuarios_por_rol_service(db, rol_nombre)
 #----TEMPORALES----
 
 

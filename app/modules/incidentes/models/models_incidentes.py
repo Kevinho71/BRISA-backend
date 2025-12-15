@@ -1,38 +1,60 @@
-# app\modules\incidentes\models\models_incidentes.py
-
+# app/modules/incidentes/models/models_incidentes.py
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, Enum,
     ForeignKey, Table, Boolean, func
 )
-from app.core.database import Base
-from sqlalchemy import Text as SQLText
 from sqlalchemy.orm import relationship
+from sqlalchemy import Text as SQLText
 from datetime import datetime
 
-# TABLAS INTERMEDIAS
+from app.core.database import Base
+
+# ✅ Importa clases reales
+from app.modules.administracion.models.persona_models import Estudiante
+
+# ✅ IMPORTANTE: usar Persona1 (la que tu proyecto ya usa estable)
+from app.modules.usuarios.models.usuario_models import Persona1
+
+# Usuario para relación responsable
+from app.modules.usuarios.models.usuario_models import Usuario
+
+# ============================================================
+# PARCHE REGISTRY (opcional) para Estudiante si en tu proyecto hay duplicados
+# ============================================================
+try:
+    registry = Base.registry._class_registry
+    registry["Estudiante"] = Estudiante
+except Exception:
+    pass
+
+# =========================
+# Tablas intermedias
+# =========================
 
 incidentes_estudiantes = Table(
-    'incidentes_estudiantes',
+    "incidentes_estudiantes",
     Base.metadata,
-    Column('id_incidente', Integer, ForeignKey('incidentes.id_incidente'), primary_key=True),
-    Column('id_estudiante', Integer, ForeignKey('estudiantes.id_estudiante'), primary_key=True)
+    Column("id_incidente", Integer, ForeignKey("incidentes.id_incidente"), primary_key=True),
+    Column("id_estudiante", Integer, ForeignKey("estudiantes.id_estudiante"), primary_key=True),
 )
 
 incidentes_profesores = Table(
-    'incidentes_profesores',
+    "incidentes_profesores",
     Base.metadata,
-    Column('id_incidente', Integer, ForeignKey('incidentes.id_incidente'), primary_key=True),
-    Column('id_profesor', Integer, ForeignKey('personas.id_persona'), primary_key=True)
+    Column("id_incidente", Integer, ForeignKey("incidentes.id_incidente"), primary_key=True),
+    Column("id_profesor", Integer, ForeignKey("personas.id_persona"), primary_key=True),
 )
 
 incidentes_situaciones = Table(
-    'incidentes_situaciones',
+    "incidentes_situaciones",
     Base.metadata,
-    Column('id_incidente', Integer, ForeignKey('incidentes.id_incidente'), primary_key=True),
-    Column('id_situacion', Integer, ForeignKey('situaciones_incidente.id_situacion'), primary_key=True)
+    Column("id_incidente", Integer, ForeignKey("incidentes.id_incidente"), primary_key=True),
+    Column("id_situacion", Integer, ForeignKey("situaciones_incidente.id_situacion"), primary_key=True),
 )
 
-# MODELOS
+# =========================
+# Modelos
+# =========================
 
 class AreaIncidente(Base):
     __tablename__ = "areas_incidente"
@@ -51,15 +73,18 @@ class SituacionIncidente(Base):
     id_area = Column(Integer, ForeignKey("areas_incidente.id_area"), nullable=False)
     nombre_situacion = Column(String(50), nullable=False)
     nivel_gravedad = Column(
-        Enum("leve", "grave", "muy grave", name="nivel_gravedad"), nullable=False
+        Enum("leve", "grave", "muy grave", name="nivel_gravedad"),
+        nullable=False,
     )
 
     area = relationship("AreaIncidente", back_populates="situaciones")
+
     incidentes = relationship(
         "Incidente",
         secondary=incidentes_situaciones,
-        back_populates="situaciones"
+        back_populates="situaciones",
     )
+
 
 class Incidente(Base):
     __tablename__ = "incidentes"
@@ -72,48 +97,48 @@ class Incidente(Base):
 
     estado = Column(
         Enum("abierto", "derivado", "cerrado", name="estado_incidente"),
-        nullable=False
+        nullable=False,
     )
 
     id_responsable = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
 
     responsable = relationship(
-        "Usuario",
+        Usuario,
         backref="incidentes_creados",
-        foreign_keys=[id_responsable]
+        foreign_keys=[id_responsable],
     )
 
     estudiantes = relationship(
-        "Estudiante",
+        Estudiante,
         secondary=incidentes_estudiantes,
-        backref="incidentes"
+        backref="incidentes",
     )
 
+    # ✅ CLAVE: usar Persona1 aquí
     profesores = relationship(
-        "Persona",
+        Persona1,
         secondary=incidentes_profesores,
-        backref="incidentes_asignados"
+        backref="incidentes_asignados",
     )
 
     situaciones = relationship(
         "SituacionIncidente",
         secondary=incidentes_situaciones,
-        back_populates="incidentes"
+        back_populates="incidentes",
     )
 
     adjuntos = relationship(
         "Adjunto",
         back_populates="incidente",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
 
 
 class HistorialDeModificacion(Base):
-    __tablename__ = "historial_de_modificaciones"
+    __tablename__ = "historial_modificaciones"
 
     id_historial = Column(Integer, primary_key=True, index=True)
     id_incidente = Column(Integer, ForeignKey("incidentes.id_incidente"), nullable=False)
-
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
 
     fecha_cambio = Column(DateTime, default=datetime.utcnow)
@@ -153,41 +178,21 @@ class Adjunto(Base):
     incidente = relationship("Incidente", back_populates="adjuntos")
 
 
-#==================Nofitificaciones==================
-
 class Notificacion(Base):
     __tablename__ = "notificaciones"
 
     id_notificacion = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Usuario que recibe la notificación (obligatorio)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=False)
-
-    # Opcionalmente atada a un incidente
     id_incidente = Column(Integer, ForeignKey("incidentes.id_incidente"), nullable=True)
-
-    # Opcionalmente atada a una derivación
     id_derivacion = Column(Integer, ForeignKey("derivaciones.id_derivacion"), nullable=True)
 
     titulo = Column(String(150), nullable=False)
     mensaje = Column(Text, nullable=False)
 
-    # tinyint(1) -> Boolean, por defecto 0 (no leído)
     leido = Column(Boolean, nullable=True, default=False, server_default="0")
-
-    # timestamp DEFAULT current_timestamp()
     fecha = Column(DateTime, nullable=False, server_default=func.current_timestamp())
 
-    # RELACIONES
     usuario = relationship("Usuario", backref="notificaciones")
-
-    incidente = relationship(
-        "Incidente",
-        backref="notificaciones"
-    )
-
-    derivacion = relationship(
-        "Derivacion",
-        backref="notificaciones"
-    )
-#==================Nofitificaciones==================
+    incidente = relationship("Incidente", backref="notificaciones")
+    derivacion = relationship("Derivacion", backref="notificaciones")

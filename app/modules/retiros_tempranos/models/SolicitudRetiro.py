@@ -1,3 +1,4 @@
+# app\modules\retiros_tempranos\models\SolicitudRetiro.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base

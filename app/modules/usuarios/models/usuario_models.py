@@ -1,3 +1,4 @@
+# app\modules\usuarios\models\usuario_models.py
 """
 app/modules/usuarios/models/usuario_models.py
 Modelos del Módulo de Usuarios - AJUSTADO A LA BD EXISTENTE
