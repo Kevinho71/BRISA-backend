@@ -11,6 +11,9 @@ from app.modules.administracion.dto.administrativo_dto import (
 from app.modules.administracion.services.administrativo_service import (
     AdministrativoService, CargoService
 )
+from app.modules.auth.services.auth_service import get_current_user_dependency
+from app.modules.usuarios.models.usuario_models import Usuario
+from app.shared.permissions import requires_permission
 
 router = APIRouter(prefix="/api/administrativos", tags=["Administrativos"])
 
@@ -19,7 +22,12 @@ router = APIRouter(prefix="/api/administrativos", tags=["Administrativos"])
 
 # ---- ADMINISTRATIVOS ----
 @router.post("/", response_model=AdministrativoReadDTO, status_code=status.HTTP_201_CREATED)
-def crear_administrativo(administrativo: dict, db: Session = Depends(get_db)):
+@requires_permission("crear_administrativo")
+def crear_administrativo(
+    administrativo: dict,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Crea un nuevo administrativo
    
@@ -51,8 +59,10 @@ def crear_administrativo(administrativo: dict, db: Session = Depends(get_db)):
         )
 
 @router.get("/", response_model=List[AdministrativoFullDTO])
+@requires_permission("ver_administrativo")
 def listar_administrativos(
     completo: bool = Query(True, description="Si es True, incluye información completa"),
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
     """
@@ -69,7 +79,11 @@ def listar_administrativos(
 
 # ---- CARGOS ----
 @router.get("/cargos", response_model=List[CargoReadDTO], tags=["Cargos"])
-def listar_cargos(db: Session = Depends(get_db)):
+@requires_permission("ver_cargos")
+def listar_cargos(
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Lista todos los cargos disponibles para administrativos
     """
@@ -80,7 +94,12 @@ def listar_cargos(db: Session = Depends(get_db)):
 
 # ---- ADMINISTRATIVOS ----
 @router.get("/{id_persona}", response_model=AdministrativoReadDTO)
-def obtener_administrativo(id_persona: int, db: Session = Depends(get_db)):
+@requires_permission("ver_administrativo")
+def obtener_administrativo(
+    id_persona: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Obtiene un administrativo específico por su ID de persona
     """
@@ -93,9 +112,11 @@ def obtener_administrativo(id_persona: int, db: Session = Depends(get_db)):
     return administrativo
 
 @router.put("/{id_persona}", response_model=AdministrativoReadDTO)
+@requires_permission("editar_administrativo")
 def actualizar_administrativo(
     id_persona: int,
     data: dict, # Aceptar dict para más flexibilidad
+    current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
     """
@@ -121,7 +142,12 @@ def actualizar_administrativo(
     return administrativo_actualizado
 
 @router.delete("/{id_persona}", response_model=AdministrativoReadDTO)
-def eliminar_administrativo(id_persona: int, db: Session = Depends(get_db)):
+@requires_permission("eliminar_administrativo")
+def eliminar_administrativo(
+    id_persona: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Elimina un administrativo
    
@@ -138,7 +164,12 @@ def eliminar_administrativo(id_persona: int, db: Session = Depends(get_db)):
 
 # ---- CARGOS (DINÁMICA) ----
 @router.get("/cargos/{id_cargo}", response_model=CargoReadDTO, tags=["Cargos"])
-def obtener_cargo(id_cargo: int, db: Session = Depends(get_db)):
+@requires_permission("ver_cargos")
+def obtener_cargo(
+    id_cargo: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
     """
     Obtiene un cargo específico por su ID
     """
