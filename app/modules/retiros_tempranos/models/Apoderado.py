@@ -21,8 +21,8 @@ class Apoderado(Base):
     
     # Relaciones
     persona = relationship("Persona", foreign_keys=[id_persona], viewonly=True)
-    estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="apoderado")
-    solicitudes_retiro = relationship("SolicitudRetiro", back_populates="apoderado")
+    estudiantes_apoderados = relationship("EstudianteApoderado", foreign_keys="EstudianteApoderado.id_apoderado", viewonly=True)
+    solicitudes_retiro = relationship("SolicitudRetiro", foreign_keys="SolicitudRetiro.id_apoderado", viewonly=True)
     
     def __repr__(self):
         return f"<Apoderado(id={self.id_apoderado}, nombres={self.nombres} {self.apellidos})>"

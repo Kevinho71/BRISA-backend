@@ -11,6 +11,7 @@ from app.modules.retiros_tempranos.repositories.estudiante_repository import Est
 
 from app.modules.retiros_tempranos.models.SolicitudRetiro import SolicitudRetiro, EstadoSolicitudEnum, TipoSolicitudEnum
 from app.modules.retiros_tempranos.models.AutorizacionesRetiro import AutorizacionRetiro, DecisionEnum
+from app.modules.retiros_tempranos.models.EstudianteApoderado import EstudianteApoderado
 
 from app.modules.retiros_tempranos.dto.solicitud_retiro_dto import (
     SolicitudRetiroCreateDTO,
@@ -52,12 +53,12 @@ class SolicitudRetiroService:
             )
 
         # Validar que el apoderado está relacionado con el estudiante
-        relacion = self.db.query(self.db.query(
-            self.estudiante_apoderado_repo.__class__.__table__
-        ).filter_by(
-            id_estudiante=solicitud_dto.id_estudiante,
-            id_apoderado=id_apoderado
-        ).exists()).scalar()
+        relacion = self.db.query(
+            self.db.query(EstudianteApoderado).filter(
+                EstudianteApoderado.id_estudiante == solicitud_dto.id_estudiante,
+                EstudianteApoderado.id_apoderado == id_apoderado
+            ).exists()
+        ).scalar()
         
         if not relacion:
             raise HTTPException(
@@ -84,7 +85,8 @@ class SolicitudRetiroService:
             fecha_hora_salida=solicitud_dto.fecha_hora_salida,
             fecha_hora_retorno_previsto=solicitud_dto.fecha_hora_retorno_previsto,
             observacion=solicitud_dto.observacion,
-            estado=EstadoSolicitudEnum.pendiente.value
+            fecha_creacion=datetime.now(),
+            estado=EstadoSolicitudEnum.recibida.value
         )
 
         solicitud_creada = self.solicitud_repo.create(nueva_solicitud)
@@ -126,12 +128,12 @@ class SolicitudRetiroService:
         return [self._convertir_a_dto(sol) for sol in solicitudes]
 
     def listar_pendientes(
-        self, 
-        skip: int = 0, 
+        self,
+        skip: int = 0,
         limit: int = 100
     ) -> List[SolicitudRetiroResponseDTO]:
-        """Lista solicitudes pendientes de recepción"""
-        solicitudes = self.solicitud_repo.get_by_estado(EstadoSolicitudEnum.pendiente.value, skip, limit)
+        """Lista solicitudes recién creadas (recibidas)"""
+        solicitudes = self.solicitud_repo.get_by_estado(EstadoSolicitudEnum.recibida.value, skip, limit)
         return [self._convertir_a_dto(sol) for sol in solicitudes]
 
     def listar_recibidas(
@@ -159,7 +161,7 @@ class SolicitudRetiroService:
         recibir_dto: RecibirSolicitudDTO, 
         id_recepcionista: int
     ) -> SolicitudRetiroResponseDTO:
-        """Recepcionista marca solicitud como recibida"""
+        """Recepcionista registra la recepción de una solicitud"""
         solicitud = self.solicitud_repo.get_by_id(id_solicitud)
         if not solicitud:
             raise HTTPException(
@@ -167,17 +169,20 @@ class SolicitudRetiroService:
                 detail="Solicitud no encontrada"
             )
 
-        if solicitud.estado != EstadoSolicitudEnum.pendiente.value:
+        if solicitud.estado != EstadoSolicitudEnum.recibida.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solo se pueden recibir solicitudes en estado pendiente"
+                detail="Solo se pueden registrar recepciones de solicitudes en estado recibida"
             )
 
-        solicitud.estado = EstadoSolicitudEnum.recibida.value
-        solicitud.id_recepcionista = id_recepcionista
-        solicitud.fecha_recepcion = recibir_dto.fecha_hora_recepcion or datetime.now()
-
-        solicitud_actualizada = self.solicitud_repo.update(solicitud)
+        # Actualizar datos de recepción sin cambiar el estado
+        solicitud_actualizada = self.solicitud_repo.update(
+            id_solicitud,
+            {
+                "id_recepcionista": id_recepcionista,
+                "fecha_recepcion": recibir_dto.fecha_hora_recepcion or datetime.now()
+            }
+        )
         return self._convertir_a_dto(solicitud_actualizada)
 
     def derivar_solicitud(
@@ -300,11 +305,17 @@ class SolicitudRetiroService:
         solicitud.estado = EstadoSolicitudEnum.cancelada.value
         solicitud.observacion = f"{solicitud.observacion or ''}\n[CANCELADA: {cancelar_dto.motivo_cancelacion}]"
 
-        solicitud_actualizada = self.solicitud_repo.update(solicitud)
+        solicitud_actualizada = self.solicitud_repo.update(
+            id_solicitud, 
+            {
+                "estado": EstadoSolicitudEnum.cancelada.value,
+                "observacion": solicitud.observacion
+            }
+        )
         return self._convertir_a_dto(solicitud_actualizada)
 
     def eliminar_solicitud(self, id_solicitud: int, id_apoderado: int) -> bool:
-        """Elimina una solicitud (solo si está en pendiente)"""
+        """Elimina una solicitud (solo si está en estado recibida)"""
         solicitud = self.solicitud_repo.get_by_id(id_solicitud)
         if not solicitud:
             raise HTTPException(
@@ -318,10 +329,10 @@ class SolicitudRetiroService:
                 detail="Solo el apoderado puede eliminar su solicitud"
             )
 
-        if solicitud.estado != EstadoSolicitudEnum.pendiente.value:
+        if solicitud.estado != EstadoSolicitudEnum.recibida.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solo se pueden eliminar solicitudes pendientes"
+                detail="Solo se pueden eliminar solicitudes en estado recibida"
             )
 
         return self.solicitud_repo.delete(id_solicitud)
@@ -334,12 +345,13 @@ class SolicitudRetiroService:
         curso_nombre = None
 
         if solicitud.estudiante:
-            estudiante_nombre = f"{solicitud.estudiante.nombre} {solicitud.estudiante.apellido_paterno} {solicitud.estudiante.apellido_materno or ''}"
-            if solicitud.estudiante.curso:
-                curso_nombre = solicitud.estudiante.curso.nombre
+            estudiante_nombre = f"{solicitud.estudiante.nombres} {solicitud.estudiante.apellido_paterno} {solicitud.estudiante.apellido_materno or ''}"
+            # Estudiante puede tener múltiples cursos, tomamos el primero si existe
+            if solicitud.estudiante.cursos and len(solicitud.estudiante.cursos) > 0:
+                curso_nombre = solicitud.estudiante.cursos[0].nombre_curso
 
         if solicitud.apoderado:
-            apoderado_nombre = f"{solicitud.apoderado.nombre} {solicitud.apoderado.apellido_paterno}"
+            apoderado_nombre = f"{solicitud.apoderado.nombres} {solicitud.apoderado.apellidos}"
 
         if solicitud.motivo:
             motivo_nombre = solicitud.motivo.nombre
@@ -356,7 +368,7 @@ class SolicitudRetiroService:
             fecha_hora_salida=solicitud.fecha_hora_salida,
             fecha_hora_retorno_previsto=solicitud.fecha_hora_retorno_previsto,
             observacion=solicitud.observacion,
-            fecha_hora_solicitud=solicitud.fecha_hora_solicitud,
+            fecha_creacion=solicitud.fecha_creacion,
             estado=solicitud.estado,
             id_recepcionista=solicitud.id_recepcionista,
             fecha_recepcion=solicitud.fecha_recepcion,

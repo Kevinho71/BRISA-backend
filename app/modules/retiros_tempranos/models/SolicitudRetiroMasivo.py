@@ -41,10 +41,10 @@ class SolicitudRetiroMasivo(Base):
     
     # Relaciones
     solicitante = relationship("Usuario", foreign_keys=[id_solicitante], viewonly=True)
-    motivo = relationship("MotivoRetiro", back_populates="solicitudes_masivas")
-    autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion])
-    detalles = relationship("DetalleSolicitudRetiroMasivo", back_populates="solicitud", cascade="all, delete-orphan")
-    registros_salida = relationship("RegistroSalida", back_populates="solicitud_masiva")
+    motivo = relationship("MotivoRetiro", foreign_keys=[id_motivo], viewonly=True)
+    autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion], viewonly=True)
+    detalles = relationship("DetalleSolicitudRetiroMasivo", foreign_keys="DetalleSolicitudRetiroMasivo.id_solicitud_masiva", viewonly=True)
+    registros_salida = relationship("RegistroSalida", foreign_keys="RegistroSalida.id_solicitud_masiva", viewonly=True)
     recepcionista = relationship("Usuario", foreign_keys=[id_recepcionista], viewonly=True)
     regente = relationship("Usuario", foreign_keys=[id_regente], viewonly=True)
     
