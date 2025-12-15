@@ -174,3 +174,41 @@ def listar_cursos_por_profesor(
     - **id_persona**: ID del profesor (id_persona en la tabla personas)
     """
     return CursoService.listar_cursos_por_profesor(db, id_persona)
+
+
+@router.post("/", response_model=CursoDTO, status_code=status.HTTP_201_CREATED)
+def crear_curso(
+    curso: dict,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Crea un nuevo curso
+    """
+    return CursoService.crear_curso(db, curso)
+
+
+@router.put("/{curso_id}", response_model=CursoDTO)
+def actualizar_curso(
+    curso_id: int,
+    curso: dict,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Actualiza un curso existente
+    """
+    return CursoService.actualizar_curso(db, curso_id, curso)
+
+
+@router.delete("/{curso_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_curso(
+    curso_id: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Elimina un curso
+    """
+    CursoService.eliminar_curso(db, curso_id)
+    return None

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.modules.administracion.repositories.curso_repository import CursoRepository
 from typing import Optional
+from app.modules.administracion.dto.curso_dto import CursoDTO
 
 
 class CursoService:
@@ -96,3 +97,32 @@ class CursoService:
             )
         
         return PersonaRepository.get_cursos_by_profesor(db, id_persona)
+    
+    @staticmethod
+    def crear_curso(db: Session, data: dict):
+        """
+        Crea un nuevo curso
+        """
+        return CursoRepository.create(db, data)
+    
+    @staticmethod
+    def actualizar_curso(db: Session, curso_id: int, data: dict):
+        """
+        Actualiza un curso existente
+        """
+        curso = CursoRepository.get_by_id(db, curso_id)
+        if not curso:
+            raise HTTPException(status_code=404, detail="Curso no encontrado")
+        
+        return CursoRepository.update(db, curso_id, data)
+    
+    @staticmethod
+    def eliminar_curso(db: Session, curso_id: int):
+        """
+        Elimina un curso
+        """
+        curso = CursoRepository.get_by_id(db, curso_id)
+        if not curso:
+            raise HTTPException(status_code=404, detail="Curso no encontrado")
+        
+        CursoRepository.delete(db, curso_id)
