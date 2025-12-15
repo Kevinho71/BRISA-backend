@@ -30,9 +30,9 @@ class RegistroSalida(Base):
     fecha_hora_retorno_real = Column(DateTime, nullable=True)
     
     # Relaciones
-    estudiante = relationship("Estudiante", back_populates="registros_salida")
-    solicitud = relationship("SolicitudRetiro", back_populates="registro_salida")
-    solicitud_masiva = relationship("SolicitudRetiroMasivo", back_populates="registros_salida")
+    estudiante = relationship("Estudiante", foreign_keys=[id_estudiante], viewonly=True)
+    solicitud = relationship("SolicitudRetiro", foreign_keys=[id_solicitud], viewonly=True)
+    solicitud_masiva = relationship("SolicitudRetiroMasivo", foreign_keys=[id_solicitud_masiva], viewonly=True)
     
     def __repr__(self):
         return f"<RegistroSalida(id={self.id_registro}, tipo={self.tipo_registro}, estudiante_id={self.id_estudiante})>"

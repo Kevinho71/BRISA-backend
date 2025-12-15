@@ -27,7 +27,7 @@ def get_service(db: Session = Depends(get_db)) -> SolicitudRetiroService:
 # ============================================================================
 
 @router.post("/", response_model=SolicitudRetiroResponseDTO, status_code=status.HTTP_201_CREATED)
-@require_permissions("apoderado")
+@require_permissions("apoderado", "profesor")
 async def crear_solicitud_individual(
     solicitud_dto: SolicitudRetiroCreateDTO,
     current_user: Usuario = Depends(get_current_user),
@@ -35,14 +35,16 @@ async def crear_solicitud_individual(
     db: Session = Depends(get_db)
 ) -> SolicitudRetiroResponseDTO:
     """
-    **[APODERADO]** Crear una nueva solicitud de retiro individual
+    **[APODERADO/PROFESOR]** Crear una nueva solicitud de retiro individual
     
+    - El id_apoderado se obtiene automáticamente del usuario autenticado
+    - Valida relación apoderado-estudiante (solo puede solicitar para sus estudiantes)
     - Requiere foto_evidencia obligatoria
-    - Valida relación apoderado-estudiante
     - Estado inicial: 'pendiente'
     """
-    # Obtener id_apoderado del usuario actual
-    from app.modules.retiros_tempranos.models import Apoderado
+    from app.modules.retiros_tempranos.models import Apoderado, EstudianteApoderado
+    
+    # 1. Obtener apoderado del usuario autenticado
     apoderado = db.query(Apoderado).filter(
         Apoderado.id_persona == current_user.id_persona
     ).first()
@@ -50,9 +52,26 @@ async def crear_solicitud_individual(
     if not apoderado:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuario no tiene perfil de apoderado"
+            detail="El usuario no tiene perfil de apoderado registrado"
         )
     
+    # 2. Validar que el estudiante esté relacionado con el apoderado
+    #    Query optimizado con EXISTS
+    relacion_existe = db.query(
+        db.query(EstudianteApoderado).filter(
+            EstudianteApoderado.id_apoderado == apoderado.id_apoderado,
+            EstudianteApoderado.id_estudiante == solicitud_dto.id_estudiante,
+            EstudianteApoderado.es_vigente == True
+        ).exists()
+    ).scalar()
+    
+    if not relacion_existe:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"No tiene permisos para solicitar retiro del estudiante {solicitud_dto.id_estudiante}. Solo puede solicitar para estudiantes bajo su tutela."
+        )
+    
+    # 3. Crear la solicitud (el servicio ya no necesita id_apoderado como parámetro)
     return service.crear_solicitud(solicitud_dto, apoderado.id_apoderado)
 
 
@@ -63,20 +82,27 @@ async def listar_mis_solicitudes(
     service: SolicitudRetiroService = Depends(get_service),
     db: Session = Depends(get_db)
 ) -> List[SolicitudRetiroResponseDTO]:
-    """**[APODERADO]** Listar las solicitudes del apoderado autenticado"""
-    apoderado = db.execute(
-        "SELECT id_apoderado FROM apoderados WHERE id_persona = :id_persona",
-        {"id_persona": current_user.id_persona}
-    ).fetchone()
+    """
+    **[APODERADO]** Listar todas las solicitudes creadas por el apoderado autenticado
+    
+    Retorna solo las solicitudes del apoderado logueado.
+    """
+    from app.modules.retiros_tempranos.models import Apoderado
+    
+    # Query optimizado: obtener id_apoderado directamente
+    apoderado = db.query(Apoderado.id_apoderado).filter(
+        Apoderado.id_persona == current_user.id_persona
+    ).scalar()
     
     if not apoderado:
+        # Si no es apoderado, retornar lista vacía
         return []
     
-    return service.listar_por_apoderado(apoderado[0])
+    return service.listar_por_apoderado(apoderado)
 
 
 @router.put("/{id_solicitud}/cancelar", response_model=SolicitudRetiroResponseDTO)
-@require_permissions("apoderado")
+@require_permissions("apoderado", "recepcion", "regente")
 async def cancelar_solicitud(
     id_solicitud: int,
     cancelar_dto: CancelarSolicitudDTO,
@@ -84,7 +110,7 @@ async def cancelar_solicitud(
     service: SolicitudRetiroService = Depends(get_service),
     db: Session = Depends(get_db)
 ) -> SolicitudRetiroResponseDTO:
-    """**[APODERADO]** Cancelar una solicitud propia (solo si no está aprobada/rechazada)"""
+    """**[APODERADO/RECEPCIÓN/REGENTE]** Cancelar una solicitud propia (solo si no está aprobada/rechazada)"""
     apoderado = db.execute(
         "SELECT id_apoderado FROM apoderados WHERE id_persona = :id_persona",
         {"id_persona": current_user.id_persona}
@@ -97,14 +123,14 @@ async def cancelar_solicitud(
 
 
 @router.delete("/{id_solicitud}")
-@require_permissions("apoderado")
+@require_permissions("apoderado", "recepcion", "regente")
 async def eliminar_solicitud(
     id_solicitud: int,
     current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroService = Depends(get_service),
     db: Session = Depends(get_db)
 ) -> dict:
-    """**[APODERADO]** Eliminar una solicitud propia (solo si está en estado 'pendiente')"""
+    """**[APODERADO/RECEPCIÓN/REGENTE]** Eliminar una solicitud propia (solo si está en estado 'pendiente')"""
     apoderado = db.execute(
         "SELECT id_apoderado FROM apoderados WHERE id_persona = :id_persona",
         {"id_persona": current_user.id_persona}
@@ -174,14 +200,14 @@ async def derivar_solicitud(
 # ============================================================================
 
 @router.get("/derivadas-a-mi", response_model=List[SolicitudRetiroResponseDTO])
-@require_permissions("regente")
+@require_permissions("regente", "recepcion")
 async def listar_solicitudes_derivadas_a_mi(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroService = Depends(get_service)
 ) -> List[SolicitudRetiroResponseDTO]:
-    """**[REGENTE]** Listar solicitudes derivadas al regente autenticado"""
+    """**[REGENTE/RECEPCIÓN]** Listar solicitudes derivadas"""
     return service.listar_derivadas_a_regente(current_user.id_usuario, skip, limit)
 
 
@@ -213,19 +239,47 @@ async def listar_solicitudes(
 
 
 @router.get("/{id_solicitud}", response_model=SolicitudRetiroResponseDTO)
+@require_permissions("recepcion", "regente", "admin")
 async def obtener_solicitud(
     id_solicitud: int,
     service: SolicitudRetiroService = Depends(get_service)
 ) -> SolicitudRetiroResponseDTO:
-    """Obtener una solicitud específica por ID"""
+    """**[RECEPCIÓN/REGENTE/DIRECTOR]** Obtener una solicitud específica por ID"""
     return service.obtener_solicitud(id_solicitud)
 
 
 @router.get("/estudiante/{id_estudiante}", response_model=List[SolicitudRetiroResponseDTO])
-@require_permissions("recepcion", "regente", "admin", "apoderado")
+@require_permissions("recepcion", "regente", "apoderado")
 async def listar_solicitudes_por_estudiante(
     id_estudiante: int,
-    service: SolicitudRetiroService = Depends(get_service)
+    current_user: Usuario = Depends(get_current_user),
+    service: SolicitudRetiroService = Depends(get_service),
+    db: Session = Depends(get_db)
 ) -> List[SolicitudRetiroResponseDTO]:
-    """Listar solicitudes de un estudiante específico"""
+    """
+    **[RECEPCIÓN/REGENTE/APODERADO]** Listar solicitudes de un estudiante específico
+    
+    - APODERADO: Solo puede ver estudiantes con los que tiene relación vigente
+    - RECEPCIÓN/REGENTE: Pueden ver cualquier estudiante
+    """
+    from app.shared.permission_mapper import tiene_permiso
+    from app.modules.retiros_tempranos.models import Apoderado, EstudianteApoderado
+    
+    # Si es apoderado, verificar relación
+    if tiene_permiso(current_user, "apoderado"):
+        # Query optimizado con ORM y EXISTS
+        relacion_existe = db.query(
+            db.query(EstudianteApoderado).join(Apoderado).filter(
+                Apoderado.id_persona == current_user.id_persona,
+                EstudianteApoderado.id_estudiante == id_estudiante,
+                EstudianteApoderado.es_vigente == True
+            ).exists()
+        ).scalar()
+        
+        if not relacion_existe:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No tiene permiso para ver solicitudes del estudiante {id_estudiante}. Solo puede ver estudiantes bajo su tutela."
+            )
+    
     return service.listar_por_estudiante(id_estudiante)

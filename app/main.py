@@ -30,6 +30,16 @@ from app.modules.incidentes.controllers import controllers_incidentes
 # ✅ NUEVO: Router de profesores
 from app.modules.profesores.controllers import profesor_controller
 
+# ✅ NUEVO: Routers de Retiros Tempranos
+from app.modules.retiros_tempranos.controllers import (
+    motivo_retiro_controller,
+    solicitud_retiro_controller,
+    solicitud_retiro_masivo_controller,
+    registro_salida_controller,
+    autorizacion_retiro_controller,
+    estudiante_apoderado_controller
+)
+
 # Servicios
 from app.modules.auth.services.auth_service import AuthService
 
@@ -55,14 +65,12 @@ from fastapi import Request
 
 # ========================= MIDDLEWARE =========================
 
-# Middleware de Logging para Debugging
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url.path}")
-    response = await call_next(request)
-    logger.info(f"Response status: {response.status_code}")
-    return response
+# Orden de ejecución: INVERSO al orden de declaración
+# 1. CORS (última línea, se ejecuta primero)
+# 2. JWT (se ejecuta segundo, valida token e inyecta usuario)
+# Middlewares se ejecutan en orden INVERSO cuando se agregan con add_middleware
 
+app.add_middleware(JWTMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,8 +79,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(JWTMiddleware)
 
 # ========================= EXCEPTION HANDLERS =========================
 register_exception_handlers(app)
@@ -95,6 +101,14 @@ app.include_router(reporte_controller.router, prefix="/api")
 
 # ✅ NUEVO: Profesores
 app.include_router(profesor_controller.router, prefix="/api", tags=["Profesores"])
+
+# ✅ NUEVO: Retiros Tempranos
+app.include_router(motivo_retiro_controller.router)
+app.include_router(solicitud_retiro_controller.router)
+app.include_router(solicitud_retiro_masivo_controller.router)
+app.include_router(registro_salida_controller.router)
+app.include_router(autorizacion_retiro_controller.router)
+app.include_router(estudiante_apoderado_controller.router)
 
 # ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA
 app.include_router(
@@ -124,6 +138,7 @@ async def startup_event():
     logger.info("🔐 Middleware JWT cargado")
     logger.info("📦 Routers cargados correctamente")
     logger.info("👨‍🏫 Módulo de Profesores cargado")
+    logger.info("🚸 Módulo de Retiros Tempranos cargado")
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -52,11 +52,11 @@ class SolicitudRetiro(Base):
     fecha_derivacion = Column(DateTime, nullable=True)
     
     # Relaciones
-    estudiante = relationship("Estudiante", back_populates="solicitudes_retiro")
-    apoderado = relationship("Apoderado", back_populates="solicitudes_retiro")
-    motivo = relationship("MotivoRetiro", back_populates="solicitudes_retiro")
-    autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion])
-    registro_salida = relationship("RegistroSalida", back_populates="solicitud", uselist=False)
+    estudiante = relationship("Estudiante", foreign_keys=[id_estudiante], viewonly=True)
+    apoderado = relationship("Apoderado", foreign_keys=[id_apoderado], viewonly=True)
+    motivo = relationship("MotivoRetiro", foreign_keys=[id_motivo], viewonly=True)
+    autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion], viewonly=True)
+    registro_salida = relationship("RegistroSalida", uselist=False, viewonly=True)
     solicitante = relationship("Usuario", foreign_keys=[id_solicitante], viewonly=True)
     recepcionista = relationship("Usuario", foreign_keys=[id_recepcionista], viewonly=True)
     regente = relationship("Usuario", foreign_keys=[id_regente], viewonly=True)

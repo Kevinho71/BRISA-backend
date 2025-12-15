@@ -49,7 +49,7 @@ class Persona1(Base):
     correo = Column(String(50), unique=True, nullable=True)
     telefono = Column(String(20), nullable=True)
     direccion = Column(Text, nullable=True)
-    tipo_persona = Column(Enum('profesor', 'administrativo', name='tipo_persona_enum'), nullable=False)
+    tipo_persona = Column(Enum('profesor', 'administrativo', 'apoderado', name='tipo_persona_enum'), nullable=False)
     is_active = Column(Boolean, default=True)
     
     @property
