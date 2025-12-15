@@ -1,5 +1,6 @@
 """Controlador (router) para el módulo de Cursos."""
 
+import logging
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -18,6 +19,7 @@ from app.modules.usuarios.models.usuario_models import Usuario
 from app.shared.permission_mapper import puede_ver_todas_esquelas
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
 
@@ -53,33 +55,45 @@ def listar_cursos(
     ).mappings().all()
     return [dict(r) for r in rows]
 
+
 @router.get("/mis_cursos/{id_persona}", response_model=List[CursoDTO])
 def listar_mis_cursos(
-    id_persona: int,
-        current_user: Usuario = Depends(get_current_user_dependency),
-        db: Session = Depends(get_db)
-    ):
-        """
-        Lista los cursos donde el profesor autenticado imparte clases.
+        id_persona: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista los cursos donde el profesor autenticado imparte clases.
 
-        **Uso:** Para que un profesor vea sus propios cursos asignados.
-        Solo muestra los cursos donde el profesor tiene asignadas materias.
-        """
-        rows = db.execute(
-            text(
-                """
+    **Uso:** Para que un profesor vea sus propios cursos asignados.
+    Solo muestra los cursos donde el profesor tiene asignadas materias.
+    """
+    # Convertir id_persona a id_profesor
+    profesor_row = db.execute(
+        text("SELECT id_profesor FROM profesores WHERE id_persona = :id_persona"),
+        {"id_persona": id_persona}
+    ).first()
+    
+    if not profesor_row:
+        return []
+    
+    id_profesor = int(profesor_row[0])
+    
+    # Buscar cursos usando id_profesor
+    rows = db.execute(
+        text(
+            """
                 SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
-                FROM profesores p
-                JOIN profesores_cursos_materias pcm ON pcm.id_profesor = p.id_profesor
+                FROM profesores_cursos_materias pcm
                 JOIN cursos c ON c.id_curso = pcm.id_curso
-                WHERE p.id_persona = :id_persona
+                WHERE pcm.id_profesor = :id_profesor
                 ORDER BY c.nombre_curso
                 """
-            ),
-            {"id_persona": current_user.id_persona},
-        ).mappings().all()
-        return [dict(r) for r in rows]
-
+        ),
+        {"id_profesor": id_profesor},
+    ).mappings().all()
+    
+    return [dict(r) for r in rows]
 
 
 @router.get("/{curso_id}", response_model=CursoDTO)
