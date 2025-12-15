@@ -13,6 +13,7 @@ from app.modules.retiros_tempranos.dto import (
 from app.core.database import get_db
 from app.shared.decorators.auth_decorators import get_current_user, require_permissions
 from app.modules.usuarios.models import Usuario
+from app.modules.retiros_tempranos.models import Apoderado, EstudianteApoderado
 
 router = APIRouter(prefix="/api/retiros-tempranos/solicitudes", tags=["Solicitudes de Retiro Individual"])
 
@@ -40,7 +41,7 @@ async def crear_solicitud_individual(
     - El id_apoderado se obtiene automáticamente del usuario autenticado
     - Valida relación apoderado-estudiante (solo puede solicitar para sus estudiantes)
     - Requiere foto_evidencia obligatoria
-    - Estado inicial: 'pendiente'
+    - Estado inicial: 'recibida'
     """
     from app.modules.retiros_tempranos.models import Apoderado, EstudianteApoderado
     
@@ -60,8 +61,7 @@ async def crear_solicitud_individual(
     relacion_existe = db.query(
         db.query(EstudianteApoderado).filter(
             EstudianteApoderado.id_apoderado == apoderado.id_apoderado,
-            EstudianteApoderado.id_estudiante == solicitud_dto.id_estudiante,
-            EstudianteApoderado.es_vigente == True
+            EstudianteApoderado.id_estudiante == solicitud_dto.id_estudiante
         ).exists()
     ).scalar()
     
@@ -111,15 +111,15 @@ async def cancelar_solicitud(
     db: Session = Depends(get_db)
 ) -> SolicitudRetiroResponseDTO:
     """**[APODERADO/RECEPCIÓN/REGENTE]** Cancelar una solicitud propia (solo si no está aprobada/rechazada)"""
-    apoderado = db.execute(
-        "SELECT id_apoderado FROM apoderados WHERE id_persona = :id_persona",
-        {"id_persona": current_user.id_persona}
-    ).fetchone()
+    # Obtener apoderado usando ORM en lugar de SQL raw
+    apoderado = db.query(Apoderado).filter(
+        Apoderado.id_persona == current_user.id_persona
+    ).first()
     
     if not apoderado:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario no es apoderado")
     
-    return service.cancelar_solicitud(id_solicitud, cancelar_dto, apoderado[0])
+    return service.cancelar_solicitud(id_solicitud, cancelar_dto, apoderado.id_apoderado)
 
 
 @router.delete("/{id_solicitud}")
@@ -130,16 +130,16 @@ async def eliminar_solicitud(
     service: SolicitudRetiroService = Depends(get_service),
     db: Session = Depends(get_db)
 ) -> dict:
-    """**[APODERADO/RECEPCIÓN/REGENTE]** Eliminar una solicitud propia (solo si está en estado 'pendiente')"""
-    apoderado = db.execute(
-        "SELECT id_apoderado FROM apoderados WHERE id_persona = :id_persona",
-        {"id_persona": current_user.id_persona}
-    ).fetchone()
+    """**[APODERADO/RECEPCIÓN/REGENTE]** Eliminar una solicitud propia (solo si está en estado 'recibida')"""
+    # Obtener apoderado usando ORM en lugar de SQL raw
+    apoderado = db.query(Apoderado).filter(
+        Apoderado.id_persona == current_user.id_persona
+    ).first()
     
     if not apoderado:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario no es apoderado")
     
-    eliminado = service.eliminar_solicitud(id_solicitud, apoderado[0])
+    eliminado = service.eliminar_solicitud(id_solicitud, apoderado.id_apoderado)
     
     if eliminado:
         return {"message": "Solicitud eliminada exitosamente"}
@@ -153,17 +153,19 @@ async def eliminar_solicitud(
 @router.get("/pendientes", response_model=List[SolicitudRetiroResponseDTO])
 @require_permissions("recepcion")
 async def listar_solicitudes_pendientes(
+    current_user: Usuario = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     service: SolicitudRetiroService = Depends(get_service)
 ) -> List[SolicitudRetiroResponseDTO]:
-    """**[RECEPCIONISTA]** Listar solicitudes pendientes de recepción"""
+    """**[RECEPCIONISTA]** Listar solicitudes recién creadas (estado recibida)"""
     return service.listar_pendientes(skip, limit)
 
 
 @router.get("/recibidas", response_model=List[SolicitudRetiroResponseDTO])
 @require_permissions("recepcion")
 async def listar_solicitudes_recibidas(
+    current_user: Usuario = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     service: SolicitudRetiroService = Depends(get_service)
@@ -180,7 +182,7 @@ async def recibir_solicitud(
     current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroService = Depends(get_service)
 ) -> SolicitudRetiroResponseDTO:
-    """**[RECEPCIONISTA]** Marcar solicitud como recibida (pendiente → recibida)"""
+    """**[RECEPCIONISTA]** Registrar recepción de una solicitud (añade fecha y recepcionista)"""
     return service.recibir_solicitud(id_solicitud, recibir_dto, current_user.id_usuario)
 
 
@@ -189,6 +191,7 @@ async def recibir_solicitud(
 async def derivar_solicitud(
     id_solicitud: int,
     derivar_dto: DerivarSolicitudDTO,
+    current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroService = Depends(get_service)
 ) -> SolicitudRetiroResponseDTO:
     """**[RECEPCIONISTA]** Derivar solicitud a un regente (recibida → derivada)"""
@@ -230,6 +233,7 @@ async def aprobar_rechazar_solicitud(
 @router.get("/", response_model=List[SolicitudRetiroResponseDTO])
 @require_permissions("recepcion", "regente", "admin")
 async def listar_solicitudes(
+    current_user: Usuario = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     service: SolicitudRetiroService = Depends(get_service)
@@ -242,6 +246,7 @@ async def listar_solicitudes(
 @require_permissions("recepcion", "regente", "admin")
 async def obtener_solicitud(
     id_solicitud: int,
+    current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroService = Depends(get_service)
 ) -> SolicitudRetiroResponseDTO:
     """**[RECEPCIÓN/REGENTE/DIRECTOR]** Obtener una solicitud específica por ID"""
@@ -271,8 +276,7 @@ async def listar_solicitudes_por_estudiante(
         relacion_existe = db.query(
             db.query(EstudianteApoderado).join(Apoderado).filter(
                 Apoderado.id_persona == current_user.id_persona,
-                EstudianteApoderado.id_estudiante == id_estudiante,
-                EstudianteApoderado.es_vigente == True
+                EstudianteApoderado.id_estudiante == id_estudiante
             ).exists()
         ).scalar()
         

@@ -73,7 +73,7 @@ class SolicitudRetiroResponseDTO(BaseModel):
     fecha_hora_salida: datetime = Field(..., description="Fecha y hora de salida")
     fecha_hora_retorno_previsto: Optional[datetime] = Field(None, description="Fecha y hora de retorno previsto")
     observacion: Optional[str] = Field(None, description="Observaciones")
-    fecha_hora_solicitud: datetime = Field(..., description="Fecha de creación")
+    fecha_creacion: datetime = Field(..., description="Fecha de creación de la solicitud")
     estado: str = Field(..., description="Estado actual de la solicitud")
     id_recepcionista: Optional[int] = Field(None, description="ID del usuario recepcionista")
     fecha_recepcion: Optional[datetime] = Field(None, description="Fecha de recepción")

@@ -30,6 +30,12 @@ class SolicitudRetiroRepository(ISolicitudRetiroRepository):
             SolicitudRetiro.id_estudiante == id_estudiante
         ).all()
     
+    def get_by_apoderado(self, id_apoderado: int) -> List[SolicitudRetiro]:
+        """Obtener todas las solicitudes de un apoderado"""
+        return self.db.query(SolicitudRetiro).filter(
+            SolicitudRetiro.id_apoderado == id_apoderado
+        ).order_by(SolicitudRetiro.fecha_creacion.desc()).all()
+    
     def get_all(self, skip: int = 0, limit: int = 100) -> List[SolicitudRetiro]:
         """Obtener todas las solicitudes con paginación"""
         return self.db.query(SolicitudRetiro).offset(skip).limit(limit).all()

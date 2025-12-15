@@ -1,9 +1,11 @@
 # app/main.py
 from fastapi import Depends, FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import logging
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -103,12 +105,14 @@ app.include_router(reporte_controller.router, prefix="/api")
 app.include_router(profesor_controller.router, prefix="/api", tags=["Profesores"])
 
 # ✅ NUEVO: Retiros Tempranos
+from app.modules.retiros_tempranos.controllers import upload_controller
 app.include_router(motivo_retiro_controller.router)
 app.include_router(solicitud_retiro_controller.router)
 app.include_router(solicitud_retiro_masivo_controller.router)
 app.include_router(registro_salida_controller.router)
 app.include_router(autorizacion_retiro_controller.router)
 app.include_router(estudiante_apoderado_controller.router)
+app.include_router(upload_controller.router)
 
 # ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA
 app.include_router(
@@ -143,6 +147,13 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("🛑 API cerrándose")
+
+# ========================= ARCHIVOS ESTÁTICOS =========================
+# Servir archivos subidos (fotos de evidencia, etc.)
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ========================= DEBUG TOKEN =========================
 @app.get("/debug-token")

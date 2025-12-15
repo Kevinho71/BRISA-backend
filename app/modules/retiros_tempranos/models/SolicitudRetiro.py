@@ -6,7 +6,6 @@ import enum
 
 class EstadoSolicitudEnum(str, enum.Enum):
     """Estados del flujo de aprobación de solicitudes"""
-    pendiente = "pendiente"                        # Creada por apoderado (estado inicial)
     recibida = "recibida"                          # Recepcionista la recibió
     derivada = "derivada"                          # Derivada al regente
     aprobada = "aprobada"                          # Regente aprobó
@@ -42,10 +41,10 @@ class SolicitudRetiro(Base):
     fecha_hora_salida = Column(DateTime, nullable=False, index=True)
     fecha_hora_retorno_previsto = Column(DateTime, nullable=True)
     observacion = Column(Text, nullable=True)
-    fecha_hora_solicitud = Column(DateTime, nullable=False)
+    fecha_creacion = Column(DateTime, nullable=False)  # *** CAMBIADO de fecha_hora_solicitud ***
     
     # Campos para el flujo de aprobación
-    estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="pendiente", index=True)
+    estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="recibida", index=True)
     id_recepcionista = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
     fecha_recepcion = Column(DateTime, nullable=True)
     id_regente = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
