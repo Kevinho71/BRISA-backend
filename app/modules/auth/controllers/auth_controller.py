@@ -117,77 +117,21 @@ async def logout(
     )
 
 
-# Reemplaza el endpoint /me en auth_controller.py con este:
-
 @router.get("/me", response_model=dict, status_code=status.HTTP_200_OK)
 async def obtener_usuario_actual(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_dependency)
 ):
     """
-    Obtener información COMPLETA del usuario autenticado
-    Incluye datos de la persona asociada
+    Obtener información del usuario autenticado
+
     """
-    try:
-        # Obtener usuario con relación a persona
-        usuario = db.query(Usuario).filter(
-            Usuario.id_usuario == current_user.id_usuario
-        ).first()
-        
-        if not usuario:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuario no encontrado"
-            )
-        
-        # Obtener persona asociada
-        persona = db.query(Persona1).filter(
-            Persona1.id_persona == usuario.id_persona
-        ).first()
-        
-        # Construir respuesta completa
-        user_data = {
-            # Datos del usuario
-            "id_usuario": usuario.id_usuario,
-            "id_persona": usuario.id_persona,
-            "usuario": usuario.usuario,
-            "correo": usuario.correo,
-            "is_active": usuario.is_active,
-            "estado": "activo" if usuario.is_active else "inactivo",
-            
-            # Datos de la persona (los que faltaban)
-            "nombres": persona.nombres if persona else None,
-            "apellido_paterno": persona.apellido_paterno if persona else None,
-            "apellido_materno": persona.apellido_materno if persona else None,
-            "ci": persona.ci if persona else None,
-            "telefono": persona.telefono if persona else "No registrado",
-            "direccion": persona.direccion if persona else "No registrada",
-            "tipo_persona": persona.tipo_persona if persona else "N/A",
-            
-            # Roles y permisos
-            "roles": [
-                {
-                    "id_rol": rol.id_rol,
-                    "nombre": rol.nombre,
-                    "descripcion": rol.descripcion
-                }
-                for rol in usuario.roles if rol.is_active
-            ]
-        }
-        
-        return success_response(
-            data=user_data,
-            message="Usuario obtenido exitosamente"
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error al obtener usuario actual: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al obtener usuario: {str(e)}"
-        )
+    usuario_dto = AuthService.obtener_usuario_actual(db, current_user.id_usuario)
+    
+    return success_response(
+        data=usuario_dto.model_dump(),
+        message="Usuario obtenido exitosamente"
+    )
 
 
 @router.post("/refresh", response_model=dict)

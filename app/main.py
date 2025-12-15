@@ -23,6 +23,7 @@ from app.modules.bitacora.controllers import bitacora_controller
 from app.modules.esquelas.controllers import esquela_controller, codigo_esquela_controller
 from app.modules.administracion.controllers import curso_controller
 from app.modules.administracion.controllers import administrativo_controller
+from app.modules.administracion.controllers import materia_controller
 from app.modules.reportes.controllers import reporte_controller
 from app.modules.incidentes.controllers import controllers_incidentes
 
@@ -88,6 +89,7 @@ app.include_router(controllers_incidentes.router, prefix="/api/incidentes", tags
 app.include_router(esquela_controller.router, prefix="/api") 
 app.include_router(codigo_esquela_controller.router, prefix="/api")
 app.include_router(curso_controller.router, prefix="/api")
+app.include_router(materia_controller.router, prefix="/api")
 app.include_router(administrativo_controller.router)
 app.include_router(reporte_controller.router, prefix="/api")
 

@@ -178,3 +178,37 @@ class CursoRepository:
             .order_by(Curso.id_curso.asc())
             .all()
         )
+    
+    @staticmethod
+    def create(db: Session, data: dict):
+        """
+        Crea un nuevo curso
+        """
+        curso = Curso(**data)
+        db.add(curso)
+        db.commit()
+        db.refresh(curso)
+        return curso
+    
+    @staticmethod
+    def update(db: Session, curso_id: int, data: dict):
+        """
+        Actualiza un curso existente
+        """
+        curso = db.query(Curso).filter(Curso.id_curso == curso_id).first()
+        if curso:
+            for key, value in data.items():
+                setattr(curso, key, value)
+            db.commit()
+            db.refresh(curso)
+        return curso
+    
+    @staticmethod
+    def delete(db: Session, curso_id: int):
+        """
+        Elimina un curso
+        """
+        curso = db.query(Curso).filter(Curso.id_curso == curso_id).first()
+        if curso:
+            db.delete(curso)
+            db.commit()
