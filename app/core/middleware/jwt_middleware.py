@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 from app.shared.security import verify_token
 from app.core.database import get_db
-from app.modules.usuarios.models.usuario_models import Usuario
+from app.modules.usuarios.models.usuario_models import Usuario, Rol
 from sqlalchemy.orm import joinedload, selectinload
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,6 @@ PUBLIC_ROUTES = [
     "/openapi.json",
     "/health",
     "/api/health",
-    "/",
 ]
 
 # ✅ CACHÉ EN MEMORIA: Evita consultas repetidas a BD
@@ -51,7 +50,7 @@ def _get_cached_user(db, user_id: int):
     # Consultar BD con EAGER LOADING
     usuario = db.query(Usuario).options(
         joinedload(Usuario.persona),
-        selectinload(Usuario.roles).selectinload('permisos')
+        selectinload(Usuario.roles).selectinload(Rol.permisos)
     ).filter(
         Usuario.id_usuario == user_id,
         Usuario.is_active == True
@@ -89,15 +88,20 @@ class JWTMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         method = request.method
         
+        logger.info(f"🔍 JWT Middleware INICIO: {method} {path}")
+        
         # 🚀 CRÍTICO: Permitir OPTIONS sin validación (CORS preflight)
         if method == "OPTIONS":
-            logger.debug(f"✅ OPTIONS permitido: {path}")
+            logger.info(f"✅ OPTIONS - pasando sin validación: {path}")
             return await call_next(request)
         
         # 🚀 Verificar si la ruta es pública
+        logger.info(f"🔍 Verificando si es ruta pública: {path}")
         if self._is_public_route(path):
-            logger.debug(f"✅ Ruta pública permitida: {method} {path}")
+            logger.info(f"✅ Ruta pública - pasando sin validación: {method} {path}")
             return await call_next(request)
+        
+        logger.info(f"🔐 Ruta protegida - validando JWT: {method} {path}")
         
         # 🔍 DEBUG: Mostrar headers recibidos
         auth_header = request.headers.get("Authorization")
@@ -161,6 +165,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
                 request.state.client_ip = self._get_client_ip(request)
                 
                 logger.info(f"✅ Usuario autenticado: {usuario.usuario} ({usuario.id_usuario}) - {method} {path}")
+                logger.info(f"✅ Roles del usuario: {[r.nombre for r in usuario.roles if r.is_active]}")
                 
             finally:
                 db.close()
@@ -196,10 +201,13 @@ class JWTMiddleware(BaseHTTPMiddleware):
     
     def _is_public_route(self, path: str) -> bool:
         """Verificar si la ruta es pública"""
-        is_public = any(path.startswith(route) for route in PUBLIC_ROUTES)
-        if is_public:
-            logger.debug(f"✅ Ruta pública detectada: {path}")
-        return is_public
+        logger.info(f"🔍 Verificando ruta: '{path}' contra PUBLIC_ROUTES: {PUBLIC_ROUTES}")
+        for route in PUBLIC_ROUTES:
+            if path.startswith(route):
+                logger.info(f"✅ MATCH encontrado: '{path}'.startswith('{route}') = True")
+                return True
+        logger.info(f"❌ NO es ruta pública: '{path}'")
+        return False
     
     def _extract_token(self, request: Request) -> str:
         """Extraer token del header Authorization"""

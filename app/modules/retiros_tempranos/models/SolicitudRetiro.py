@@ -7,7 +7,6 @@ import enum
 
 class EstadoSolicitudEnum(str, enum.Enum):
     """Estados del flujo de aprobación de solicitudes"""
-    pendiente = "pendiente"                        # Creada por apoderado (estado inicial)
     recibida = "recibida"                          # Recepcionista la recibió
     derivada = "derivada"                          # Derivada al regente
     aprobada = "aprobada"                          # Regente aprobó
@@ -43,21 +42,21 @@ class SolicitudRetiro(Base):
     fecha_hora_salida = Column(DateTime, nullable=False, index=True)
     fecha_hora_retorno_previsto = Column(DateTime, nullable=True)
     observacion = Column(Text, nullable=True)
-    fecha_hora_solicitud = Column(DateTime, nullable=False)
+    fecha_creacion = Column(DateTime, nullable=False)  # *** CAMBIADO de fecha_hora_solicitud ***
     
     # Campos para el flujo de aprobación
-    estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="pendiente", index=True)
+    estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="recibida", index=True)
     id_recepcionista = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
     fecha_recepcion = Column(DateTime, nullable=True)
     id_regente = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
     fecha_derivacion = Column(DateTime, nullable=True)
     
     # Relaciones
-    estudiante = relationship("Estudiante", back_populates="solicitudes_retiro")
-    apoderado = relationship("Apoderado", back_populates="solicitudes_retiro")
-    motivo = relationship("MotivoRetiro", back_populates="solicitudes_retiro")
-    autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion])
-    registro_salida = relationship("RegistroSalida", back_populates="solicitud", uselist=False)
+    estudiante = relationship("Estudiante", foreign_keys=[id_estudiante], viewonly=True)
+    apoderado = relationship("Apoderado", foreign_keys=[id_apoderado], viewonly=True)
+    motivo = relationship("MotivoRetiro", foreign_keys=[id_motivo], viewonly=True)
+    autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion], viewonly=True)
+    registro_salida = relationship("RegistroSalida", uselist=False, viewonly=True)
     solicitante = relationship("Usuario", foreign_keys=[id_solicitante], viewonly=True)
     recepcionista = relationship("Usuario", foreign_keys=[id_recepcionista], viewonly=True)
     regente = relationship("Usuario", foreign_keys=[id_regente], viewonly=True)

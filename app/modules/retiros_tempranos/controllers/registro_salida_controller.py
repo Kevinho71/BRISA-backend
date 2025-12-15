@@ -80,52 +80,53 @@ async def registrar_retorno(
 # ============================================================================
 
 @router.get("/", response_model=List[RegistroSalidaResponseDTO])
-@require_permissions("recepcion", "regente", "admin")
+@require_permissions("recepcion", "regente")
 async def listar_registros(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
-    """**[RECEPCIÓN/REGENTE/ADMIN]** Listar todos los registros de salida"""
+    """**[RECEPCIÓN/REGENTE]** Listar todos los registros de salida"""
     return service.listar_registros(skip, limit)
 
 
 @router.get("/{id_registro}", response_model=RegistroSalidaResponseDTO)
+@require_permissions("recepcion", "regente")
 async def obtener_registro(
     id_registro: int,
     service: RegistroSalidaService = Depends(get_service)
 ) -> RegistroSalidaResponseDTO:
-    """Obtener un registro de salida por ID"""
+    """**[RECEPCIÓN/REGENTE]** Obtener un registro de salida por ID"""
     return service.obtener_registro(id_registro)
 
 
 @router.get("/estudiante/{id_estudiante}", response_model=List[RegistroSalidaResponseDTO])
-@require_permissions("recepcion", "regente", "admin", "apoderado")
+@require_permissions("recepcion", "regente")
 async def listar_registros_por_estudiante(
     id_estudiante: int,
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
-    """Listar registros de salida de un estudiante específico"""
+    """**[RECEPCIÓN/REGENTE]** Listar registros de salida de un estudiante específico"""
     return service.listar_por_estudiante(id_estudiante)
 
 
 @router.get("/solicitud/{id_solicitud}", response_model=List[RegistroSalidaResponseDTO])
-@require_permissions("recepcion", "regente", "admin")
+@require_permissions("recepcion", "regente")
 async def listar_registros_por_solicitud(
     id_solicitud: int,
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
-    """Listar registros de una solicitud individual específica"""
+    """**[RECEPCIÓN/REGENTE]** Listar registros de una solicitud individual específica"""
     return service.listar_por_solicitud(id_solicitud)
 
 
 @router.get("/solicitud-masiva/{id_solicitud_masiva}", response_model=List[RegistroSalidaResponseDTO])
-@require_permissions("recepcion", "regente", "admin")
+@require_permissions("recepcion", "regente")
 async def listar_registros_por_solicitud_masiva(
     id_solicitud_masiva: int,
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
-    """Listar registros de una solicitud masiva específica"""
+    """**[RECEPCIÓN/REGENTE]** Listar registros de una solicitud masiva específica"""
     return service.listar_por_solicitud_masiva(id_solicitud_masiva)
 
 
@@ -134,12 +135,12 @@ async def listar_registros_por_solicitud_masiva(
 # ============================================================================
 
 @router.delete("/{id_registro}")
-@require_permissions("admin")
+@require_permissions("recepcion")
 async def eliminar_registro(
     id_registro: int,
     service: RegistroSalidaService = Depends(get_service)
 ) -> dict:
-    """**[ADMIN]** Eliminar un registro de salida"""
+    """**[RECEPCIÓN]** Eliminar un registro de salida"""
     eliminado = service.eliminar_registro(id_registro)
     
     if eliminado:
