@@ -67,6 +67,13 @@ PERMISSION_MAP: Dict[str, Tuple[List[str], str]] = {
     "ver_bitacora": (["Lectura"], "administracion"),
     "gestionar_sistema": (["Modificar"], "administracion"),
     "configurar_sistema": (["Modificar", "Agregar"], "administracion"),
+    
+    # ============ MÓDULO ADMINISTRACIÓN (Administrativos) ============
+    "ver_administrativo": (["Lectura"], "administracion"),
+    "crear_administrativo": (["Agregar"], "administracion"),
+    "editar_administrativo": (["Modificar"], "administracion"),
+    "eliminar_administrativo": (["Eliminar"], "administracion"),
+    "ver_cargos": (["Lectura"], "administracion"),
 }
 
 
