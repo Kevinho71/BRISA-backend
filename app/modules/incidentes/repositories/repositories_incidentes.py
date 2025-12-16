@@ -9,39 +9,34 @@ from app.shared.models import Persona
 
 class IncidenteRepository:
 
-    def create(self, db: Session, incidente: Incidente):
-        db.add(incidente)
-        db.commit()
-        db.refresh(incidente)
-        return incidente
-    
-    def get_all(self, db: Session):
-        return db.query(Incidente).all()
-
-    def add_relations(self, db: Session, incidente: Incidente, dto):
-
+    def create_with_relations(self, db: Session, incidente: Incidente, dto):
+        # relaciones
         if dto.estudiantes:
             estudiantes = db.query(Estudiante).filter(
                 Estudiante.id_estudiante.in_(dto.estudiantes)
             ).all()
-            incidente.estudiantes.extend(estudiantes)
+            incidente.estudiantes = estudiantes
 
         if dto.profesores:
-            profesores = db.query(Persona).filter(
-                Persona.id_persona.in_(dto.profesores)
+            profesores = db.query(Persona1).filter(
+                Persona1.id_persona.in_(dto.profesores)
             ).all()
-            incidente.profesores.extend(profesores)
+            incidente.profesores = profesores
 
         if dto.situaciones:
             situaciones = db.query(SituacionIncidente).filter(
                 SituacionIncidente.id_situacion.in_(dto.situaciones)
             ).all()
-            incidente.situaciones.extend(situaciones)
+            incidente.situaciones = situaciones
 
+        db.add(incidente)
         db.commit()
         db.refresh(incidente)
         return incidente
-    
+
+    def get_all_with_usuario(self, db: Session):
+        return db.query(Incidente).options(joinedload(Incidente.responsable)).all()
+
     def update(self, db: Session, incidente: Incidente):
         db.add(incidente)
         db.commit()

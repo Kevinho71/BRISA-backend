@@ -6,6 +6,7 @@ from .autorizacion_retiro_service import AutorizacionRetiroService
 from .motivo_retiro_service import MotivoRetiroService
 from .registro_salida_service import RegistroSalidaService
 from .solicitud_retiro_service import SolicitudRetiroService
+from .solicitud_retiro_masivo_service import SolicitudRetiroMasivoService
 from .estudiante_apoderado_service import EstudianteApoderadoService
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "MotivoRetiroService",
     "RegistroSalidaService",
     "SolicitudRetiroService",
+    "SolicitudRetiroMasivoService",
     "EstudianteApoderadoService",
 ]
 

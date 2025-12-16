@@ -1,9 +1,9 @@
+# app\__init__.py
 import os
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.config import config
-from app.core.extensions import init_extensions
 from app.modules.esquelas import esquelas_router
 def create_app(config_name=None):
     """
@@ -44,8 +44,7 @@ def create_app(config_name=None):
         allow_headers=["*"],
     )
     
-    # Inicializar extensiones (base de datos, etc) usando la configuración cargada
-    init_extensions(app)
+
     
     # Registrar rutas
     register_routes(app)
@@ -54,7 +53,7 @@ def create_app(config_name=None):
 
 def register_routes(app):
     """Registrar todas las rutas de la aplicación"""
-    
+
     # Health check
     from app.modules.health.routes import health_router
     app.include_router(health_router, prefix="/api")
@@ -76,7 +75,11 @@ def register_routes(app):
     from app.modules.reportes.controllers.reporte_controller import router as reportes_router
     app.include_router(reportes_router, prefix="/api", tags=["Reports"])
     
-    # Administración (de main - Personas)
+    # Incidentes
+    from app.modules.incidentes.controllers.controllers_incidentes import router as reportes_router
+    app.include_router(reportes_router, prefix="/api", tags=["Incidentes"])
+    
+    # Administración (Personas)
     from app.modules.administracion import (
         estudiantes_router as admin_estudiantes_router,
         profesores_router,
@@ -117,4 +120,5 @@ from app.modules.esquelas.models.esquela_models import Esquela, CodigoEsquela
 from app.modules.administracion.models.persona_models import Estudiante
 from app.shared.models.persona import Persona
 from app.modules.estudiantes.models.Curso import Curso
+
 from app.modules.estudiantes.models.Materia import Materia

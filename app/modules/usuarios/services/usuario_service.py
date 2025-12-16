@@ -14,7 +14,6 @@ from app.modules.usuarios.models.usuario_models import (
 )
 from app.modules.auth.services.auth_service import AuthService
 from app.modules.usuarios.dto.usuario_dto import (
-    PersonaCreateDTO, PersonaUpdateDTO, PersonaResponseDTO,
     UsuarioCreateDTO, UsuarioUpdateDTO, UsuarioResponseDTO,
     RolCreateDTO, RolUpdateDTO, RolResponseDTO, 
     PermisoCreateDTO, PermisoResponseDTO,PersonasStatsDTO,
@@ -107,7 +106,7 @@ class PersonaService:
     def listar_con_filtros(
         db: Session,
         skip: int = 0,
-        limit: int = 10000,
+        limit: int = 100,
         tipo_persona: Optional[str] = None,
         busqueda: Optional[str] = None,
         estado: Optional[str] = None

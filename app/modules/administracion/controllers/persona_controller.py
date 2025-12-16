@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.core.extensions import get_db
+
+from app.core.database import get_db
 from app.modules.administracion.services.persona_service import (
     EstudianteService,
     ProfesorService,

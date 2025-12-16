@@ -26,7 +26,8 @@ class MotivoRetiro(Base):
     activo = Column(Boolean, nullable=False, default=True)
     
     # Relaciones
-    solicitudes_retiro = relationship("SolicitudRetiro", back_populates="motivo")
+    solicitudes_retiro = relationship("SolicitudRetiro", foreign_keys="SolicitudRetiro.id_motivo", viewonly=True)
+    solicitudes_masivas = relationship("SolicitudRetiroMasivo", foreign_keys="SolicitudRetiroMasivo.id_motivo", viewonly=True)
     
     def __repr__(self):
         return f"<MotivoRetiro(id={self.id_motivo}, nombre={self.nombre}, severidad={self.severidad})>"

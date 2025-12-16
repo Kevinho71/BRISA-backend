@@ -36,6 +36,7 @@ from .autorizacion_retiro_dto import (
 
 from .registro_salida_dto import (
     RegistroSalidaCreateDTO,
+    RegistroSalidaMasivoCreateDTO,
     RegistroSalidaUpdateDTO,
     RegistroSalidaResponseDTO
 )
@@ -45,13 +46,25 @@ from .solicitud_retiro_dto import (
     SolicitudRetiroUpdateDTO,
     SolicitudRetiroDerivarDTO,
     SolicitudRetiroResponseDTO,
-    EstadoSolicitudEnum
+    EstadoSolicitudEnum,
+    RecibirSolicitudDTO,
+    DerivarSolicitudDTO,
+    AprobarRechazarSolicitudDTO,
+    CancelarSolicitudDTO
 )
 
-from .solicitud_retiro_detalle_dto import (
-    SolicitudRetiroDetalleCreateDTO,
-    SolicitudRetiroDetalleUpdateDTO,
-    SolicitudRetiroDetalleResponseDTO
+from .solicitud_retiro_masivo_dto import (
+    SolicitudRetiroMasivoCreateDTO,
+    SolicitudRetiroMasivoUpdateDTO,
+    SolicitudRetiroMasivoResponseDTO,
+    SolicitudRetiroMasivoDetalladaResponseDTO,
+    DetalleSolicitudMasivoCreateDTO,
+    DetalleSolicitudMasivoResponseDTO,
+    EstadoSolicitudMasivaEnum,
+    RecibirSolicitudMasivaDTO,
+    DerivarSolicitudMasivaDTO,
+    AprobarRechazarSolicitudMasivaDTO,
+    CancelarSolicitudMasivaDTO
 )
 
 __all__ = [
@@ -86,6 +99,7 @@ __all__ = [
     "RegistroSalidaCreateDTO",
     "RegistroSalidaUpdateDTO",
     "RegistroSalidaResponseDTO",
+    "RegistroSalidaMasivoCreateDTO",
     
     # Solicitud Retiro
     "SolicitudRetiroCreateDTO",
@@ -93,9 +107,21 @@ __all__ = [
     "SolicitudRetiroDerivarDTO",
     "SolicitudRetiroResponseDTO",
     "EstadoSolicitudEnum",
+    "RecibirSolicitudDTO",
+    "DerivarSolicitudDTO",
+    "AprobarRechazarSolicitudDTO",
+    "CancelarSolicitudDTO",
     
-    # Solicitud Retiro Detalle
-    "SolicitudRetiroDetalleCreateDTO",
-    "SolicitudRetiroDetalleUpdateDTO",
-    "SolicitudRetiroDetalleResponseDTO",
+    # Solicitud Retiro Masivo
+    "SolicitudRetiroMasivoCreateDTO",
+    "SolicitudRetiroMasivoUpdateDTO",
+    "SolicitudRetiroMasivoResponseDTO",
+    "SolicitudRetiroMasivoDetalladaResponseDTO",
+    "DetalleSolicitudMasivoCreateDTO",
+    "DetalleSolicitudMasivoResponseDTO",
+    "EstadoSolicitudMasivaEnum",
+    "RecibirSolicitudMasivaDTO",
+    "DerivarSolicitudMasivaDTO",
+    "AprobarRechazarSolicitudMasivaDTO",
+    "CancelarSolicitudMasivaDTO",
 ]

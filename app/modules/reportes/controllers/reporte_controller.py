@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, Literal
 from datetime import date
 
-from app.core.extensions import get_db
+
+from app.core.database import get_db
 from app.modules.reportes.services.reporte_service import ReporteService
 from app.modules.reportes.dto.reporte_dto import (
     RankingResponseDTO,

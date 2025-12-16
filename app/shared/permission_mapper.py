@@ -85,22 +85,18 @@ ROLES_VER_PROPIAS_ESQUELAS = ["Profesor"]
 
 def tiene_permiso(usuario: Usuario, accion: str) -> bool:
     """
-    Verificar si un usuario tiene permiso para realizar una acción
-    AHORA VALIDA: permiso genérico + módulo correcto
+    Verificar si un usuario tiene permiso para realizar una acción o tiene un rol específico.
+    
+    IMPORTANTE: Ahora acepta dos tipos de valores:
+    1. Nombres de roles: "admin", "regente", "recepcion", "profesor", "apoderado"
+    2. Acciones mapeadas: "editar_usuario", "crear_incidente", etc.
     
     Args:
         usuario: Instancia del usuario
-        accion: Acción a verificar (ej: "editar_usuario", "crear_incidente")
+        accion: Nombre de rol o acción a verificar
     
     Returns:
         bool: True si tiene permiso, False si no
-    
-    Lógica:
-        1. Si el usuario tiene rol "Director" o "Admin" -> acceso total
-        2. Buscar en PERMISSION_MAP: accion → (permisos_genericos, modulo)
-        3. Verificar que el usuario tenga:
-           - Al menos UNO de los permisos genéricos requeridos
-           - Y que ese permiso sea del módulo correcto
     """
     if not usuario or not hasattr(usuario, 'roles'):
         logger.warning(f"Usuario sin roles intentando acción: {accion}")
@@ -118,7 +114,28 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
             logger.debug(f"✅ Usuario {usuario.usuario} tiene rol admin: {rol.nombre}")
             return True
     
-    # 2. Buscar el mapeo de la acción
+    # 2. NUEVO: Verificar si se está buscando por nombre de rol directamente
+    # Mapeo de nombres comunes a nombres de roles en BD
+    ROLE_MAP = {
+        "admin": ["Director", "Admin", "Administrador"],
+        "regente": ["Regente"],
+        "recepcion": ["Recepción", "Recepcionista"],
+        "profesor": ["Profesor"],
+        "apoderado": ["Apoderado"]
+    }
+    
+    if accion.lower() in ROLE_MAP:
+        nombres_rol = ROLE_MAP[accion.lower()]
+        for rol in usuario.roles:
+            if not rol.is_active:
+                continue
+            if rol.nombre in nombres_rol:
+                logger.debug(f"✅ Usuario {usuario.usuario} tiene rol: {rol.nombre} (buscado como '{accion}')")
+                return True
+        logger.debug(f"❌ Usuario no tiene rol {accion}")
+        return False
+    
+    # 3. Buscar el mapeo de la acción
     mapeo = PERMISSION_MAP.get(accion)
     
     if not mapeo:
@@ -131,7 +148,7 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
     logger.debug(f"  - Permisos: {permisos_requeridos}")
     logger.debug(f"  - Módulo: {modulo_requerido}")
     
-    # 3. Obtener permisos del usuario (con módulo)
+    # 4. Obtener permisos del usuario (con módulo)
     permisos_usuario: Set[Tuple[str, str]] = set()  # Set de (permiso_nombre, modulo)
     
     for rol in usuario.roles:
@@ -143,7 +160,7 @@ def tiene_permiso(usuario: Usuario, accion: str) -> bool:
     
     logger.debug(f"Permisos del usuario: {permisos_usuario}")
     
-    # 4. Verificar si el usuario tiene el permiso correcto en el módulo correcto
+    # 5. Verificar si el usuario tiene el permiso correcto en el módulo correcto
     for permiso_req in permisos_requeridos:
         # Buscar tupla (permiso_req, modulo_requerido) en permisos_usuario
         if (permiso_req, modulo_requerido) in permisos_usuario:

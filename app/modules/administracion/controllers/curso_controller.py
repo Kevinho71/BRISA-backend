@@ -1,10 +1,13 @@
 """Controlador (router) para el módulo de Cursos."""
 
+import logging
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from sqlalchemy import text
 
-from app.core.extensions import get_db
+
+from app.core.database import get_db
 from app.modules.administracion.services.curso_service import CursoService
 from app.modules.administracion.dto.curso_dto import (
     CursoDTO,
@@ -16,6 +19,7 @@ from app.modules.usuarios.models.usuario_models import Usuario
 from app.shared.permission_mapper import puede_ver_todas_esquelas
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
 
@@ -36,23 +40,60 @@ def listar_cursos(
         return CursoService.listar_cursos(db)
 
     # Si es profesor, retornar solo sus cursos
-    return CursoService.listar_cursos_por_profesor(db, current_user.id_persona)
+    rows = db.execute(
+        text(
+            """
+            SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
+            FROM profesores p
+            JOIN profesores_cursos_materias pcm ON pcm.id_profesor = p.id_profesor
+            JOIN cursos c ON c.id_curso = pcm.id_curso
+            WHERE p.id_persona = :id_persona
+            ORDER BY c.nombre_curso
+            """
+        ),
+        {"id_persona": current_user.id_persona},
+    ).mappings().all()
+    return [dict(r) for r in rows]
+
 
 @router.get("/mis_cursos/{id_persona}", response_model=List[CursoDTO])
 def listar_mis_cursos(
-        current_user: Usuario = Depends(get_current_user_dependency),
-        db: Session = Depends(get_db)
-    ):
-        """
-        Lista los cursos donde el profesor autenticado imparte clases.
+        id_persona: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista los cursos donde el profesor autenticado imparte clases.
 
-        **Uso:** Para que un profesor vea sus propios cursos asignados.
-        Solo muestra los cursos donde el profesor tiene asignadas materias.
-        """
-        print("ID del profesor autenticado:", current_user.id_persona)
-        print(CursoService.listar_cursos_por_profesor(db, current_user.id_persona))
-        return CursoService.listar_cursos_por_profesor(db, current_user.id_persona)
-
+    **Uso:** Para que un profesor vea sus propios cursos asignados.
+    Solo muestra los cursos donde el profesor tiene asignadas materias.
+    """
+    # Convertir id_persona a id_profesor
+    profesor_row = db.execute(
+        text("SELECT id_profesor FROM profesores WHERE id_persona = :id_persona"),
+        {"id_persona": id_persona}
+    ).first()
+    
+    if not profesor_row:
+        return []
+    
+    id_profesor = int(profesor_row[0])
+    
+    # Buscar cursos usando id_profesor
+    rows = db.execute(
+        text(
+            """
+                SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
+                FROM profesores_cursos_materias pcm
+                JOIN cursos c ON c.id_curso = pcm.id_curso
+                WHERE pcm.id_profesor = :id_profesor
+                ORDER BY c.nombre_curso
+                """
+        ),
+        {"id_profesor": id_profesor},
+    ).mappings().all()
+    
+    return [dict(r) for r in rows]
 
 
 @router.get("/{curso_id}", response_model=CursoDTO)
@@ -91,7 +132,19 @@ def listar_estudiantes_por_curso(
         # Es profesor, verificar que imparte clases en este curso
         from app.modules.administracion.repositories.persona_repository import PersonaRepository
 
-        if not PersonaRepository.es_profesor_del_curso(db, current_user.id_persona, curso_id):
+        row = db.execute(
+            text("SELECT id_profesor FROM profesores WHERE id_persona = :id_persona"),
+            {"id_persona": current_user.id_persona},
+        ).first()
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permisos para ver estudiantes de este curso."
+            )
+
+        id_profesor = int(row[0])
+
+        if not PersonaRepository.es_profesor_del_curso(db, id_profesor, curso_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"No tiene permisos para ver estudiantes de este curso. Solo puede ver estudiantes de los cursos donde imparte clases."
@@ -135,3 +188,41 @@ def listar_cursos_por_profesor(
     - **id_persona**: ID del profesor (id_persona en la tabla personas)
     """
     return CursoService.listar_cursos_por_profesor(db, id_persona)
+
+
+@router.post("/", response_model=CursoDTO, status_code=status.HTTP_201_CREATED)
+def crear_curso(
+    curso: dict,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Crea un nuevo curso
+    """
+    return CursoService.crear_curso(db, curso)
+
+
+@router.put("/{curso_id}", response_model=CursoDTO)
+def actualizar_curso(
+    curso_id: int,
+    curso: dict,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Actualiza un curso existente
+    """
+    return CursoService.actualizar_curso(db, curso_id, curso)
+
+
+@router.delete("/{curso_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_curso(
+    curso_id: int,
+    current_user: Usuario = Depends(get_current_user_dependency),
+    db: Session = Depends(get_db)
+):
+    """
+    Elimina un curso
+    """
+    CursoService.eliminar_curso(db, curso_id)
+    return None

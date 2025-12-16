@@ -17,8 +17,8 @@ class EstudianteApoderado(Base):
     es_contacto_principal = Column(Boolean, default=False, nullable=True)
     
     # Relaciones
-    estudiante = relationship("Estudiante", back_populates="estudiantes_apoderados")
-    apoderado = relationship("Apoderado", back_populates="estudiantes_apoderados")
+    estudiante = relationship("Estudiante", foreign_keys=[id_estudiante], viewonly=True)
+    apoderado = relationship("Apoderado", foreign_keys=[id_apoderado], viewonly=True)
     
     def __repr__(self):
         return f"<EstudianteApoderado(estudiante_id={self.id_estudiante}, apoderado_id={self.id_apoderado}, parentesco={self.parentesco})>"

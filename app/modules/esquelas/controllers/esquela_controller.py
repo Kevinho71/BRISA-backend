@@ -1,5 +1,7 @@
 """Controlador (router) para el módulo de Esquelas."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -25,31 +27,46 @@ from app.modules.esquelas.dto.esquela_dto import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 router = APIRouter(prefix="/esquelas", tags=["Esquelas"])
 
 
 @router.get("/", response_model=EsquelaListResponseDTO)
 @require_esquela_access(allow_owner=True)
 async def listar_esquelas(
-    name: Optional[str] = Query(None, description="Filtrar por nombre del estudiante"),
+    name: Optional[str] = Query(
+        None, description="Filtrar por nombre del estudiante"),
     course: Optional[int] = Query(None, description="Filtrar por ID de curso"),
-    type: Optional[str] = Query(None, description="Filtrar por tipo: 'reconocimiento' u 'orientacion'"),
-    from_date: Optional[date] = Query(None, alias="from", description="Fecha desde (YYYY-MM-DD)"),
-    to_date: Optional[date] = Query(None, alias="to", description="Fecha hasta (YYYY-MM-DD)"),
+    type: Optional[str] = Query(
+        None, description="Filtrar por tipo: 'reconocimiento' u 'orientacion'"),
+    from_date: Optional[date] = Query(
+        None, alias="from", description="Fecha desde (YYYY-MM-DD)"),
+    to_date: Optional[date] = Query(
+        None, alias="to", description="Fecha hasta (YYYY-MM-DD)"),
     year: Optional[int] = Query(None, description="Filtrar por año"),
-    month: Optional[int] = Query(None, ge=1, le=12, description="Filtrar por mes (1-12)"),
+    month: Optional[int] = Query(
+        None, ge=1, le=12, description="Filtrar por mes (1-12)"),
     page: int = Query(1, ge=1, description="Número de página"),
-    page_size: int = Query(10, ge=1, le=100, description="Tamaño de página"),
+    page_size: int = Query(
+        10, ge=1, description="Tamaño de página (sin límite máximo, enviar valor alto para obtener todo)"),
     current_user: Usuario = Depends(get_current_user_dependency),
     db: Session = Depends(get_db)
 ):
     """
     Lista esquelas con filtros avanzados y paginación.
-    
+
+    **Lógica de Paginación (Frontend):**
+    La respuesta incluye un campo `total`. El frontend debe usarlo así:
+    1. Haces la petición normal (por defecto `page_size=10`).
+    2. Lees el `total` de la respuesta (ej. 150 registros).
+    3. Si el usuario quiere ver "Todo", haces una nueva petición con `page_size=150`.
+
     **Permisos:**
     - **Admin/Regente**: Ve todas las esquelas
     - **Profesor**: Ve solo las esquelas que él asignó
-    
+
     **Filtros disponibles:**
     - **name**: Busca por nombre, apellido paterno o materno del estudiante
     - **course**: ID del curso
@@ -59,13 +76,14 @@ async def listar_esquelas(
     - **year**: Año específico
     - **month**: Mes específico (1-12)
     - **page**: Número de página (por defecto 1)
-    - **page_size**: Cantidad de resultados por página (por defecto 10, máximo 100)
-    
+    - **page_size**: Cantidad de resultados por página (por defecto 10)
+
     **Ejemplo:**
     ```
     GET /api/esquelas?name=Juan&course=5&year=2024&page=1&page_size=20
     ```
     """
+
     return EsquelaService.listar_esquelas_con_filtros(
         db=db,
         name=name,
@@ -88,7 +106,7 @@ def obtener_agregado_por_curso(
 ):
     """
     Obtiene la cantidad de esquelas de reconocimiento y orientación por curso.
-    
+
     **Ejemplo de respuesta:**
     ```json
     [
@@ -106,7 +124,7 @@ def obtener_agregado_por_curso(
         }
     ]
     ```
-    
+
     **Parámetros:**
     - **year**: Filtrar por año específico (opcional)
     """
@@ -121,10 +139,10 @@ def obtener_agregado_por_periodo(
     """
     Obtiene agregación de esquelas por año o mes.
     Útil para drilldown: año → mes.
-    
+
     **Parámetros:**
     - **group_by**: 'year' para agrupar por año, 'month' para agrupar por año y mes
-    
+
     **Ejemplo con group_by=year:**
     ```json
     [
@@ -132,7 +150,7 @@ def obtener_agregado_por_periodo(
         {"year": 2024, "total": 200}
     ]
     ```
-    
+
     **Ejemplo con group_by=month:**
     ```json
     [
@@ -153,7 +171,7 @@ async def obtener_esquela(
 ):
     """
     Obtiene una esquela específica por ID.
-    
+
     **Permisos:**
     - **Admin/Regente**: Puede ver cualquier esquela
     - **Profesor**: Solo puede ver esquelas que él asignó
@@ -170,17 +188,17 @@ async def crear_esquela(
 ):
     """
     Crea una nueva esquela.
-    
+
     **Permisos:**
     - **Admin/Regente**: Puede crear esquelas para cualquier profesor (debe especificar id_profesor)
     - **Profesor**: Solo puede crear esquelas en su propio nombre (id_profesor opcional, se autocompleta)
-    
+
     **Cambios importantes:**
     - **NO enviar** `id_registrador` - se autogenera con el usuario autenticado
     -  **Profesor**: `id_profesor` es opcional (se autocompleta automáticamente)
     -  **Admin/Regente**: `id_profesor` es requerido
     - Validación automática: el profesor debe impartir clases en el curso del estudiante
-    
+
     **Ejemplo para Profesor:**
     ```json
     {
@@ -190,7 +208,7 @@ async def crear_esquela(
       "codigos": [1, 3]
     }
     ```
-    
+
     **Ejemplo para Admin/Regente:**
     ```json
     {
@@ -202,7 +220,35 @@ async def crear_esquela(
     }
     ```
     """
-    return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
+    # Debug: imprime qué llega y quién llama (sin token)
+    try:
+        roles = [r.nombre for r in (getattr(current_user, "roles", []) or []) if getattr(r, "is_active", True)]
+        logger.info(
+            "Crear esquela request by id_usuario=%s id_persona=%s roles=%s payload=%s",
+            getattr(current_user, "id_usuario", None),
+            getattr(current_user, "id_persona", None),
+            roles,
+            esquela_data.model_dump(),
+        )
+    except Exception:
+        logger.info("Crear esquela request (no se pudo serializar debug)")
+
+    try:
+        return EsquelaService.crear_esquela(db, esquela_data, current_user=current_user)
+    except Exception as exc:
+        # Loguea el error específico
+        from fastapi import HTTPException
+
+        if isinstance(exc, HTTPException):
+            logger.warning(
+                "Crear esquela HTTPException status=%s detail=%s",
+                exc.status_code,
+                exc.detail,
+            )
+            raise
+
+        logger.exception("Crear esquela error no controlado")
+        raise
 
 
 @router.delete("/{id}")
@@ -214,9 +260,8 @@ async def eliminar_esquela(
 ):
     """
     Elimina una esquela por ID.
-    
+
     **Permisos:**
     - Requiere permiso 'eliminar_esquela' (generalmente Admin/Regente)
     """
     return EsquelaService.eliminar_esquela(db, id)
-

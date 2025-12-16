@@ -7,7 +7,7 @@ from app.shared.models.persona import Persona
 from app.modules.estudiantes.models.Curso import Curso
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
-
+from app.modules.profesores.models.profesor_models import Profesor
 
 class EsquelaRepository:
 
@@ -37,7 +37,6 @@ class EsquelaRepository:
             joinedload(Esquela.estudiante),
             joinedload(Esquela.profesor)
         ).filter(Esquela.id_esquela == id).first()
-
     @staticmethod
     def get_with_filters(
         db: Session,

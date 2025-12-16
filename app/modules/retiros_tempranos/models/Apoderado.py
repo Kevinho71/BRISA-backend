@@ -11,6 +11,7 @@ class Apoderado(Base):
     __table_args__ = {'extend_existing': True}
     
     id_apoderado = Column(Integer, primary_key=True, autoincrement=True)
+    id_persona = Column(Integer, ForeignKey("personas.id_persona", ondelete="SET NULL"), nullable=True, unique=True, index=True)
     ci = Column(String(20), unique=True, nullable=False, index=True)
     nombres = Column(String(100), nullable=False)
     apellidos = Column(String(100), nullable=False)
@@ -19,8 +20,9 @@ class Apoderado(Base):
     direccion = Column(String(100), nullable=True)
     
     # Relaciones
-    estudiantes_apoderados = relationship("EstudianteApoderado", back_populates="apoderado")
-    solicitudes_retiro = relationship("SolicitudRetiro", back_populates="apoderado")
+    persona = relationship("Persona", foreign_keys=[id_persona], viewonly=True)
+    estudiantes_apoderados = relationship("EstudianteApoderado", foreign_keys="EstudianteApoderado.id_apoderado", viewonly=True)
+    solicitudes_retiro = relationship("SolicitudRetiro", foreign_keys="SolicitudRetiro.id_apoderado", viewonly=True)
     
     def __repr__(self):
         return f"<Apoderado(id={self.id_apoderado}, nombres={self.nombres} {self.apellidos})>"

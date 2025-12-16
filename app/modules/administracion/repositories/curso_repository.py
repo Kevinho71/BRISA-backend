@@ -1,6 +1,6 @@
 # app/modules/administracion/repositories/curso_repository.py
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from app.modules.administracion.models.persona_models import Estudiante
 from app.modules.estudiantes.models.Curso import Curso
 from app.shared.models.persona import Persona
@@ -15,14 +15,23 @@ class CursoRepository:
         return db.query(Curso).order_by(Curso.nombre_curso).all()
 
     @staticmethod
-    def get_by_profesor(db: Session, id_persona: int):
-        """Obtiene los cursos asignados a un profesor específico"""
-        from app.shared.models.profesor_curso_materia import ProfesorCursoMateria
-        return db.query(Curso).join(
-            ProfesorCursoMateria
-        ).filter(
-            ProfesorCursoMateria.id_profesor == id_persona
-        ).order_by(Curso.nombre_curso).all()
+    def get_by_profesor(db: Session, id_profesor: int):
+        """Obtiene los cursos asignados a un profesor específico (usa `profesores.id_profesor`)."""
+        rows = db.execute(
+            text(
+                """
+                SELECT DISTINCT c.id_curso, c.nombre_curso, c.nivel, c.gestion
+                FROM cursos c
+                JOIN profesores_cursos_materias pcm ON pcm.id_curso = c.id_curso
+                WHERE pcm.id_profesor = :id_profesor
+                ORDER BY c.nombre_curso
+                """
+            ),
+            {"id_profesor": id_profesor},
+        ).mappings().all()
+
+        # Devolver dicts compatibles con CursoDTO
+        return [dict(r) for r in rows]
     
 
     def get_by_id(db: Session, curso_id: int):
@@ -95,15 +104,17 @@ class CursoRepository:
         """
         Obtiene los profesores de un curso con filtro opcional por nombre
         """
-        # Consulta usando la tabla intermedia profesores_cursos_materias
+        # Consulta usando profesores_cursos_materias (id_profesor -> profesores.id_profesor)
+        # y luego profesores.id_persona -> personas.id_persona
+        from app.modules.administracion.models.persona_models import profesores_cursos_materias
+        from app.modules.profesores.models.profesor_models import Profesor
+
         query = db.query(Persona).join(
-            'profesores_cursos_materias'
+            Profesor, Profesor.id_persona == Persona.id_persona
+        ).join(
+            profesores_cursos_materias, profesores_cursos_materias.c.id_profesor == Profesor.id_profesor
         ).filter(
-            Persona.tipo_persona == 'profesor'
-        ).filter(
-            db.query(Persona).join('profesores_cursos_materias').filter(
-                db.text('profesores_cursos_materias.id_curso = :curso_id')
-            ).exists()
+            profesores_cursos_materias.c.id_curso == curso_id
         )
 
         # Filtro por nombre
@@ -137,7 +148,13 @@ class CursoRepository:
     
     @staticmethod
     def get_curso_by_estudiante(db: Session, id_estudiante: int) -> Optional[Curso]:
-        """Obtiene el curso de un estudiante (asume que el estudiante está en un solo curso)"""
+        """Obtiene el curso de un estudiante.
+
+        Nota: Históricamente se asumía 1 curso por estudiante. Si existen múltiples
+        asignaciones en `estudiantes_cursos`, este método retorna uno de forma
+        determinística (por id_curso asc). Para validar contra *todos* los cursos,
+        usar `get_cursos_by_estudiante`.
+        """
         from app.modules.administracion.models.persona_models import estudiantes_cursos
         
         curso = db.query(Curso).join(
@@ -145,6 +162,53 @@ class CursoRepository:
             Curso.id_curso == estudiantes_cursos.c.id_curso
         ).filter(
             estudiantes_cursos.c.id_estudiante == id_estudiante
-        ).first()
+        ).order_by(Curso.id_curso.asc()).first()
         
         return curso
+
+    @staticmethod
+    def get_cursos_by_estudiante(db: Session, id_estudiante: int) -> list[Curso]:
+        """Obtiene todos los cursos asociados a un estudiante."""
+        from app.modules.administracion.models.persona_models import estudiantes_cursos
+
+        return (
+            db.query(Curso)
+            .join(estudiantes_cursos, Curso.id_curso == estudiantes_cursos.c.id_curso)
+            .filter(estudiantes_cursos.c.id_estudiante == id_estudiante)
+            .order_by(Curso.id_curso.asc())
+            .all()
+        )
+    
+    @staticmethod
+    def create(db: Session, data: dict):
+        """
+        Crea un nuevo curso
+        """
+        curso = Curso(**data)
+        db.add(curso)
+        db.commit()
+        db.refresh(curso)
+        return curso
+    
+    @staticmethod
+    def update(db: Session, curso_id: int, data: dict):
+        """
+        Actualiza un curso existente
+        """
+        curso = db.query(Curso).filter(Curso.id_curso == curso_id).first()
+        if curso:
+            for key, value in data.items():
+                setattr(curso, key, value)
+            db.commit()
+            db.refresh(curso)
+        return curso
+    
+    @staticmethod
+    def delete(db: Session, curso_id: int):
+        """
+        Elimina un curso
+        """
+        curso = db.query(Curso).filter(Curso.id_curso == curso_id).first()
+        if curso:
+            db.delete(curso)
+            db.commit()

@@ -24,6 +24,7 @@ class IncidenteResponseDTO(BaseModel):
     seguimiento: Optional[str]
     estado: str
     id_responsable: Optional[int]
+    responsable_usuario: Optional[str] = None  # Nuevo campo para el username
 
     class Config:
         from_attributes = True

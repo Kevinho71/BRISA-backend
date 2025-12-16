@@ -17,6 +17,29 @@ from app.shared.permission_mapper import tiene_permiso, puede_modificar_usuario,
 logger = logging.getLogger(__name__)
 
 
+def _add_current_user_dependency(func: Callable):
+    """
+    Helper function to add current_user dependency to function signature.
+    This allows FastAPI to inject the authenticated user.
+    """
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+    
+    # Check if current_user is already in parameters
+    if 'current_user' not in sig.parameters:
+        # Add current_user parameter with Depends(get_current_user)
+        from inspect import Parameter
+        current_user_param = Parameter(
+            'current_user',
+            Parameter.KEYWORD_ONLY,
+            default=Depends(get_current_user),
+            annotation=Usuario
+        )
+        params.append(current_user_param)
+    
+    return sig.replace(parameters=params)
+
+
 # Extraer token del header
 async def get_token_from_request(request: Request) -> str:
     """Extrae el token JWT del header Authorization"""
@@ -42,26 +65,24 @@ async def get_token_from_request(request: Request) -> str:
         )
 
 
-# Obtener usuario actual
-async def get_current_user(request: Request = None):
+# Obtener usuario actual (DEPENDENCY para FastAPI)
+def get_current_user(request: Request) -> Usuario:
     """
-    Dependency para obtener el usuario actual autenticado.
-    Stub: reemplazar con AuthService real.
-    """
-    if request is None:
-        raise HTTPException(status_code=401, detail="No request context")
+    Dependency para FastAPI que extrae el usuario del request.state.
+    El JWT middleware ya validó el token e inyectó el usuario.
     
-    try:
-        token = await get_token_from_request(request)
-        # Stub: usuario simulado
-        return {
-            "id": 1,
-            "email": "user@example.com",
-            "roles": ["admin"],
-            "permisos": ["ver_usuario", "crear_usuario", "generar_reportes"]
-        }
-    except HTTPException:
-        raise
+    Esta función se ejecuta DESPUÉS del middleware, por lo que request.state.user ya existe.
+    """
+    # El usuario fue inyectado por JWTMiddleware
+    if not hasattr(request.state, 'user') or request.state.user is None:
+        logger.error("❌ CRITICAL: request.state.user es None - JWT middleware no ejecutado")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no autenticado - token inválido o no proporcionado"
+        )
+    
+    logger.info(f"✅ get_current_user: {request.state.user.usuario}")
+    return request.state.user
 
 
 # Decorador: require_auth
@@ -96,50 +117,65 @@ def require_roles(*allowed_roles: str):
 # Decorador: require_permission
 
 
-def require_permissions(*required_permissions: str):
+def require_permissions(*required_roles: str):
     """
-    Decorador para validar que el usuario tenga los permisos requeridos.
+    Decorador SIMPLIFICADO que verifica solo por nombre de rol.
     
-    Ahora usa permission_mapper para traducir
-    acciones específicas (ej: "editar_usuario") a permisos genéricos (ej: "Modificar")
+    IMPORTANTE: El endpoint DEBE incluir:
+        current_user: Usuario = Depends(get_current_user)
     
-    Uso en endpoints:
-        @router.put("/usuarios/{id_usuario}")
-        @require_permissions('editar_usuario')
-        async def actualizar_usuario(...):
+    Ejemplo:
+        @router.get("/endpoint")
+        @require_permissions('admin', 'regente', 'recepcion')
+        async def mi_endpoint(current_user: Usuario = Depends(get_current_user)):
             ...
     
     Args:
-        *required_permissions: Acciones requeridas (ej: 'editar_usuario', 'crear_rol')
+        *required_roles: Nombres de roles permitidos (admin, regente, recepcion, profesor, apoderado)
     """
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
+            # El current_user debe venir en kwargs desde Depends(get_current_user)
             current_user: Usuario = kwargs.get('current_user')
             
             if not current_user:
-                logger.warning("Intento de acceso sin usuario autenticado")
+                logger.warning("current_user no encontrado en kwargs")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Usuario no autenticado"
                 )
             
-            # Verificar si tiene al menos uno de los permisos requeridos
-            # Usando el sistema de mapeo
-            tiene_permiso_requerido = False
-            for permiso in required_permissions:
-                if tiene_permiso(current_user, permiso):
-                    tiene_permiso_requerido = True
-                    logger.debug(f"✅ Usuario {current_user.usuario} tiene permiso: {permiso}")
+            # MAPEO SIMPLE: nombre usado en decorador -> nombre en BD
+            ROLE_MAP = {
+                "admin": ["Director", "Admin", "Administrador"],
+                "regente": ["Regente"],
+                "recepcion": ["Recepción", "Recepcionista"],
+                "profesor": ["Profesor"],
+                "apoderado": ["Apoderado"]
+            }
+            
+            # Obtener roles del usuario
+            user_roles = [r.nombre for r in current_user.roles if r.is_active]
+            logger.info(f"Usuario {current_user.usuario} tiene roles: {user_roles}")
+            
+            # Verificar si tiene alguno de los roles requeridos
+            tiene_acceso = False
+            for rol_requerido in required_roles:
+                nombres_validos = ROLE_MAP.get(rol_requerido.lower(), [rol_requerido])
+                for rol_usuario in user_roles:
+                    if rol_usuario in nombres_validos:
+                        logger.info(f"✅ Acceso concedido: {current_user.usuario} con rol {rol_usuario}")
+                        tiene_acceso = True
+                        break
+                if tiene_acceso:
                     break
             
-            if not tiene_permiso_requerido:
-                logger.warning(
-                    f"❌ Usuario {current_user.usuario} sin permiso para: {', '.join(required_permissions)}"
-                )
+            if not tiene_acceso:
+                logger.warning(f"❌ Acceso denegado: {current_user.usuario} no tiene roles: {required_roles}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"No tiene permisos para realizar esta acción. Se requiere: {', '.join(required_permissions)}"
+                    detail=f"No tiene permisos. Se requiere uno de estos roles: {', '.join(required_roles)}"
                 )
             
             return await func(*args, **kwargs)
@@ -153,7 +189,8 @@ def require_all_permissions(*required_permissions: str):
     """
     Decorador que requiere TODOS los permisos especificados.
     
-    Similar a require_permissions pero más estricto.
+    IMPORTANTE: El endpoint DEBE incluir:
+        current_user: Usuario = Depends(get_current_user)
     """
     def decorator(func: Callable):
         @wraps(func)
@@ -161,6 +198,7 @@ def require_all_permissions(*required_permissions: str):
             current_user: Usuario = kwargs.get('current_user')
             
             if not current_user:
+                logger.warning("current_user no encontrado en kwargs")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Usuario no autenticado"
@@ -376,7 +414,7 @@ def require_esquela_access(allow_owner: bool = True):
             
             # Si solo puede ver las propias, verificar que tenga el permiso básico
             if allow_owner:
-                if not tiene_permiso(current_user, 'ver_esquelas'):
+                if not tiene_permiso(current_user, 'ver_esquela'):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="No tiene permisos para ver esquelas"
