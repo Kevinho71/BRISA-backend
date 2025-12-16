@@ -75,10 +75,10 @@ class SolicitudRetiroMasivoService:
             id_solicitante=id_solicitante,
             id_motivo=solicitud_dto.id_motivo,
             fecha_hora_salida=solicitud_dto.fecha_hora_salida,
-            fecha_hora_retorno=solicitud_dto.fecha_hora_retorno,
+            fecha_hora_retorno_previsto=solicitud_dto.fecha_hora_retorno_previsto,
             foto_evidencia=solicitud_dto.foto_evidencia,
             observacion=solicitud_dto.observacion,
-            estado=EstadoSolicitudMasivaEnum.pendiente.value
+            estado=EstadoSolicitudMasivaEnum.recibida.value
         )
 
         solicitud_creada = self.solicitud_repo.create(nueva_solicitud)
@@ -128,15 +128,6 @@ class SolicitudRetiroMasivoService:
         solicitudes = self.solicitud_repo.get_by_solicitante(id_solicitante, skip, limit)
         return [self._convertir_a_dto(sol) for sol in solicitudes]
 
-    def listar_pendientes(
-        self, 
-        skip: int = 0, 
-        limit: int = 100
-    ) -> List[SolicitudRetiroMasivoResponseDTO]:
-        """Lista solicitudes pendientes de recepción"""
-        solicitudes = self.solicitud_repo.get_pendientes(skip, limit)
-        return [self._convertir_a_dto(sol) for sol in solicitudes]
-
     def listar_recibidas(
         self, 
         skip: int = 0, 
@@ -146,42 +137,27 @@ class SolicitudRetiroMasivoService:
         solicitudes = self.solicitud_repo.get_recibidas(skip, limit)
         return [self._convertir_a_dto(sol) for sol in solicitudes]
 
-    def listar_derivadas_a_regente(
+    def listar_derivadas(
         self, 
-        id_regente: int, 
         skip: int = 0, 
         limit: int = 100
     ) -> List[SolicitudRetiroMasivoResponseDTO]:
-        """Lista solicitudes derivadas a un regente"""
-        solicitudes = self.solicitud_repo.get_derivadas(id_regente, skip, limit)
+        """Lista solicitudes derivadas (sin filtro de regente)"""
+        solicitudes = self.db.query(SolicitudRetiroMasivo).filter(
+            SolicitudRetiroMasivo.estado == EstadoSolicitudMasivaEnum.derivada.value
+        ).offset(skip).limit(limit).all()
         return [self._convertir_a_dto(sol) for sol in solicitudes]
 
     def recibir_solicitud(
         self, 
         id_solicitud: int, 
-        recibir_dto: RecibirSolicitudMasivaDTO, 
-        id_recepcionista: int
+        recibir_dto: RecibirSolicitudMasivaDTO
     ) -> SolicitudRetiroMasivoResponseDTO:
-        """Recepcionista marca solicitud como recibida"""
-        solicitud = self.solicitud_repo.get_by_id(id_solicitud)
-        if not solicitud:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Solicitud no encontrada"
-            )
-
-        if solicitud.estado != EstadoSolicitudMasivaEnum.pendiente.value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solo se pueden recibir solicitudes en estado pendiente"
-            )
-
-        solicitud.estado = EstadoSolicitudMasivaEnum.recibida.value
-        solicitud.id_recepcionista = id_recepcionista
-        solicitud.fecha_recepcion = recibir_dto.fecha_hora_recepcion or datetime.now()
-
-        solicitud_actualizada = self.solicitud_repo.update(solicitud)
-        return self._convertir_a_dto(solicitud_actualizada)
+        """Ya no se usa - las solicitudes se crean directamente como recibidas"""
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Las solicitudes masivas se crean directamente en estado 'recibida'"
+        )
 
     def derivar_solicitud(
         self, 
@@ -202,16 +178,7 @@ class SolicitudRetiroMasivoService:
                 detail="Solo se pueden derivar solicitudes en estado recibida"
             )
 
-        # Validar que el regente existe
-        regente = self.db.query(Usuario).filter(Usuario.id_usuario == derivar_dto.id_regente).first()
-        if not regente:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Regente no encontrado"
-            )
-
         solicitud.estado = EstadoSolicitudMasivaEnum.derivada.value
-        solicitud.id_regente = derivar_dto.id_regente
         solicitud.fecha_derivacion = datetime.now()
 
         solicitud_actualizada = self.solicitud_repo.update(solicitud)
@@ -221,7 +188,7 @@ class SolicitudRetiroMasivoService:
         self, 
         id_solicitud: int, 
         decision_dto: AprobarRechazarSolicitudMasivaDTO,
-        id_regente: int
+        id_usuario_aprobador: int
     ) -> SolicitudRetiroMasivoResponseDTO:
         """Regente aprueba o rechaza una solicitud masiva"""
         solicitud = self.solicitud_repo.get_by_id(id_solicitud)
@@ -237,12 +204,6 @@ class SolicitudRetiroMasivoService:
                 detail="Solo se pueden aprobar/rechazar solicitudes derivadas"
             )
 
-        if solicitud.id_regente != id_regente:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo el regente asignado puede aprobar/rechazar esta solicitud"
-            )
-
         # Validar decisión
         if decision_dto.decision not in ["aprobada", "rechazada"]:
             raise HTTPException(
@@ -250,10 +211,10 @@ class SolicitudRetiroMasivoService:
                 detail="La decisión debe ser 'aprobada' o 'rechazada'"
             )
 
-        if decision_dto.decision == "rechazada" and not decision_dto.motivo_rechazo:
+        if decision_dto.decision == "rechazada" and not decision_dto.motivo_decision:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El motivo de rechazo es obligatorio"
+                detail="El motivo de decisión es obligatorio para rechazos"
             )
 
         # Actualizar estado
@@ -261,11 +222,10 @@ class SolicitudRetiroMasivoService:
 
         # Crear autorización
         nueva_autorizacion = AutorizacionRetiro(
-            id_solicitud_masiva=id_solicitud,
-            id_regente=id_regente,
-            decision=DecisionEnum.aprobada.value if decision_dto.decision == "aprobada" else DecisionEnum.rechazada.value,
-            motivo_rechazo=decision_dto.motivo_rechazo,
-            fecha_autorizacion=datetime.now()
+            id_usuario_aprobador=id_usuario_aprobador,
+            decision=decision_dto.decision,
+            motivo_decision=decision_dto.motivo_decision,
+            fecha_decision=datetime.now()
         )
         autorizacion_creada = self.autorizacion_repo.create(nueva_autorizacion)
 
@@ -321,10 +281,10 @@ class SolicitudRetiroMasivoService:
                 detail="Solo el solicitante puede eliminar su solicitud"
             )
 
-        if solicitud.estado != EstadoSolicitudMasivaEnum.pendiente.value:
+        if solicitud.estado != EstadoSolicitudMasivaEnum.recibida.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solo se pueden eliminar solicitudes pendientes"
+                detail="Solo se pueden eliminar solicitudes en estado 'recibida' (no derivadas)"
             )
 
         return self.solicitud_repo.delete(id_solicitud)
@@ -332,8 +292,8 @@ class SolicitudRetiroMasivoService:
     def _convertir_a_dto(self, solicitud: SolicitudRetiroMasivo) -> SolicitudRetiroMasivoResponseDTO:
         """Convierte modelo a DTO (sin detalles)"""
         solicitante_nombre = None
-        if solicitud.solicitante:
-            solicitante_nombre = f"{solicitud.solicitante.nombre} {solicitud.solicitante.apellido_paterno}"
+        if solicitud.solicitante and solicitud.solicitante.persona:
+            solicitante_nombre = f"{solicitud.solicitante.persona.nombres} {solicitud.solicitante.persona.apellido_paterno}"
 
         motivo_nombre = solicitud.motivo.nombre if solicitud.motivo else None
         
@@ -346,14 +306,11 @@ class SolicitudRetiroMasivoService:
             id_motivo=solicitud.id_motivo,
             id_autorizacion=solicitud.id_autorizacion,
             fecha_hora_salida=solicitud.fecha_hora_salida,
-            fecha_hora_retorno=solicitud.fecha_hora_retorno,
+            fecha_hora_retorno_previsto=solicitud.fecha_hora_retorno_previsto,
             foto_evidencia=solicitud.foto_evidencia,
             observacion=solicitud.observacion,
-            fecha_hora_solicitud=solicitud.fecha_hora_solicitud,
+            fecha_creacion=solicitud.fecha_creacion,
             estado=solicitud.estado,
-            id_recepcionista=solicitud.id_recepcionista,
-            fecha_recepcion=solicitud.fecha_recepcion,
-            id_regente=solicitud.id_regente,
             fecha_derivacion=solicitud.fecha_derivacion,
             solicitante_nombre=solicitante_nombre,
             motivo_nombre=motivo_nombre,
@@ -375,10 +332,14 @@ class SolicitudRetiroMasivoService:
             curso_nombre = None
             
             if detalle.estudiante:
-                estudiante_nombre = f"{detalle.estudiante.nombre} {detalle.estudiante.apellido_paterno} {detalle.estudiante.apellido_materno or ''}"
+                estudiante_nombre = f"{detalle.estudiante.nombres} {detalle.estudiante.apellido_paterno} {detalle.estudiante.apellido_materno or ''}"
                 estudiante_ci = detalle.estudiante.ci
-                if detalle.estudiante.curso:
-                    curso_nombre = detalle.estudiante.curso.nombre
+                # Obtener curso desde la relación estudiantes_cursos (many-to-many)
+                if detalle.estudiante.estudiantes_cursos:
+                    # Tomar el primer curso (el estudiante puede estar en varios cursos)
+                    primer_curso = detalle.estudiante.estudiantes_cursos[0]
+                    if primer_curso.curso:
+                        curso_nombre = primer_curso.curso.nombre_curso
 
             detalles_dto.append(DetalleSolicitudMasivoResponseDTO(
                 id_detalle=detalle.id_detalle,

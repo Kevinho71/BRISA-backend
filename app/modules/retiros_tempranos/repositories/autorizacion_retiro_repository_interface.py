@@ -30,8 +30,3 @@ class IAutorizacionRetiroRepository(ABC):
     def update(self, id_autorizacion: int, autorizacion_data: dict) -> Optional[AutorizacionRetiro]:
         """Actualizar una autorización"""
         pass
-    
-    @abstractmethod
-    def delete(self, id_autorizacion: int) -> bool:
-        """Eliminar una autorización"""
-        pass

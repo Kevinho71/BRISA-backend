@@ -5,11 +5,11 @@ from app.modules.retiros_tempranos.services.registro_salida_service import Regis
 from app.modules.retiros_tempranos.dto import (
     RegistroSalidaCreateDTO,
     RegistroSalidaMasivoCreateDTO,
-    RegistroSalidaUpdateDTO,
     RegistroSalidaResponseDTO
 )
 from app.core.database import get_db
-from app.shared.decorators.auth_decorators import require_permissions
+from app.shared.decorators.auth_decorators import require_permissions, get_current_user
+from app.modules.usuarios.models import Usuario
 
 router = APIRouter(prefix="/api/retiros-tempranos/registros-salida", tags=["Registros de Salida"])
 
@@ -27,6 +27,7 @@ def get_service(db: Session = Depends(get_db)) -> RegistroSalidaService:
 @require_permissions("recepcion")
 async def crear_registro_individual(
     registro_dto: RegistroSalidaCreateDTO,
+    current_user: Usuario = Depends(get_current_user),
     service: RegistroSalidaService = Depends(get_service)
 ) -> RegistroSalidaResponseDTO:
     """
@@ -43,6 +44,7 @@ async def crear_registro_individual(
 @require_permissions("recepcion")
 async def crear_registros_masivos(
     registro_dto: RegistroSalidaMasivoCreateDTO,
+    current_user: Usuario = Depends(get_current_user),
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
     """
@@ -56,26 +58,6 @@ async def crear_registros_masivos(
 
 
 # ============================================================================
-# ENDPOINTS PARA REGISTRAR RETORNOS
-# ============================================================================
-
-@router.put("/{id_registro}/retorno", response_model=RegistroSalidaResponseDTO)
-@require_permissions("recepcion")
-async def registrar_retorno(
-    id_registro: int,
-    retorno_dto: RegistroSalidaUpdateDTO,
-    service: RegistroSalidaService = Depends(get_service)
-) -> RegistroSalidaResponseDTO:
-    """
-    **[RECEPCIONISTA]** Registrar el retorno de un estudiante
-    
-    - Marca la hora de retorno del estudiante
-    - Solo se puede registrar una vez
-    """
-    return service.registrar_retorno(id_registro, retorno_dto)
-
-
-# ============================================================================
 # ENDPOINTS DE CONSULTA
 # ============================================================================
 
@@ -84,6 +66,7 @@ async def registrar_retorno(
 async def listar_registros(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    current_user: Usuario = Depends(get_current_user),
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
     """**[RECEPCIÓN/REGENTE]** Listar todos los registros de salida"""
@@ -94,6 +77,7 @@ async def listar_registros(
 @require_permissions("recepcion", "regente")
 async def obtener_registro(
     id_registro: int,
+    current_user: Usuario = Depends(get_current_user),
     service: RegistroSalidaService = Depends(get_service)
 ) -> RegistroSalidaResponseDTO:
     """**[RECEPCIÓN/REGENTE]** Obtener un registro de salida por ID"""
@@ -104,46 +88,9 @@ async def obtener_registro(
 @require_permissions("recepcion", "regente")
 async def listar_registros_por_estudiante(
     id_estudiante: int,
+    current_user: Usuario = Depends(get_current_user),
     service: RegistroSalidaService = Depends(get_service)
 ) -> List[RegistroSalidaResponseDTO]:
     """**[RECEPCIÓN/REGENTE]** Listar registros de salida de un estudiante específico"""
     return service.listar_por_estudiante(id_estudiante)
-
-
-@router.get("/solicitud/{id_solicitud}", response_model=List[RegistroSalidaResponseDTO])
-@require_permissions("recepcion", "regente")
-async def listar_registros_por_solicitud(
-    id_solicitud: int,
-    service: RegistroSalidaService = Depends(get_service)
-) -> List[RegistroSalidaResponseDTO]:
-    """**[RECEPCIÓN/REGENTE]** Listar registros de una solicitud individual específica"""
-    return service.listar_por_solicitud(id_solicitud)
-
-
-@router.get("/solicitud-masiva/{id_solicitud_masiva}", response_model=List[RegistroSalidaResponseDTO])
-@require_permissions("recepcion", "regente")
-async def listar_registros_por_solicitud_masiva(
-    id_solicitud_masiva: int,
-    service: RegistroSalidaService = Depends(get_service)
-) -> List[RegistroSalidaResponseDTO]:
-    """**[RECEPCIÓN/REGENTE]** Listar registros de una solicitud masiva específica"""
-    return service.listar_por_solicitud_masiva(id_solicitud_masiva)
-
-
-# ============================================================================
-# ENDPOINTS DE ADMINISTRACIÓN
-# ============================================================================
-
-@router.delete("/{id_registro}")
-@require_permissions("recepcion")
-async def eliminar_registro(
-    id_registro: int,
-    service: RegistroSalidaService = Depends(get_service)
-) -> dict:
-    """**[RECEPCIÓN]** Eliminar un registro de salida"""
-    eliminado = service.eliminar_registro(id_registro)
-    
-    if eliminado:
-        return {"message": "Registro eliminado exitosamente"}
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro no encontrado")
 
