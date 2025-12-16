@@ -42,6 +42,11 @@ from app.modules.retiros_tempranos.controllers import (
     estudiante_apoderado_controller
 )
 
+# ✅ NUEVO: Routers de Estudiantes, Cursos y Asignaciones
+from app.modules.estudiantes.controllers import estudiante_controller
+from app.modules.cursos.controllers import curso_controller as nuevo_curso_controller
+from app.modules.estudiantes_cursos.controllers import asignacion_controller
+
 # Servicios
 from app.modules.auth.services.auth_service import AuthService
 
@@ -114,6 +119,11 @@ app.include_router(autorizacion_retiro_controller.router)
 app.include_router(estudiante_apoderado_controller.router)
 app.include_router(upload_controller.router)
 
+# ✅ NUEVO: Estudiantes, Cursos y Asignaciones
+app.include_router(estudiante_controller.router, prefix="/api", tags=["Estudiantes"])
+app.include_router(nuevo_curso_controller.router, prefix="/api", tags=["Cursos"])
+app.include_router(asignacion_controller.router, prefix="/api", tags=["Asignaciones"])
+
 # ✅ INCIDENCIAS EXACTAMENTE COMO TU FRONT LAS USA
 app.include_router(
     controllers_incidentes.router,
@@ -143,6 +153,9 @@ async def startup_event():
     logger.info("📦 Routers cargados correctamente")
     logger.info("👨‍🏫 Módulo de Profesores cargado")
     logger.info("🚸 Módulo de Retiros Tempranos cargado")
+    logger.info("👨‍🎓 Módulo de Estudiantes cargado")
+    logger.info("📚 Módulo de Cursos cargado")
+    logger.info("🔗 Módulo de Asignaciones cargado")
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -23,6 +23,7 @@ class Estudiante(Base):
     apellido_paterno_madre = Column(String(100), nullable=True)
     apellido_materno_madre = Column(String(100), nullable=True)
     telefono_madre = Column(String(15), nullable=True)
+    estado = Column(String(20), nullable=False, default="Activo")  # Activo, Retirado, Abandono
     
     # Relaciones
     inscripciones = relationship("Inscripcion", back_populates="estudiante")
