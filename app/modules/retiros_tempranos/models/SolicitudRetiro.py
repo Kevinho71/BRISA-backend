@@ -1,3 +1,4 @@
+# app\modules\retiros_tempranos\models\SolicitudRetiro.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -45,9 +46,6 @@ class SolicitudRetiro(Base):
     
     # Campos para el flujo de aprobación
     estado = Column(Enum(EstadoSolicitudEnum), nullable=False, default="recibida", index=True)
-    id_recepcionista = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
-    fecha_recepcion = Column(DateTime, nullable=True)
-    id_regente = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
     fecha_derivacion = Column(DateTime, nullable=True)
     
     # Relaciones
@@ -57,8 +55,6 @@ class SolicitudRetiro(Base):
     autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion], viewonly=True)
     registro_salida = relationship("RegistroSalida", uselist=False, viewonly=True)
     solicitante = relationship("Usuario", foreign_keys=[id_solicitante], viewonly=True)
-    recepcionista = relationship("Usuario", foreign_keys=[id_recepcionista], viewonly=True)
-    regente = relationship("Usuario", foreign_keys=[id_regente], viewonly=True)
     
     def __repr__(self):
         return f"<SolicitudRetiro(id={self.id_solicitud}, estudiante_id={self.id_estudiante})>"

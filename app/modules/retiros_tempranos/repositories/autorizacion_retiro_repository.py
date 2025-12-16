@@ -46,13 +46,3 @@ class AutorizacionRetiroRepository(IAutorizacionRetiroRepository):
         self.db.commit()
         self.db.refresh(autorizacion)
         return autorizacion
-    
-    def delete(self, id_autorizacion: int) -> bool:
-        """Eliminar una autorización"""
-        autorizacion = self.get_by_id(id_autorizacion)
-        if not autorizacion:
-            return False
-        
-        self.db.delete(autorizacion)
-        self.db.commit()
-        return True

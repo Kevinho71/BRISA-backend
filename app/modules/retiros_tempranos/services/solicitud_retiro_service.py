@@ -136,61 +136,17 @@ class SolicitudRetiroService:
         solicitudes = self.solicitud_repo.get_by_estado(EstadoSolicitudEnum.recibida.value, skip, limit)
         return [self._convertir_a_dto(sol) for sol in solicitudes]
 
-    def listar_recibidas(
-        self, 
-        skip: int = 0, 
-        limit: int = 100
-    ) -> List[SolicitudRetiroResponseDTO]:
-        """Lista solicitudes recibidas (pendientes de derivar)"""
-        solicitudes = self.solicitud_repo.get_by_estado(EstadoSolicitudEnum.recibida.value, skip, limit)
+    def listar_derivadas(self, skip: int = 0, limit: int = 100) -> List[SolicitudRetiroResponseDTO]:
+        """Lista todas las solicitudes derivadas al regente"""
+        solicitudes = self.solicitud_repo.get_by_estado(EstadoSolicitudEnum.derivada.value, skip, limit)
         return [self._convertir_a_dto(sol) for sol in solicitudes]
-
-    def listar_derivadas_a_regente(
-        self, 
-        id_regente: int, 
-        skip: int = 0, 
-        limit: int = 100
-    ) -> List[SolicitudRetiroResponseDTO]:
-        """Lista solicitudes derivadas a un regente"""
-        solicitudes = self.solicitud_repo.get_by_regente(id_regente, skip, limit)
-        return [self._convertir_a_dto(sol) for sol in solicitudes]
-
-    def recibir_solicitud(
-        self, 
-        id_solicitud: int, 
-        recibir_dto: RecibirSolicitudDTO, 
-        id_recepcionista: int
-    ) -> SolicitudRetiroResponseDTO:
-        """Recepcionista registra la recepción de una solicitud"""
-        solicitud = self.solicitud_repo.get_by_id(id_solicitud)
-        if not solicitud:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Solicitud no encontrada"
-            )
-
-        if solicitud.estado != EstadoSolicitudEnum.recibida.value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solo se pueden registrar recepciones de solicitudes en estado recibida"
-            )
-
-        # Actualizar datos de recepción sin cambiar el estado
-        solicitud_actualizada = self.solicitud_repo.update(
-            id_solicitud,
-            {
-                "id_recepcionista": id_recepcionista,
-                "fecha_recepcion": recibir_dto.fecha_hora_recepcion or datetime.now()
-            }
-        )
-        return self._convertir_a_dto(solicitud_actualizada)
 
     def derivar_solicitud(
         self, 
         id_solicitud: int, 
         derivar_dto: DerivarSolicitudDTO
     ) -> SolicitudRetiroResponseDTO:
-        """Recepcionista deriva solicitud al regente"""
+        """Recepcionista deriva solicitud al regente (único)"""
         solicitud = self.solicitud_repo.get_by_id(id_solicitud)
         if not solicitud:
             raise HTTPException(
@@ -204,26 +160,21 @@ class SolicitudRetiroService:
                 detail="Solo se pueden derivar solicitudes en estado recibida"
             )
 
-        # Validar que el regente existe
-        regente = self.db.query(Usuario).filter(Usuario.id_usuario == derivar_dto.id_regente).first()
-        if not regente:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Regente no encontrado"
-            )
-
-        solicitud.estado = EstadoSolicitudEnum.derivada.value
-        solicitud.id_regente = derivar_dto.id_regente
-        solicitud.fecha_derivacion = datetime.now()
-
-        solicitud_actualizada = self.solicitud_repo.update(solicitud)
+        # Cambiar estado a derivada (el regente se asignará cuando tome acción)
+        solicitud_actualizada = self.solicitud_repo.update(
+            id_solicitud,
+            {
+                "estado": EstadoSolicitudEnum.derivada.value,
+                "fecha_derivacion": datetime.now()
+            }
+        )
         return self._convertir_a_dto(solicitud_actualizada)
 
     def aprobar_rechazar_solicitud(
         self, 
         id_solicitud: int, 
         decision_dto: AprobarRechazarSolicitudDTO,
-        id_regente: int
+        id_usuario_aprobador: int
     ) -> SolicitudRetiroResponseDTO:
         """Regente aprueba o rechaza una solicitud"""
         solicitud = self.solicitud_repo.get_by_id(id_solicitud)
@@ -239,12 +190,6 @@ class SolicitudRetiroService:
                 detail="Solo se pueden aprobar/rechazar solicitudes derivadas"
             )
 
-        if solicitud.id_regente != id_regente:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo el regente asignado puede aprobar/rechazar esta solicitud"
-            )
-
         # Validar decisión
         if decision_dto.decision not in ["aprobada", "rechazada"]:
             raise HTTPException(
@@ -258,21 +203,23 @@ class SolicitudRetiroService:
                 detail="El motivo de rechazo es obligatorio"
             )
 
-        # Actualizar estado
-        solicitud.estado = decision_dto.decision
-
-        # Crear autorización
+        # Crear autorización (sin id_solicitud, se vincula desde solicitud)
         nueva_autorizacion = AutorizacionRetiro(
-            id_solicitud=id_solicitud,
-            id_regente=id_regente,
-            decision=DecisionEnum.aprobada.value if decision_dto.decision == "aprobada" else DecisionEnum.rechazada.value,
-            motivo_rechazo=decision_dto.motivo_rechazo,
-            fecha_autorizacion=datetime.now()
+            id_usuario_aprobador=id_usuario_aprobador,
+            decision=decision_dto.decision,
+            motivo_decision=decision_dto.motivo_rechazo,
+            fecha_decision=datetime.now()
         )
         autorizacion_creada = self.autorizacion_repo.create(nueva_autorizacion)
 
-        solicitud.id_autorizacion = autorizacion_creada.id_autorizacion
-        solicitud_actualizada = self.solicitud_repo.update(solicitud)
+        # Actualizar solicitud: cambiar estado y vincular autorización
+        solicitud_actualizada = self.solicitud_repo.update(
+            id_solicitud,
+            {
+                "estado": decision_dto.decision,
+                "id_autorizacion": autorizacion_creada.id_autorizacion
+            }
+        )
 
         return self._convertir_a_dto(solicitud_actualizada)
 
@@ -370,9 +317,6 @@ class SolicitudRetiroService:
             observacion=solicitud.observacion,
             fecha_creacion=solicitud.fecha_creacion,
             estado=solicitud.estado,
-            id_recepcionista=solicitud.id_recepcionista,
-            fecha_recepcion=solicitud.fecha_recepcion,
-            id_regente=solicitud.id_regente,
             fecha_derivacion=solicitud.fecha_derivacion,
             estudiante_nombre=estudiante_nombre,
             apoderado_nombre=apoderado_nombre,

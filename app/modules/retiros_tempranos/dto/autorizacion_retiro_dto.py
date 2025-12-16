@@ -6,15 +6,14 @@ from enum import Enum
 
 class DecisionEnum(str, Enum):
     """Decisiones posibles para autorizaciones"""
-    aprobado = "aprobado"
-    rechazado = "rechazado"
+    aprobada = "aprobada"
+    rechazada = "rechazada"
     pendiente = "pendiente"
 
 
 class AutorizacionRetiroCreateDTO(BaseModel):
     """DTO para crear una autorización de retiro"""
-    id_solicitud: int = Field(..., description="ID de la solicitud que se está autorizando")
-    decision: DecisionEnum = Field(..., description="Decisión tomada (aprobado/rechazado)")
+    decision: DecisionEnum = Field(..., description="Decisión tomada (aprobada/rechazada)")
     motivo_decision: Optional[str] = Field(None, max_length=255, description="Motivo de la decisión")
 
 

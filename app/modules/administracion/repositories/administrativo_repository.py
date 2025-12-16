@@ -70,10 +70,14 @@ class AdministrativoRepository:
                 TIME_FORMAT(a.horario_salida, '%H:%i:%s') as horario_salida,
                 a.area_trabajo,
                 a.observaciones,
-                TIMESTAMPDIFF(HOUR, a.horario_entrada, a.horario_salida) * 5 as horas_semana
+                TIMESTAMPDIFF(HOUR, a.horario_entrada, a.horario_salida) * 5 as horas_semana,
+                r.nombre as rol_usuario
             FROM administrativos a
             INNER JOIN personas p ON a.id_persona = p.id_persona
             LEFT JOIN cargos c ON a.id_cargo = c.id_cargo
+            LEFT JOIN usuarios u ON p.id_persona = u.id_persona AND u.is_active = true
+            LEFT JOIN usuario_roles ur ON u.id_usuario = ur.id_usuario AND ur.estado = 'activo'
+            LEFT JOIN roles r ON ur.id_rol = r.id_rol AND r.is_active = true
             WHERE p.tipo_persona = 'administrativo'
             ORDER BY p.apellido_paterno, p.apellido_materno, p.nombres
         """)
@@ -103,7 +107,8 @@ class AdministrativoRepository:
                 'horario_salida': row[16],
                 'area_trabajo': row[17],
                 'observaciones': row[18],
-                'horas_semana': int(row[19]) if row[19] is not None else 40
+                'horas_semana': int(row[19]) if row[19] is not None else 40,
+                'rol_usuario': row[20] if row[20] else None
             }
             administrativos.append(admin_dict)
         
@@ -133,11 +138,16 @@ class AdministrativoRepository:
                 TIME_FORMAT(a.horario_salida, '%H:%i:%s') as horario_salida,
                 a.area_trabajo,
                 a.observaciones,
-                TIMESTAMPDIFF(HOUR, a.horario_entrada, a.horario_salida) * 5 as horas_semana
+                TIMESTAMPDIFF(HOUR, a.horario_entrada, a.horario_salida) * 5 as horas_semana,
+                r.nombre as rol_usuario
             FROM administrativos a
             INNER JOIN personas p ON a.id_persona = p.id_persona
             LEFT JOIN cargos c ON a.id_cargo = c.id_cargo
+            LEFT JOIN usuarios u ON p.id_persona = u.id_persona AND u.is_active = true
+            LEFT JOIN usuario_roles ur ON u.id_usuario = ur.id_usuario AND ur.estado = 'activo'
+            LEFT JOIN roles r ON ur.id_rol = r.id_rol AND r.is_active = true
             WHERE p.id_persona = :id_persona AND p.tipo_persona = 'administrativo'
+            LIMIT 1
         """)
         result = db.execute(query, {"id_persona": id_persona})
         row = result.fetchone()
@@ -165,7 +175,8 @@ class AdministrativoRepository:
             'horario_salida': row[16],
             'area_trabajo': row[17],
             'observaciones': row[18],
-            'horas_semana': int(row[19]) if row[19] is not None else 40
+            'horas_semana': int(row[19]) if row[19] is not None else 40,
+            'rol_usuario': row[20] if row[20] else None
         }
 
     @staticmethod
@@ -376,12 +387,30 @@ class AdministrativoRepository:
             # No agregar a mensajes porque no bloquea la eliminación
         
         # Verificar si subió adjuntos - SOLO INFORMATIVO, no bloquea
-        query_adjuntos = text("SELECT COUNT(*) FROM adjuntos WHERE subido_por = :id_persona")
-        result = db.execute(query_adjuntos, {"id_persona": id_persona})
-        count_adjuntos = result.fetchone()[0]
-        if count_adjuntos > 0:
-            dependencias['tiene_adjuntos'] = True
-            # No agregar a mensajes porque no bloquea la eliminación
+        # Nota: id_subido_por hace referencia a usuarios.id_usuario, no a personas.id_persona
+        # Por lo tanto, esta verificación requiere una relación indirecta a través de usuarios
+        # Como es solo informativo y puede causar errores si la estructura cambia, lo manejamos con try-except
+        try:
+            # Intentar verificar adjuntos a través de la relación usuario-persona
+            # Si no hay relación directa, simplemente no marcamos esta dependencia
+            query_adjuntos = text("""
+                SELECT COUNT(*) FROM adjuntos a
+                INNER JOIN usuarios u ON a.id_subido_por = u.id_usuario
+                WHERE u.id_persona = :id_persona
+            """)
+            result = db.execute(query_adjuntos, {"id_persona": id_persona})
+            count_adjuntos = result.fetchone()[0]
+            if count_adjuntos > 0:
+                dependencias['tiene_adjuntos'] = True
+                # No agregar a mensajes porque no bloquea la eliminación
+        except Exception as e:
+            # Si hay algún error (columna no existe, estructura diferente, etc.), simplemente ignorar
+            # ya que esta verificación es solo informativa
+            # Log del error para debugging si es necesario
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Error al verificar adjuntos para persona {id_persona}: {str(e)}")
+            pass
         
         # Verificar si registró esquelas - SOLO INFORMATIVO, no bloquea
         query_esquelas = text("SELECT COUNT(*) FROM esquelas WHERE id_registrador = :id_persona")

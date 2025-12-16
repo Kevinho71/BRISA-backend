@@ -1,4 +1,5 @@
 # app/modules/administracion/models/persona_models.py
+##
 """Modelos para estudiantes y personas (profesores/registradores)"""
 
 from sqlalchemy import Column, Integer, String, Date, Text, Boolean

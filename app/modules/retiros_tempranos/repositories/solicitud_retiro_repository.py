@@ -59,11 +59,11 @@ class SolicitudRetiroRepository(ISolicitudRetiroRepository):
             SolicitudRetiro.fecha_creacion <= fecha_fin
         ).all()
     
-    def get_by_estado(self, estado: str) -> List[SolicitudRetiro]:
-        """Obtener solicitudes por estado"""
+    def get_by_estado(self, estado: str, skip: int = 0, limit: int = 100) -> List[SolicitudRetiro]:
+        """Obtener solicitudes por estado con paginación"""
         return self.db.query(SolicitudRetiro).filter(
             SolicitudRetiro.estado == estado
-        ).all()
+        ).order_by(SolicitudRetiro.fecha_creacion.desc()).offset(skip).limit(limit).all()
     
     def update(self, id_solicitud: int, solicitud_data: dict) -> Optional[SolicitudRetiro]:
         """Actualizar una solicitud"""

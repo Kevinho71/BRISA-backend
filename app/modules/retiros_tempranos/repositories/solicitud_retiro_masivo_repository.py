@@ -47,13 +47,6 @@ class SolicitudRetiroMasivoRepository(SolicitudRetiroMasivoRepositoryInterface):
         """Obtiene solicitudes recibidas (pendientes de derivar)"""
         return self.get_by_estado("recibida", skip, limit)
 
-    def get_derivadas(self, id_regente: int, skip: int = 0, limit: int = 100) -> List[SolicitudRetiroMasivo]:
-        """Obtiene solicitudes derivadas a un regente"""
-        return self.db.query(SolicitudRetiroMasivo).filter(
-            SolicitudRetiroMasivo.id_regente == id_regente,
-            SolicitudRetiroMasivo.estado == "derivada"
-        ).offset(skip).limit(limit).all()
-
     def get_aprobadas(self, skip: int = 0, limit: int = 100) -> List[SolicitudRetiroMasivo]:
         """Obtiene solicitudes aprobadas"""
         return self.get_by_estado("aprobada", skip, limit)

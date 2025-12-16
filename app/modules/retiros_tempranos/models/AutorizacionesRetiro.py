@@ -1,3 +1,4 @@
+# app\modules\retiros_tempranos\models\AutorizacionesRetiro.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -6,8 +7,8 @@ import enum
 
 class DecisionEnum(str, enum.Enum):
     """Enumeración para decisiones de autorización"""
-    aprobado = "aprobado"
-    rechazado = "rechazado"
+    aprobada = "aprobada"
+    rechazada = "rechazada"
     pendiente = "pendiente"
 
 

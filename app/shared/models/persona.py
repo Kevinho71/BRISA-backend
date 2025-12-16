@@ -1,4 +1,5 @@
 # app\shared\models\persona.py
+##
 from sqlalchemy import Column, Integer, String, Boolean, Enum, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base

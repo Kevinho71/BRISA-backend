@@ -10,6 +10,5 @@ from app.modules.incidentes.repositories.repositories_modificaciones import (
 def registrar_modificacion_service(db: Session, dto: ModificacionCreateDTO):
     return crear_modificacion_repo(db, dto)
 
-
 def historial_incidente_service(db: Session, id_incidente: int):
     return obtener_modificaciones_incidente_repo(db, id_incidente)

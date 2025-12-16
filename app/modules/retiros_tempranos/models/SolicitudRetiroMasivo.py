@@ -2,12 +2,12 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import enum
+from datetime import datetime
 
 
 class EstadoSolicitudMasivaEnum(str, enum.Enum):
     """Estados del flujo de aprobación de solicitudes masivas"""
-    pendiente = "pendiente"                        # Creada (estado inicial)
-    recibida = "recibida"                          # Recepcionista la recibió
+    recibida = "recibida"                          # Recepcionista la recibió (estado inicial)
     derivada = "derivada"                          # Derivada al regente
     aprobada = "aprobada"                          # Regente aprobó
     rechazada = "rechazada"                        # Regente rechazó
@@ -27,16 +27,13 @@ class SolicitudRetiroMasivo(Base):
     id_autorizacion = Column(Integer, ForeignKey("autorizaciones_retiro.id_autorizacion", ondelete="SET NULL"), unique=True, nullable=True)
     
     fecha_hora_salida = Column(DateTime, nullable=False, index=True)
-    fecha_hora_retorno = Column(DateTime, nullable=True)
+    fecha_hora_retorno_previsto = Column(DateTime, nullable=True)
     foto_evidencia = Column(String(500), nullable=False)  # URL o path de la foto (OBLIGATORIA)
     observacion = Column(Text, nullable=True)
-    fecha_hora_solicitud = Column(DateTime, nullable=False)
+    fecha_creacion = Column(DateTime, nullable=False, default=datetime.now)
     
     # Campos para el flujo de aprobación
-    estado = Column(Enum(EstadoSolicitudMasivaEnum), nullable=False, default="pendiente", index=True)
-    id_recepcionista = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
-    fecha_recepcion = Column(DateTime, nullable=True)
-    id_regente = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="SET NULL"), nullable=True, index=True)
+    estado = Column(Enum(EstadoSolicitudMasivaEnum), nullable=False, default="recibida", index=True)
     fecha_derivacion = Column(DateTime, nullable=True)
     
     # Relaciones
@@ -45,8 +42,6 @@ class SolicitudRetiroMasivo(Base):
     autorizacion = relationship("AutorizacionRetiro", uselist=False, foreign_keys=[id_autorizacion], viewonly=True)
     detalles = relationship("DetalleSolicitudRetiroMasivo", foreign_keys="DetalleSolicitudRetiroMasivo.id_solicitud_masiva", viewonly=True)
     registros_salida = relationship("RegistroSalida", foreign_keys="RegistroSalida.id_solicitud_masiva", viewonly=True)
-    recepcionista = relationship("Usuario", foreign_keys=[id_recepcionista], viewonly=True)
-    regente = relationship("Usuario", foreign_keys=[id_regente], viewonly=True)
     
     def __repr__(self):
         return f"<SolicitudRetiroMasivo(id={self.id_solicitud_masiva}, solicitante_id={self.id_solicitante})>"

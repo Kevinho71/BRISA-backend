@@ -153,68 +153,13 @@ class RegistroSalidaService:
         registros = self.registro_repo.get_by_estudiante(id_estudiante)
         return [self._convertir_a_dto(reg) for reg in registros]
 
-    def listar_por_solicitud(
-        self, 
-        id_solicitud: int
-    ) -> List[RegistroSalidaResponseDTO]:
-        """Lista registros de una solicitud individual"""
-        registros = self.db.query(RegistroSalida).filter(
-            RegistroSalida.id_solicitud == id_solicitud
-        ).all()
-        return [self._convertir_a_dto(reg) for reg in registros]
-
-    def listar_por_solicitud_masiva(
-        self, 
-        id_solicitud_masiva: int
-    ) -> List[RegistroSalidaResponseDTO]:
-        """Lista registros de una solicitud masiva"""
-        registros = self.db.query(RegistroSalida).filter(
-            RegistroSalida.id_solicitud_masiva == id_solicitud_masiva
-        ).all()
-        return [self._convertir_a_dto(reg) for reg in registros]
-
-    def registrar_retorno(
-        self, 
-        id_registro: int, 
-        retorno_dto: RegistroSalidaUpdateDTO
-    ) -> RegistroSalidaResponseDTO:
-        """Registra el retorno del estudiante"""
-        registro = self.registro_repo.get_by_id(id_registro)
-        if not registro:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Registro de salida no encontrado"
-            )
-
-        if registro.fecha_hora_retorno_real:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El retorno ya fue registrado anteriormente"
-            )
-
-        registro.fecha_hora_retorno_real = retorno_dto.fecha_hora_retorno_real
-        registro_actualizado = self.registro_repo.update(registro)
-        
-        return self._convertir_a_dto(registro_actualizado)
-
-    def eliminar_registro(self, id_registro: int) -> bool:
-        """Elimina un registro de salida"""
-        registro = self.registro_repo.get_by_id(id_registro)
-        if not registro:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Registro de salida no encontrado"
-            )
-
-        return self.registro_repo.delete(id_registro)
-
     def _convertir_a_dto(self, registro: RegistroSalida) -> RegistroSalidaResponseDTO:
         """Convierte modelo a DTO"""
         estudiante_nombre = None
         estudiante_ci = None
 
         if registro.estudiante:
-            estudiante_nombre = f"{registro.estudiante.nombre} {registro.estudiante.apellido_paterno} {registro.estudiante.apellido_materno or ''}"
+            estudiante_nombre = f"{registro.estudiante.nombres} {registro.estudiante.apellido_paterno} {registro.estudiante.apellido_materno or ''}"
             estudiante_ci = registro.estudiante.ci
 
         return RegistroSalidaResponseDTO(
@@ -228,10 +173,3 @@ class RegistroSalidaService:
             estudiante_nombre=estudiante_nombre,
             estudiante_ci=estudiante_ci
         )
-
-    def delete_registro(self, registro_id: int) -> bool:
-        """Eliminar un registro de salida"""
-        existing = self.repository.get_by_id(registro_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Registro de salida no encontrado")
-        return self.repository.delete(registro_id)

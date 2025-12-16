@@ -1,4 +1,5 @@
 # app/modules/administracion/models/administrativo_models.py
+##
 """Modelos para administrativos"""
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Time, Text

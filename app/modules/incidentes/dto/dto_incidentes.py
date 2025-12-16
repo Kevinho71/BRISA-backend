@@ -1,5 +1,4 @@
-# app/modules/incidentes/dto/dto_incidentes.py
-
+# app\modules\incidentes\dto\dto_incidentes.py
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
@@ -24,6 +23,7 @@ class IncidenteResponseDTO(BaseModel):
     seguimiento: Optional[str]
     estado: str
     id_responsable: Optional[int]
+    responsable_usuario: Optional[str] = None
 
     class Config:
         from_attributes = True

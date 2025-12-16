@@ -558,7 +558,7 @@ class ReporteRepository:
     @staticmethod
     def get_carga_academica_profesores(
         db: Session,
-        id_profesor: Optional[int] = None,
+        ci_profesor: Optional[int] = None,
         gestion: Optional[str] = None
     ):
         """
@@ -566,8 +566,8 @@ class ReporteRepository:
         """
         query = db.query(Persona).filter(Persona.tipo_persona == 'profesor')
 
-        if id_profesor:
-            query = query.filter(Persona.id_persona == id_profesor)
+        if ci_profesor:
+            query = query.filter(Persona.ci == ci_profesor)
 
         profesores = query.all()
         resultado = []
