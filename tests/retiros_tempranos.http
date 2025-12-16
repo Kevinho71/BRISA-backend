@@ -1,0 +1,90 @@
+### Variables
+@baseUrl = http://localhost:8000/api
+@tokenRecepcionista = 
+@tokenRegente = 
+@idSolicitudMasiva = 
+
+### 1. Login Recepcionista
+# @name loginRecepcionista
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usuario": "recepcionista1",
+  "password": "password123"
+}
+
+### Guardar token (ejecuta manualmente después del login)
+@tokenRecepcionista = {{loginRecepcionista.response.body.data.access_token}}
+
+### 2. Login Regente
+# @name loginRegente
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usuario": "regente1",
+  "password": "password123"
+}
+
+### Guardar token regente
+@tokenRegente = {{loginRegente.response.body.data.access_token}}
+
+### 3. Crear Solicitud Masiva
+# @name crearSolicitud
+POST {{baseUrl}}/retiros-tempranos/solicitudes-masivas/
+Authorization: Bearer {{tokenRecepcionista}}
+Content-Type: application/json
+
+{
+  "id_motivo": 1,
+  "fecha_hora_salida": "2025-12-16T09:00:00",
+  "fecha_hora_retorno_previsto": "2025-12-16T15:00:00",
+  "foto_evidencia": "https://ejemplo.com/foto.jpg",
+  "observacion": "Excursión educativa",
+  "estudiantes": [
+    {"id_estudiante": 1, "observacion_individual": null}
+  ]
+}
+
+### Guardar ID de solicitud
+@idSolicitudMasiva = {{crearSolicitud.response.body.id_solicitud}}
+
+### 4. Listar Solicitudes Recibidas
+GET {{baseUrl}}/retiros-tempranos/solicitudes-masivas/recibidas
+Authorization: Bearer {{tokenRecepcionista}}
+
+### 5. Derivar Solicitud
+PUT {{baseUrl}}/retiros-tempranos/solicitudes-masivas/{{idSolicitudMasiva}}/derivar
+Authorization: Bearer {{tokenRecepcionista}}
+Content-Type: application/json
+
+{
+  "observacion_derivacion": "Derivado para aprobación"
+}
+
+### 6. Listar Solicitudes Derivadas (Regente)
+GET {{baseUrl}}/retiros-tempranos/solicitudes-masivas/derivadas
+Authorization: Bearer {{tokenRegente}}
+
+### 7. Aprobar Solicitud Masiva
+PUT {{baseUrl}}/autorizaciones-retiro/masiva/{{idSolicitudMasiva}}/decision
+Authorization: Bearer {{tokenRegente}}
+Content-Type: application/json
+
+{
+  "decision": "aprobada",
+  "motivo_decision": "Actividad educativa válida"
+}
+
+### 8. Obtener Solicitud Detallada
+GET {{baseUrl}}/retiros-tempranos/solicitudes-masivas/{{idSolicitudMasiva}}
+Authorization: Bearer {{tokenRecepcionista}}
+
+### 9. Listar Todas las Solicitudes
+GET {{baseUrl}}/retiros-tempranos/solicitudes-masivas/
+Authorization: Bearer {{tokenRecepcionista}}
+
+### 10. Listar Autorizaciones
+GET {{baseUrl}}/autorizaciones-retiro/
+Authorization: Bearer {{tokenRegente}}
