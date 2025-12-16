@@ -66,6 +66,7 @@ class AdministrativoReadDTO(BaseModel):
     area_trabajo: Optional[str] = None
     observaciones: Optional[str] = None
     horas_semana: Optional[int] = None  # Calculado
+    rol_usuario: Optional[str] = None  # Rol del usuario asociado
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -91,6 +92,7 @@ class AdministrativoFullDTO(BaseModel):
     area_trabajo: Optional[str] = None
     observaciones: Optional[str] = None
     horas_semana: Optional[int] = None
+    rol_usuario: Optional[str] = None  # Rol del usuario asociado
     departamentos: List[str] = []  # Para compatibilidad con frontend
 
     model_config = ConfigDict(from_attributes=True)
