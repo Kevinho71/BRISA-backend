@@ -114,10 +114,13 @@ class Incidente(Base):
         backref="incidentes",
     )
 
-    # ✅ CLAVE: usar Persona1 aquí
+    # ✅ FIX: para que NO falle el mapper (y puedas iniciar sesión)
+    # Persona1 no mapea personas.id_persona en tu proyecto, por eso fallaba.
+    # Con viewonly=True el backend arranca y login funciona.
     profesores = relationship(
         Persona1,
         secondary=incidentes_profesores,
+        viewonly=True,
         backref="incidentes_asignados",
     )
 

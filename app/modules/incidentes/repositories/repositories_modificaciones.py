@@ -7,7 +7,7 @@ from app.modules.incidentes.dto.dto_modificaciones import ModificacionCreateDTO
 def crear_modificacion_repo(db: Session, dto: ModificacionCreateDTO):
     nueva = HistorialDeModificacion(
         id_incidente=dto.id_incidente,
-        id_usuario=dto.id_usuario,
+        id_usuario=dto.id_usuario,  # ✅ puede ser None
         campo_modificado=dto.campo_modificado,
         valor_anterior=dto.valor_anterior,
         valor_nuevo=dto.valor_nuevo

@@ -66,25 +66,48 @@ MEDIA_DIR = os.getenv("MEDIA_DIR", "uploads")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 
 DIRECTOR_ROLE_ID = 1
+DIRECTOR_NAMES = {"director", "director de nivel", "direccion", "dirección"}
+
+def _norm(value) -> str:
+    return str(value or "").strip().lower()
 
 def require_director(current_user=Depends(get_current_user_dependency)):
-    roles = getattr(current_user, "roles", []) or []
+    # 0) admin pasa
+    if bool(getattr(current_user, "es_administrador", False)):
+        return current_user
 
-    es_director = any(
-        (getattr(r, "id_rol", None) == DIRECTOR_ROLE_ID)
-        or (str(getattr(r, "nombre", "")).strip().lower() == "director")
-        for r in roles
-        if getattr(r, "is_active", True)
+    # 1) rol directo como string (si existe)
+    rol_txt = _norm(getattr(current_user, "rol", None))
+    if rol_txt and any(name in rol_txt for name in DIRECTOR_NAMES):
+        return current_user
+
+    # 2) roles[] (si existe)
+    roles = getattr(current_user, "roles", None) or []
+    for r in roles:
+        is_active = getattr(r, "is_active", True)
+        if is_active is False:
+            continue
+
+        rid = getattr(r, "id_rol", None) or getattr(r, "id", None) or getattr(r, "role_id", None)
+        rname = _norm(getattr(r, "nombre", None) or getattr(r, "nombre_rol", None) or getattr(r, "rol", None) or r)
+
+        if rid == DIRECTOR_ROLE_ID:
+            return current_user
+        if rname and any(name in rname for name in DIRECTOR_NAMES):
+            return current_user
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Solo el Director puede realizar esta acción"
     )
 
-    if not es_director:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo el Director puede realizar esta acción"
-        )
-
-    return current_user
-
+@router.get("/permisos/director")
+def permiso_director(current_user=Depends(get_current_user_dependency)):
+    try:
+        require_director(current_user)
+        return {"isDirector": True}
+    except HTTPException:
+        return {"isDirector": False}
 
 #----AREAS----
 
@@ -177,7 +200,6 @@ def obtener_incidentes(db: Session = Depends(get_db)):
 def crear_incidente(dto: IncidenteCreateDTO, db: Session = Depends(get_db)):
     service = IncidenteService(db)
     nuevo = service.crear_incidente(dto)
-    # Map to DTO to include responsable_usuario
     return IncidenteResponseDTO(
         id_incidente=nuevo.id_incidente,
         fecha=nuevo.fecha,

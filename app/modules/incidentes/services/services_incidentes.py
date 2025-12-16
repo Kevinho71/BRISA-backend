@@ -1,3 +1,4 @@
+# app\modules\incidentes\services\services_incidentes.py
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -24,7 +25,6 @@ class IncidenteService:
             estado=dto.estado,
             id_responsable=dto.id_responsable
         )
-
         return self.repo.create_with_relations(self.db, incidente, dto)
 
     def obtener_incidentes(self):
@@ -51,6 +51,17 @@ class IncidenteService:
         if not incidente:
             raise HTTPException(status_code=404, detail="Incidente no encontrado")
 
+        # 🔐 VALIDACIÓN CLAVE DEL USUARIO QUE MODIFICA
+        user_mod = getattr(dto, "id_usuario_modifica", None)
+
+        # ❌ bloquear 0 (rompe FK)
+        if user_mod in (0, "0"):
+            user_mod = None
+
+        # ✅ fallback: usar responsable del incidente si existe
+        if not user_mod and incidente.id_responsable and incidente.id_responsable != 0:
+            user_mod = incidente.id_responsable
+
         campos = ["antecedentes", "acciones_tomadas", "seguimiento", "estado", "id_responsable"]
 
         for campo in campos:
@@ -60,9 +71,9 @@ class IncidenteService:
             if nuevo_valor is not None and nuevo_valor != valor_actual:
                 registro = ModificacionCreateDTO(
                     id_incidente=id_incidente,
-                    id_usuario=dto.id_usuario_modifica,
+                    id_usuario=user_mod,  # ✅ YA NO ES 0
                     campo_modificado=campo,
-                    valor_anterior=str(valor_actual) if valor_actual else None,
+                    valor_anterior=str(valor_actual) if valor_actual is not None else None,
                     valor_nuevo=str(nuevo_valor)
                 )
                 registrar_modificacion_service(self.db, registro)
