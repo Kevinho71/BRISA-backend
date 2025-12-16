@@ -18,6 +18,9 @@ from app.core.database import get_db
 # Exception handlers
 from app.shared.exceptions.custom_exceptions import register_exception_handlers
 
+# Config
+from app.config.config import Config
+
 # Routers
 from app.modules.auth.controllers import auth_controller
 from app.modules.usuarios.controllers import usuario_controller
@@ -74,9 +77,13 @@ from fastapi import Request
 
 app.add_middleware(JWTMiddleware)
 
+# ✅ CORS - Usando configuración del archivo .env
+allowed_origins = Config.CORS_ORIGINS
+logger.info(f"🔒 CORS configurado con orígenes permitidos: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,  # ✅ Ahora usa la variable de entorno
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

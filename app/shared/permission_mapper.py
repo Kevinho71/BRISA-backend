@@ -80,7 +80,7 @@ PERMISSION_MAP: Dict[str, Tuple[List[str], str]] = {
 # ================ ROLES CON ACCESO TOTAL ================ 
 
 ADMIN_ROLES = ["Director", "Admin"]
-ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo", "Administrador"]
+ROLES_VER_TODAS_ESQUELAS = ["Director", "Regente", "Admin", "Administrativo", "Administrador", "Recepcionista", "Recepción"]
 ROLES_VER_PROPIAS_ESQUELAS = ["Profesor"]
 
 def tiene_permiso(usuario: Usuario, accion: str) -> bool:

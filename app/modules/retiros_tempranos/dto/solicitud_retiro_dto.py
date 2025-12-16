@@ -12,6 +12,7 @@ class EstadoSolicitudEnum(str, Enum):
     aprobada = "aprobada"          # Regente aprobó
     rechazada = "rechazada"        # Regente rechazó
     cancelada = "cancelada"        # Cancelada
+    finalizado = "finalizado"      # Tiene registro de salida
 
 
 class SolicitudRetiroCreateDTO(BaseModel):

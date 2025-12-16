@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.modules.retiros_tempranos.models.EstudianteApoderado import EstudianteApoderado
 from app.modules.retiros_tempranos.repositories.estudiante_apoderado_repository_interface import IEstudianteApoderadoRepository
 
@@ -31,8 +31,10 @@ class EstudianteApoderadoRepository(IEstudianteApoderadoRepository):
         ).all()
     
     def get_by_apoderado(self, id_apoderado: int) -> List[EstudianteApoderado]:
-        """Obtener todas las relaciones de un apoderado"""
-        return self.db.query(EstudianteApoderado).filter(
+        """Obtener todas las relaciones de un apoderado con datos del estudiante"""
+        return self.db.query(EstudianteApoderado).options(
+            joinedload(EstudianteApoderado.estudiante)
+        ).filter(
             EstudianteApoderado.id_apoderado == id_apoderado
         ).all()
     

@@ -25,6 +25,7 @@ PUBLIC_ROUTES = [
     "/openapi.json",
     "/health",
     "/api/health",
+    "/uploads",  # ✅ Archivos estáticos (imágenes, evidencias, etc.)
 ]
 
 # ✅ CACHÉ EN MEMORIA: Evita consultas repetidas a BD

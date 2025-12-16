@@ -68,6 +68,11 @@ class RegistroSalidaService:
         )
 
         registro_creado = self.registro_repo.create(nuevo_registro)
+        
+        # Cambiar estado de la solicitud a finalizado
+        solicitud.estado = EstadoSolicitudEnum.finalizado.value
+        self.db.commit()
+        
         return self._convertir_a_dto(registro_creado)
 
     def crear_registros_masivos(
@@ -123,6 +128,10 @@ class RegistroSalidaService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ya existen registros para todos los estudiantes de esta solicitud"
             )
+
+        # Cambiar estado de la solicitud masiva a finalizado
+        solicitud_masiva.estado = EstadoSolicitudMasivaEnum.finalizado.value
+        self.db.commit()
 
         return registros_creados
 
