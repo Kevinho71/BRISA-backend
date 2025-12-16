@@ -6,9 +6,7 @@ from app.modules.retiros_tempranos.dto import (
     SolicitudRetiroMasivoCreateDTO,
     SolicitudRetiroMasivoResponseDTO,
     SolicitudRetiroMasivoDetalladaResponseDTO,
-    RecibirSolicitudMasivaDTO,
     DerivarSolicitudMasivaDTO,
-    AprobarRechazarSolicitudMasivaDTO,
     CancelarSolicitudMasivaDTO
 )
 from app.core.database import get_db
@@ -39,22 +37,10 @@ async def crear_solicitud_masiva(
     
     - Requiere foto_evidencia obligatoria
     - Lista de estudiantes (mínimo 1)
-    - Estado inicial: 'pendiente'
+    - Estado inicial: 'recibida' (automático)
     - Uso: paseos, excursiones, eventos grupales
     """
     return service.crear_solicitud(solicitud_dto, current_user.id_usuario)
-
-
-@router.get("/mis-solicitudes", response_model=List[SolicitudRetiroMasivoResponseDTO])
-@require_permissions("profesor", "admin", "recepcion", "regente")
-async def listar_mis_solicitudes_masivas(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    current_user: Usuario = Depends(get_current_user),
-    service: SolicitudRetiroMasivoService = Depends(get_service)
-) -> List[SolicitudRetiroMasivoResponseDTO]:
-    """**[PROFESOR/ADMIN]** Listar las solicitudes masivas del solicitante autenticado"""
-    return service.listar_por_solicitante(current_user.id_usuario, skip, limit)
 
 
 @router.put("/{id_solicitud}/cancelar", response_model=SolicitudRetiroMasivoResponseDTO)
@@ -69,57 +55,20 @@ async def cancelar_solicitud_masiva(
     return service.cancelar_solicitud(id_solicitud, cancelar_dto, current_user.id_usuario)
 
 
-@router.delete("/{id_solicitud}")
-@require_permissions("profesor", "admin", "recepcion", "regente")
-async def eliminar_solicitud_masiva(
-    id_solicitud: int,
-    current_user: Usuario = Depends(get_current_user),
-    service: SolicitudRetiroMasivoService = Depends(get_service)
-) -> dict:
-    """**[SOLICITANTE]** Eliminar una solicitud masiva propia (solo si está en estado 'pendiente')"""
-    eliminado = service.eliminar_solicitud(id_solicitud, current_user.id_usuario)
-    
-    if eliminado:
-        return {"message": "Solicitud masiva eliminada exitosamente"}
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo eliminar la solicitud")
-
-
 # ============================================================================
 # ENDPOINTS PARA RECEPCIONISTAS
 # ============================================================================
-
-@router.get("/pendientes", response_model=List[SolicitudRetiroMasivoResponseDTO])
-@require_permissions("recepcion")
-async def listar_solicitudes_masivas_pendientes(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    service: SolicitudRetiroMasivoService = Depends(get_service)
-) -> List[SolicitudRetiroMasivoResponseDTO]:
-    """**[RECEPCIONISTA]** Listar solicitudes masivas pendientes de recepción"""
-    return service.listar_pendientes(skip, limit)
-
 
 @router.get("/recibidas", response_model=List[SolicitudRetiroMasivoResponseDTO])
 @require_permissions("recepcion")
 async def listar_solicitudes_masivas_recibidas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    service: SolicitudRetiroMasivoService = Depends(get_service)
-) -> List[SolicitudRetiroMasivoResponseDTO]:
-    """**[RECEPCIONISTA]** Listar solicitudes masivas recibidas (pendientes de derivar)"""
-    return service.listar_recibidas(skip, limit)
-
-
-@router.put("/{id_solicitud}/recibir", response_model=SolicitudRetiroMasivoResponseDTO)
-@require_permissions("recepcion")
-async def recibir_solicitud_masiva(
-    id_solicitud: int,
-    recibir_dto: RecibirSolicitudMasivaDTO,
     current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroMasivoService = Depends(get_service)
-) -> SolicitudRetiroMasivoResponseDTO:
-    """**[RECEPCIONISTA]** Marcar solicitud masiva como recibida (pendiente → recibida)"""
-    return service.recibir_solicitud(id_solicitud, recibir_dto, current_user.id_usuario)
+) -> List[SolicitudRetiroMasivoResponseDTO]:
+    """**[RECEPCIONISTA]** Listar solicitudes masivas recibidas (pendientes de derivar al regente)"""
+    return service.listar_recibidas(skip, limit)
 
 
 @router.put("/{id_solicitud}/derivar", response_model=SolicitudRetiroMasivoResponseDTO)
@@ -127,9 +76,10 @@ async def recibir_solicitud_masiva(
 async def derivar_solicitud_masiva(
     id_solicitud: int,
     derivar_dto: DerivarSolicitudMasivaDTO,
+    current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroMasivoService = Depends(get_service)
 ) -> SolicitudRetiroMasivoResponseDTO:
-    """**[RECEPCIONISTA]** Derivar solicitud masiva a un regente (recibida → derivada)"""
+    """**[RECEPCIONISTA]** Derivar solicitud masiva al regente (recibida → derivada)"""
     return service.derivar_solicitud(id_solicitud, derivar_dto)
 
 
@@ -137,28 +87,16 @@ async def derivar_solicitud_masiva(
 # ENDPOINTS PARA REGENTES
 # ============================================================================
 
-@router.get("/derivadas-a-mi", response_model=List[SolicitudRetiroMasivoResponseDTO])
+@router.get("/derivadas", response_model=List[SolicitudRetiroMasivoResponseDTO])
 @require_permissions("regente")
-async def listar_solicitudes_masivas_derivadas_a_mi(
+async def listar_solicitudes_masivas_derivadas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroMasivoService = Depends(get_service)
 ) -> List[SolicitudRetiroMasivoResponseDTO]:
-    """**[REGENTE]** Listar solicitudes masivas derivadas al regente autenticado"""
-    return service.listar_derivadas_a_regente(current_user.id_usuario, skip, limit)
-
-
-@router.put("/{id_solicitud}/decision", response_model=SolicitudRetiroMasivoResponseDTO)
-@require_permissions("regente")
-async def aprobar_rechazar_solicitud_masiva(
-    id_solicitud: int,
-    decision_dto: AprobarRechazarSolicitudMasivaDTO,
-    current_user: Usuario = Depends(get_current_user),
-    service: SolicitudRetiroMasivoService = Depends(get_service)
-) -> SolicitudRetiroMasivoResponseDTO:
-    """**[REGENTE]** Aprobar o rechazar una solicitud masiva (derivada → aprobada/rechazada)"""
-    return service.aprobar_rechazar_solicitud(id_solicitud, decision_dto, current_user.id_usuario)
+    """**[REGENTE]** Listar solicitudes masivas derivadas (pendientes de aprobación/rechazo)"""
+    return service.listar_derivadas(skip, limit)
 
 
 # ============================================================================
@@ -170,6 +108,7 @@ async def aprobar_rechazar_solicitud_masiva(
 async def listar_solicitudes_masivas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroMasivoService = Depends(get_service)
 ) -> List[SolicitudRetiroMasivoResponseDTO]:
     """**[ADMIN/RECEPCIÓN/REGENTE]** Listar todas las solicitudes masivas"""
@@ -177,8 +116,10 @@ async def listar_solicitudes_masivas(
 
 
 @router.get("/{id_solicitud}", response_model=SolicitudRetiroMasivoDetalladaResponseDTO)
+@require_permissions("recepcion", "regente", "admin", "profesor")
 async def obtener_solicitud_masiva(
     id_solicitud: int,
+    current_user: Usuario = Depends(get_current_user),
     service: SolicitudRetiroMasivoService = Depends(get_service)
 ) -> SolicitudRetiroMasivoDetalladaResponseDTO:
     """Obtener una solicitud masiva específica con su lista completa de estudiantes"""

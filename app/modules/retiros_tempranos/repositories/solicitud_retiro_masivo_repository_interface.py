@@ -42,11 +42,6 @@ class SolicitudRetiroMasivoRepositoryInterface(ABC):
         pass
 
     @abstractmethod
-    def get_derivadas(self, id_regente: int, skip: int = 0, limit: int = 100) -> List[SolicitudRetiroMasivo]:
-        """Obtiene solicitudes derivadas a un regente"""
-        pass
-
-    @abstractmethod
     def get_aprobadas(self, skip: int = 0, limit: int = 100) -> List[SolicitudRetiroMasivo]:
         """Obtiene solicitudes aprobadas"""
         pass

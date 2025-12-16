@@ -6,8 +6,8 @@ import enum
 
 class DecisionEnum(str, enum.Enum):
     """Enumeración para decisiones de autorización"""
-    aprobado = "aprobado"
-    rechazado = "rechazado"
+    aprobada = "aprobada"
+    rechazada = "rechazada"
     pendiente = "pendiente"
 
 

@@ -162,30 +162,6 @@ async def listar_solicitudes_pendientes(
     return service.listar_pendientes(skip, limit)
 
 
-@router.get("/recibidas", response_model=List[SolicitudRetiroResponseDTO])
-@require_permissions("recepcion")
-async def listar_solicitudes_recibidas(
-    current_user: Usuario = Depends(get_current_user),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
-    service: SolicitudRetiroService = Depends(get_service)
-) -> List[SolicitudRetiroResponseDTO]:
-    """**[RECEPCIONISTA]** Listar solicitudes recibidas (pendientes de derivar)"""
-    return service.listar_recibidas(skip, limit)
-
-
-@router.put("/{id_solicitud}/recibir", response_model=SolicitudRetiroResponseDTO)
-@require_permissions("recepcion")
-async def recibir_solicitud(
-    id_solicitud: int,
-    recibir_dto: RecibirSolicitudDTO,
-    current_user: Usuario = Depends(get_current_user),
-    service: SolicitudRetiroService = Depends(get_service)
-) -> SolicitudRetiroResponseDTO:
-    """**[RECEPCIONISTA]** Registrar recepción de una solicitud (añade fecha y recepcionista)"""
-    return service.recibir_solicitud(id_solicitud, recibir_dto, current_user.id_usuario)
-
-
 @router.put("/{id_solicitud}/derivar", response_model=SolicitudRetiroResponseDTO)
 @require_permissions("recepcion")
 async def derivar_solicitud(
@@ -196,7 +172,6 @@ async def derivar_solicitud(
 ) -> SolicitudRetiroResponseDTO:
     """**[RECEPCIONISTA]** Derivar solicitud a un regente (recibida → derivada)"""
     return service.derivar_solicitud(id_solicitud, derivar_dto)
-
 
 # ============================================================================
 # ENDPOINTS PARA REGENTES
@@ -211,19 +186,7 @@ async def listar_solicitudes_derivadas_a_mi(
     service: SolicitudRetiroService = Depends(get_service)
 ) -> List[SolicitudRetiroResponseDTO]:
     """**[REGENTE/RECEPCIÓN]** Listar solicitudes derivadas"""
-    return service.listar_derivadas_a_regente(current_user.id_usuario, skip, limit)
-
-
-@router.put("/{id_solicitud}/decision", response_model=SolicitudRetiroResponseDTO)
-@require_permissions("regente")
-async def aprobar_rechazar_solicitud(
-    id_solicitud: int,
-    decision_dto: AprobarRechazarSolicitudDTO,
-    current_user: Usuario = Depends(get_current_user),
-    service: SolicitudRetiroService = Depends(get_service)
-) -> SolicitudRetiroResponseDTO:
-    """**[REGENTE]** Aprobar o rechazar una solicitud (derivada → aprobada/rechazada)"""
-    return service.aprobar_rechazar_solicitud(id_solicitud, decision_dto, current_user.id_usuario)
+    return service.listar_derivadas(skip, limit)
 
 
 # ============================================================================

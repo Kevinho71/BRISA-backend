@@ -6,8 +6,7 @@ from enum import Enum
 
 class EstadoSolicitudMasivaEnum(str, Enum):
     """Estados del flujo de aprobación de solicitudes masivas"""
-    pendiente = "pendiente"        # Creada por profesor/admin
-    recibida = "recibida"          # Recepcionista la recibió
+    recibida = "recibida"          # Recepcionista la recibió (estado inicial)
     derivada = "derivada"          # Derivada al regente
     aprobada = "aprobada"          # Regente aprobó
     rechazada = "rechazada"        # Regente rechazó
@@ -40,7 +39,7 @@ class SolicitudRetiroMasivoCreateDTO(BaseModel):
     """DTO para crear una solicitud de retiro masivo"""
     id_motivo: int = Field(..., description="ID del motivo de retiro")
     fecha_hora_salida: datetime = Field(..., description="Fecha y hora de salida")
-    fecha_hora_retorno: Optional[datetime] = Field(None, description="Fecha y hora de retorno estimado")
+    fecha_hora_retorno_previsto: Optional[datetime] = Field(None, description="Fecha y hora de retorno estimado")
     foto_evidencia: str = Field(..., description="URL o path de la foto de evidencia (OBLIGATORIA)")
     observacion: Optional[str] = Field(None, description="Observaciones generales")
     estudiantes: List[DetalleSolicitudMasivoCreateDTO] = Field(..., description="Lista de estudiantes")
@@ -50,7 +49,7 @@ class SolicitudRetiroMasivoUpdateDTO(BaseModel):
     """DTO para actualizar una solicitud de retiro masivo"""
     id_motivo: Optional[int] = Field(None, description="ID del motivo de retiro")
     fecha_hora_salida: Optional[datetime] = Field(None, description="Fecha y hora de salida")
-    fecha_hora_retorno: Optional[datetime] = Field(None, description="Fecha y hora de retorno estimado")
+    fecha_hora_retorno_previsto: Optional[datetime] = Field(None, description="Fecha y hora de retorno estimado")
     observacion: Optional[str] = Field(None, description="Observaciones generales")
     estado: Optional[EstadoSolicitudMasivaEnum] = Field(None, description="Estado de la solicitud")
 
@@ -62,14 +61,13 @@ class RecibirSolicitudMasivaDTO(BaseModel):
 
 class DerivarSolicitudMasivaDTO(BaseModel):
     """DTO para derivar una solicitud masiva al regente"""
-    id_regente: int = Field(..., description="ID del regente")
     observacion_derivacion: Optional[str] = Field(None, description="Observación de la derivación")
 
 
 class AprobarRechazarSolicitudMasivaDTO(BaseModel):
     """DTO para aprobar o rechazar una solicitud masiva"""
     decision: str = Field(..., description="'aprobada' o 'rechazada'")
-    motivo_rechazo: Optional[str] = Field(None, description="Motivo del rechazo (obligatorio si rechazada)")
+    motivo_decision: Optional[str] = Field(None, description="Motivo de la decisión (obligatorio si rechazada)")
 
 
 class CancelarSolicitudMasivaDTO(BaseModel):
@@ -84,14 +82,11 @@ class SolicitudRetiroMasivoResponseDTO(BaseModel):
     id_motivo: int = Field(..., description="ID del motivo")
     id_autorizacion: Optional[int] = Field(None, description="ID de la autorización")
     fecha_hora_salida: datetime = Field(..., description="Fecha y hora de salida")
-    fecha_hora_retorno: Optional[datetime] = Field(None, description="Fecha y hora de retorno")
+    fecha_hora_retorno_previsto: Optional[datetime] = Field(None, description="Fecha y hora de retorno previsto")
     foto_evidencia: str = Field(..., description="URL de la foto de evidencia")
     observacion: Optional[str] = Field(None, description="Observaciones")
-    fecha_hora_solicitud: datetime = Field(..., description="Fecha de creación")
+    fecha_creacion: datetime = Field(..., description="Fecha de creación")
     estado: str = Field(..., description="Estado actual de la solicitud")
-    id_recepcionista: Optional[int] = Field(None, description="ID del usuario recepcionista")
-    fecha_recepcion: Optional[datetime] = Field(None, description="Fecha de recepción")
-    id_regente: Optional[int] = Field(None, description="ID del usuario regente")
     fecha_derivacion: Optional[datetime] = Field(None, description="Fecha de derivación")
     
     # Campos adicionales con información relacionada
