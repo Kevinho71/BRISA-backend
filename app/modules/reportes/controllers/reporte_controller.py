@@ -123,7 +123,6 @@ def obtener_listado_estudiantes(
     GET /api/reports/students
     ```
     """
-
     return ReporteService.obtener_listado_estudiantes(
         db=db,
         id_curso=curso_id,

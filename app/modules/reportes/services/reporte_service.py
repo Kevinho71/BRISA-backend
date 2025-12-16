@@ -67,11 +67,11 @@ class ReporteService:
         # Obtener información del filtro aplicado
         curso_info = None
         if id_curso:
-            from app.modules.administracion.models.persona_models import Curso
+            from app.modules.estudiantes.models.Curso import Curso
             curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
             if curso:
                 curso_info = f"{curso.nombre_curso} ({curso.gestion})"
-
+                
         return {
             "estudiantes": estudiantes,
             "total": len(estudiantes),
