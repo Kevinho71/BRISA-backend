@@ -1,6 +1,9 @@
 from typing import List
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
 from app.modules.retiros_tempranos.models.EstudianteApoderado import EstudianteApoderado
+from app.modules.retiros_tempranos.models.Apoderado import Apoderado
+from app.modules.usuarios.models.usuario_models import Usuario
 from app.modules.retiros_tempranos.repositories import IEstudianteApoderadoRepository
 from app.modules.retiros_tempranos.dto import (
     EstudianteApoderadoCreateDTO,
@@ -11,8 +14,9 @@ from app.shared.services.base_services import BaseService
 
 
 class EstudianteApoderadoService(BaseService):
-    def __init__(self, repository: IEstudianteApoderadoRepository):
+    def __init__(self, repository: IEstudianteApoderadoRepository, db: Session = None):
         self.repository = repository
+        self.db = db
 
     def create_relacion(self, relacion_dto: EstudianteApoderadoCreateDTO) -> EstudianteApoderadoResponseDTO:
         """Crear una nueva relación estudiante-apoderado"""
@@ -45,6 +49,29 @@ class EstudianteApoderadoService(BaseService):
     def get_estudiantes_by_apoderado(self, id_apoderado: int) -> List[EstudianteApoderadoResponseDTO]:
         """Obtener todos los estudiantes de un apoderado"""
         relaciones = self.repository.get_by_apoderado(id_apoderado)
+        return [EstudianteApoderadoResponseDTO.model_validate(r) for r in relaciones]
+
+    def get_estudiantes_by_usuario(self, id_usuario: int) -> List[EstudianteApoderadoResponseDTO]:
+        """Obtener todos los estudiantes de un apoderado usando id_usuario"""
+        if not self.db:
+            raise HTTPException(status_code=500, detail="Sesión de base de datos no disponible")
+        
+        # Paso 1: Buscar el usuario por id_usuario para obtener id_persona
+        usuario = self.db.query(Usuario).filter(Usuario.id_usuario == id_usuario).first()
+        
+        if not usuario:
+            # Usuario no encontrado, retornar lista vacía
+            return []
+        
+        # Paso 2: Buscar el apoderado por id_persona
+        apoderado = self.db.query(Apoderado).filter(Apoderado.id_persona == usuario.id_persona).first()
+        
+        if not apoderado:
+            # Apoderado no encontrado, retornar lista vacía
+            return []
+        
+        # Paso 3: Obtener los estudiantes usando el id_apoderado real
+        relaciones = self.repository.get_by_apoderado(apoderado.id_apoderado)
         return [EstudianteApoderadoResponseDTO.model_validate(r) for r in relaciones]
 
     def get_contacto_principal(self, id_estudiante: int) -> EstudianteApoderadoResponseDTO:

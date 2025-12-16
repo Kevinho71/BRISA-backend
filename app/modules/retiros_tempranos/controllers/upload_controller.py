@@ -119,7 +119,7 @@ async def subir_foto_evidencia(
 
 
 @router.delete("/evidencia/{filename}")
-@require_permissions("admin", "regente", "recepcion")
+@require_permissions("apoderado","admin", "regente", "recepcion")
 async def eliminar_foto_evidencia(
     filename: str,
     current_user: Usuario = Depends(get_current_user)

@@ -11,6 +11,7 @@ class EstadoSolicitudMasivaEnum(str, Enum):
     aprobada = "aprobada"          # Regente aprobó
     rechazada = "rechazada"        # Regente rechazó
     cancelada = "cancelada"        # Cancelada
+    finalizado = "finalizado"      # Tiene registros de salida
 
 
 class DetalleSolicitudMasivoCreateDTO(BaseModel):

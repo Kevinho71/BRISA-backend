@@ -44,12 +44,12 @@ async def get_all_motivos(
 
 
 @router.get("/activos", response_model=List[MotivoRetiroResponseDTO])
-@require_permissions("admin", "regente", "recepcion", "profesor")
+@require_permissions("admin", "regente", "recepcion", "profesor", "apoderado")
 async def get_motivos_activos(
     current_user: Usuario = Depends(get_current_user),
     service: MotivoRetiroService = Depends(get_motivo_retiro_service)
 ) -> List[MotivoRetiroResponseDTO]:
-    """**[TODOS MENOS APODERADO]** Obtener los motivos de retiro activos"""
+    """**[TODOS]** Obtener los motivos de retiro activos"""
     return service.get_motivos_activos()
 
 

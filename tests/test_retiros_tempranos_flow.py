@@ -34,7 +34,7 @@ def setup_tokens():
         "usuario": "regente1",
         "password": "TmANpg@Zalxy"
     })
-    assert response.status_code == 200, f"Login falló: {response.json()}"
+    assert response.status_code == 200, f"Login falló: {sponse.json()}"
     TOKEN_REGENTE = response.json()["data"]["access_token"]
     
     # Login apoderado

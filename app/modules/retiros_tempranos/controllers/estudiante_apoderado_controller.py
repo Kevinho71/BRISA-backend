@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/estudiantes-apoderados", tags=["estudiantes-apod
 
 def get_estudiante_apoderado_service(db: Session = Depends(get_db)) -> EstudianteApoderadoService:
     repo = EstudianteApoderadoRepository(db)
-    return EstudianteApoderadoService(repo)
+    return EstudianteApoderadoService(repo, db)
 
 
 @router.post("/", response_model=EstudianteApoderadoResponseDTO, status_code=status.HTTP_201_CREATED)
@@ -51,8 +51,12 @@ async def get_estudiantes_by_apoderado(
     id_apoderado: int,
     service: EstudianteApoderadoService = Depends(get_estudiante_apoderado_service)
 ) -> List[EstudianteApoderadoResponseDTO]:
-    """Obtener todos los estudiantes de un apoderado"""
-    return service.get_estudiantes_by_apoderado(id_apoderado)
+    """
+    Obtener todos los estudiantes de un apoderado por id_usuario.
+    El parámetro id_apoderado es en realidad el id_usuario.
+    Flujo: id_usuario → id_persona (tabla usuarios) → id_apoderado (tabla apoderados) → estudiantes
+    """
+    return service.get_estudiantes_by_usuario(id_apoderado)
 
 
 @router.get("/estudiante/{id_estudiante}/contacto-principal", response_model=EstudianteApoderadoResponseDTO)

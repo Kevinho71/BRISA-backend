@@ -206,14 +206,31 @@ async def listar_solicitudes(
 
 
 @router.get("/{id_solicitud}", response_model=SolicitudRetiroResponseDTO)
-@require_permissions("recepcion", "regente", "admin")
+@require_permissions("recepcion", "regente", "admin", "apoderado")
 async def obtener_solicitud(
     id_solicitud: int,
     current_user: Usuario = Depends(get_current_user),
-    service: SolicitudRetiroService = Depends(get_service)
+    service: SolicitudRetiroService = Depends(get_service),
+    db: Session = Depends(get_db)
 ) -> SolicitudRetiroResponseDTO:
-    """**[RECEPCIÓN/REGENTE/DIRECTOR]** Obtener una solicitud específica por ID"""
-    return service.obtener_solicitud(id_solicitud)
+    """**[RECEPCIÓN/REGENTE/DIRECTOR/APODERADO]** Obtener una solicitud específica por ID"""
+    from app.shared.permission_mapper import tiene_permiso
+    
+    solicitud = service.obtener_solicitud(id_solicitud)
+    
+    # Si es apoderado, verificar que la solicitud le pertenece
+    if tiene_permiso(current_user, "apoderado"):
+        apoderado = db.query(Apoderado).filter(
+            Apoderado.id_persona == current_user.id_persona
+        ).first()
+        
+        if not apoderado or solicitud.id_apoderado != apoderado.id_apoderado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tiene permiso para ver esta solicitud. Solo puede ver sus propias solicitudes."
+            )
+    
+    return solicitud
 
 
 @router.get("/estudiante/{id_estudiante}", response_model=List[SolicitudRetiroResponseDTO])
