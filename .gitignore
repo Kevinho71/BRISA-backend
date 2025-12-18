@@ -102,7 +102,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env - Archivo compartido en el repositorio para desarrollo en equipo
+.env 
 .venv
 env/
 venv/
